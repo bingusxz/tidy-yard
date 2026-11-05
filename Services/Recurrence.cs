@@ -6,19 +6,24 @@ namespace TidyYard.Services;
 /// Works out which days a repeating event falls on. Pure date arithmetic, so it is easy to test.
 /// Monthly and yearly events keep their original day: one that starts on the 31st shows on the last
 /// day of shorter months, and one that starts on 29 February shows on 28 February in other years.
+/// "Every weekday" is Monday to Friday, starting from the first weekday on or after the start day.
+/// A series can stop on an end date (included).
 /// </summary>
 public static class Recurrence
 {
     /// <summary>Safety stop so a bad window can never loop for long.</summary>
     private const int MaxSteps = 20000;
 
-    /// <summary>The days inside [from, to] when the event happens, skipping the given days.</summary>
+    /// <summary>The days inside [from, to] when the event starts, skipping the given days and stopping after <paramref name="until"/>.</summary>
     public static IEnumerable<DateOnly> Occurrences(
-        DateOnly start, RepeatRule rule, DateOnly from, DateOnly to, IReadOnlySet<DateOnly>? skipped = null)
+        DateOnly start, RepeatRule rule, DateOnly from, DateOnly to, IReadOnlySet<DateOnly>? skipped = null,
+        DateOnly? until = null)
     {
+        var last = until is { } stop && stop < to ? stop : to;
+
         if (rule == RepeatRule.None)
         {
-            if (start >= from && start <= to && skipped?.Contains(start) != true)
+            if (start >= from && start <= last && skipped?.Contains(start) != true)
             {
                 yield return start;
             }
@@ -26,8 +31,23 @@ public static class Recurrence
             yield break;
         }
 
-        if (start > to)
+        if (start > last)
         {
+            yield break;
+        }
+
+        if (rule == RepeatRule.Weekdays)
+        {
+            // Window sizes are small (a month or a search horizon), so walking day by day is simplest.
+            var walked = 0;
+            for (var day = from > start ? from : start; day <= last && walked++ < MaxSteps; day = day.AddDays(1))
+            {
+                if (day.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && skipped?.Contains(day) != true)
+                {
+                    yield return day;
+                }
+            }
+
             yield break;
         }
 
@@ -35,7 +55,7 @@ public static class Recurrence
         for (var i = FirstIndexOnOrAfter(start, rule, from); steps++ < MaxSteps; i++)
         {
             var day = Nth(start, rule, i);
-            if (day > to)
+            if (day > last)
             {
                 yield break;
             }
@@ -53,7 +73,7 @@ public static class Recurrence
     /// </summary>
     public static DateTime? NextReminder(
         DateOnly start, TimeOnly? time, int? reminderMinutes, RepeatRule rule, DateTime now,
-        IReadOnlySet<DateOnly>? skipped = null)
+        IReadOnlySet<DateOnly>? skipped = null, DateOnly? until = null)
     {
         if (time is not { } t || reminderMinutes is not { } lead)
         {
@@ -63,7 +83,7 @@ public static class Recurrence
         // Occurrences are produced lazily, so looking years ahead for a yearly event costs only a few steps.
         var today = DateOnly.FromDateTime(now);
         var searchTo = rule == RepeatRule.None ? start : today.AddYears(5);
-        foreach (var day in Occurrences(start, rule, today.AddDays(-1), searchTo, skipped))
+        foreach (var day in Occurrences(start, rule, today.AddDays(-1), searchTo, skipped, until))
         {
             var due = day.ToDateTime(t).AddMinutes(-lead);
             if (due > now)
@@ -75,7 +95,7 @@ public static class Recurrence
         return null;
     }
 
-    /// <summary>The nth day of the series (0 = the first).</summary>
+    /// <summary>The nth day of the series (0 = the first). Not used for "every weekday", which is walked day by day.</summary>
     public static DateOnly Nth(DateOnly start, RepeatRule rule, int n) => rule switch
     {
         RepeatRule.Daily => start.AddDays(n),

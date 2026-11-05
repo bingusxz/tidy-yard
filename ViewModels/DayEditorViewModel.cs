@@ -94,9 +94,37 @@ public sealed partial class DayEditorViewModel : ObservableObject
     public IReadOnlyList<RepeatOption> RepeatOptions => RepeatOption.All;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRepeatUntil))]
     private RepeatOption _selectedRepeat = RepeatOption.All[0];
 
+    /// <summary>Where the event (or the series) began when it was opened for editing. Null for a new event.</summary>
     private DateOnly? _editingSeriesStart;
+
+    /// <summary>The first day of the occurrence that was opened; "Ends on" is counted from here.</summary>
+    private DateOnly _editingOccurrenceStart;
+
+    private bool _editingWasRepeating;
+
+    [ObservableProperty]
+    private string _endTimeText = string.Empty;
+
+    [ObservableProperty]
+    private string _endDateText = string.Empty;
+
+    [ObservableProperty]
+    private string _repeatUntilText = string.Empty;
+
+    /// <summary>"Repeat until" only means something once the event repeats.</summary>
+    public bool CanRepeatUntil => SelectedRepeat.Rule != RepeatRule.None;
+
+    /// <summary>An example in the user's own date style, such as "For example 12/03/2027".</summary>
+    public string DateHint => $"For example {new DateTime(DateTime.Today.Year + 1, 3, 12).ToString("d", CultureInfo.CurrentCulture)}. Leave empty for none.";
+
+    private static string FormatDate(DateOnly date) => date.ToString("d", CultureInfo.CurrentCulture);
+
+    private static bool TryParseDate(string text, out DateOnly date) =>
+        DateOnly.TryParse(text.Trim(), CultureInfo.CurrentCulture, DateTimeStyles.None, out date)
+        || DateOnly.TryParse(text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
 
     /// <summary>The event being edited already repeats, so "Delete" removes every day and "Skip this day" removes one.</summary>
     [ObservableProperty]
@@ -224,12 +252,17 @@ public sealed partial class DayEditorViewModel : ObservableObject
     {
         _editingId = null;
         _editingSeriesStart = null;
+        _editingOccurrenceStart = Date;
+        _editingWasRepeating = false;
         IsEditingSeries = false;
         SelectedRepeat = RepeatOption.All[0];
         CanDelete = false;
         FormHeading = "New event";
         Title = string.Empty;
         TimeText = string.Empty;
+        EndTimeText = string.Empty;
+        EndDateText = string.Empty;
+        RepeatUntilText = string.Empty;
         SelectedReminder = ReminderOption.For(_settings.Current.DefaultReminderMinutes);
         FormChecklist.Clear();
         NewItemText = string.Empty;
@@ -248,13 +281,20 @@ public sealed partial class DayEditorViewModel : ObservableObject
         }
 
         _editingId = item.Model.Id;
-        _editingSeriesStart = item.Model.SeriesStart;
-        IsEditingSeries = item.Model.Repeat != RepeatRule.None;
+        _editingSeriesStart = item.Model.StartDay;
+        _editingOccurrenceStart = item.Model.Date.AddDays(-item.Model.DayIndex);
+        _editingWasRepeating = item.Model.Repeat != RepeatRule.None;
+        IsEditingSeries = _editingWasRepeating;
         SelectedRepeat = RepeatOption.For(item.Model.Repeat);
         CanDelete = true;
         FormHeading = "Edit event";
         Title = item.Model.Title;
-        TimeText = item.TimeText;
+
+        // The form edits the whole event, so it shows the real start and end, not what this one day shows.
+        TimeText = item.StartTimeText;
+        EndTimeText = item.EndTimeText;
+        EndDateText = item.Model.SpanDays > 0 ? FormatDate(_editingOccurrenceStart.AddDays(item.Model.SpanDays)) : string.Empty;
+        RepeatUntilText = item.Model.RepeatUntil is { } until ? FormatDate(until) : string.Empty;
         SelectedReminder = ReminderOption.For(item.Model.ReminderMinutes);
         FormChecklist.Clear();
         NewItemText = string.Empty;
@@ -294,18 +334,96 @@ public sealed partial class DayEditorViewModel : ObservableObject
             time = parsed;
         }
 
+        // Where it begins. A repeat keeps the day the series began; turning repeats off keeps the event on the
+        // occurrence that was open, so it does not vanish from the day being looked at.
+        var rule = SelectedRepeat.Rule;
+        var start = _editingWasRepeating && rule == RepeatRule.None
+            ? _editingOccurrenceStart
+            : _editingSeriesStart ?? Date;
+
+        TimeOnly? endTime = null;
+        var endTimeText = EndTimeText.Trim();
+        if (endTimeText.Length > 0)
+        {
+            if (time is null)
+            {
+                Error = "Add a start time before an end time.";
+                return;
+            }
+
+            if (!TimeFormatService.TryParse(endTimeText, out var parsedEnd))
+            {
+                Error = _clock.Uses24Hour ? "Enter an end time like 15:30." : "Enter an end time like 3:30 PM.";
+                return;
+            }
+
+            endTime = parsedEnd;
+        }
+
+        // "Ends on" counts days from the occurrence that was open (the first day of a new event).
+        var span = 0;
+        var endDateText = EndDateText.Trim();
+        if (endDateText.Length > 0)
+        {
+            if (!TryParseDate(endDateText, out var endDate))
+            {
+                Error = $"Enter an end date like {FormatDate(new DateOnly(DateTime.Today.Year + 1, 3, 12))}.";
+                return;
+            }
+
+            span = endDate.DayNumber - _editingOccurrenceStart.DayNumber;
+            if (span < 0)
+            {
+                Error = "The end date is before the event starts.";
+                return;
+            }
+
+            if (span > 366)
+            {
+                Error = "An event can last up to a year.";
+                return;
+            }
+        }
+
+        if (span == 0 && time is { } startTime && endTime is { } finish && finish <= startTime)
+        {
+            Error = "The end time must be after the start time.";
+            return;
+        }
+
+        DateOnly? repeatUntil = null;
+        var untilText = RepeatUntilText.Trim();
+        if (rule != RepeatRule.None && untilText.Length > 0)
+        {
+            if (!TryParseDate(untilText, out var untilDate))
+            {
+                Error = $"Enter a repeat end date like {FormatDate(new DateOnly(DateTime.Today.Year + 1, 3, 12))}.";
+                return;
+            }
+
+            if (untilDate < start)
+            {
+                Error = "The repeat ends before the event starts.";
+                return;
+            }
+
+            repeatUntil = untilDate;
+        }
+
         var note = Note.Trim();
         var model = new CalendarEvent
         {
             Id = _editingId ?? 0,
             Date = Date,
+            SeriesStart = start,
             Time = time,
+            EndTime = endTime,
+            SpanDays = span,
             Title = title,
             Note = note.Length == 0 ? null : note,
             ReminderMinutes = time is null ? null : SelectedReminder.Minutes,
-            Repeat = SelectedRepeat.Rule,
-            // A series is saved under the day it began. Turning repeats off keeps the event on the day being edited.
-            SeriesStart = SelectedRepeat.Rule == RepeatRule.None ? null : _editingSeriesStart,
+            Repeat = rule,
+            RepeatUntil = repeatUntil,
         };
 
         // Text typed in the "Add item" box but not yet added still counts.

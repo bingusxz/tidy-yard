@@ -283,13 +283,13 @@ public sealed partial class CalendarViewModel : ObservableObject
         }
 
         var timed = items.Where(i => i.HasTime).ToList();
-        var first = Math.Min(DayViewFirstHour, timed.Select(i => i.Model.Time!.Value.Hour).DefaultIfEmpty(DayViewFirstHour).Min());
-        var last = Math.Max(DayViewLastHour, timed.Select(i => i.Model.Time!.Value.Hour).DefaultIfEmpty(DayViewLastHour).Max());
+        var first = Math.Min(DayViewFirstHour, timed.Select(i => i.Model.TimeOnThisDay!.Value.Hour).DefaultIfEmpty(DayViewFirstHour).Min());
+        var last = Math.Max(DayViewLastHour, timed.Select(i => i.Model.TimeOnThisDay!.Value.Hour).DefaultIfEmpty(DayViewLastHour).Max());
         var isToday = SelectedDate == _today;
 
         for (var hour = first; hour <= last; hour++)
         {
-            var inHour = timed.Where(i => i.Model.Time!.Value.Hour == hour).ToList();
+            var inHour = timed.Where(i => i.Model.TimeOnThisDay!.Value.Hour == hour).ToList();
             rows.Add(new HourRowViewModel(_clock.FormatHour(hour), inHour, isToday && hour == _lastHour));
         }
 

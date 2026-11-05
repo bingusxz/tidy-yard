@@ -12,7 +12,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class StorageService
 {
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 6;
     private const string DateFormat = "yyyy-MM-dd";
     private const string TimeFormat = "HH:mm";
     private const string DateTimeFormat = "yyyy-MM-dd'T'HH:mm";
@@ -71,12 +71,15 @@ public sealed class StorageService
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        // Single events inside the window, plus every repeating event that has started by the end of it.
+        // Single events that touch the window (a long one may start before it), plus every repeating
+        // event that has started by the end of it. Deleted events are left out.
         command.CommandText =
             $"""
             SELECT {Columns}
             FROM events
-            WHERE (repeat = 0 AND date BETWEEN $from AND $to) OR (repeat <> 0 AND date <= $to)
+            WHERE deleted_at IS NULL
+              AND ((repeat = 0 AND date <= $to AND date(date, '+' || span_days || ' days') >= $from)
+                   OR (repeat <> 0 AND date <= $to AND (repeat_until IS NULL OR repeat_until >= $from)))
             ORDER BY date, time IS NOT NULL, time, id
             """;
         command.Parameters.AddWithValue("$from", FormatDate(from));
@@ -93,16 +96,13 @@ public sealed class StorageService
         imported.Parameters.AddWithValue("$from", FormatDate(from));
         imported.Parameters.AddWithValue("$to", FormatDate(to));
         var fromLinks = ReadEvents(imported);
-        if (fromLinks.Count == 0)
-        {
-            return own;
-        }
 
-        // All-day first, then by time; the user's own events before subscribed ones at the same time.
+        // All-day (and the later days of a long event) first, then by time; the user's own events before
+        // subscribed ones at the same time. Repeats are expanded after the query, so sort here every time.
         return [.. own.Concat(fromLinks)
             .OrderBy(e => e.Date)
-            .ThenBy(e => e.Time is not null)
-            .ThenBy(e => e.Time)
+            .ThenBy(e => e.TimeOnThisDay is not null)
+            .ThenBy(e => e.TimeOnThisDay)
             .ThenBy(e => e.IsImported)
             .ThenBy(e => e.Title, StringComparer.CurrentCultureIgnoreCase)];
     }
@@ -116,7 +116,7 @@ public sealed class StorageService
             $"""
             SELECT {Columns}
             FROM events
-            WHERE next_reminder IS NOT NULL AND next_reminder <= $now
+            WHERE deleted_at IS NULL AND next_reminder IS NOT NULL AND next_reminder <= $now
             ORDER BY next_reminder, id
             """;
         command.Parameters.AddWithValue("$now", FormatDateTime(now));
@@ -157,15 +157,20 @@ public sealed class StorageService
         using var command = connection.CreateCommand();
         command.CommandText = id < 0
             ? $"SELECT {ImportedColumns} FROM imported_events e JOIN calendar_sources s ON s.id = e.source_id WHERE e.id = $id"
-            : $"SELECT {Columns} FROM events WHERE id = $id";
+            : $"SELECT {Columns} FROM events WHERE id = $id AND deleted_at IS NULL";
         command.Parameters.AddWithValue("$id", Math.Abs(id));
         return ReadEvents(command).FirstOrDefault();
     }
 
-    private const string Columns = "id, date, time, title, note, reminder_minutes, next_reminder, repeat";
+    private const string Columns =
+        "id, date, time, title, note, reminder_minutes, next_reminder, repeat, end_time, span_days, repeat_until";
 
     /// <summary>Same column order as <see cref="Columns"/> (never repeating), plus the calendar's name; the id is negated.</summary>
-    private const string ImportedColumns = "-e.id, e.date, e.time, e.title, e.location, NULL, e.next_reminder, 0, s.name";
+    private const string ImportedColumns =
+        "-e.id, e.date, e.time, e.title, e.location, NULL, e.next_reminder, 0, NULL, 0, NULL, s.name";
+
+    /// <summary>Index of the calendar's name, which only subscribed events have.</summary>
+    private const int SourceNameColumn = 11;
 
     /// <summary>
     /// Turns each repeating event into one copy per day it falls on inside the window. The copies share the
@@ -174,20 +179,32 @@ public sealed class StorageService
     private static List<CalendarEvent> ExpandRepeats(
         SqliteConnection connection, List<CalendarEvent> events, DateOnly from, DateOnly to)
     {
-        var repeating = events.Where(e => e.Repeat != RepeatRule.None).ToList();
-        if (repeating.Count == 0)
+        // One-day events that do not repeat are used as they are.
+        var plain = events.Where(e => e.Repeat == RepeatRule.None && e.SpanDays == 0).ToList();
+        var expanding = events.Except(plain).ToList();
+        if (expanding.Count == 0)
         {
             return events;
         }
 
-        var skipped = LoadSkippedDays(connection, repeating.Select(e => e.Id));
-        var result = events.Where(e => e.Repeat == RepeatRule.None).ToList();
-        foreach (var series in repeating)
+        var skipped = LoadSkippedDays(connection, expanding.Where(e => e.Repeat != RepeatRule.None).Select(e => e.Id));
+        var result = plain;
+        foreach (var series in expanding)
         {
             skipped.TryGetValue(series.Id, out var skipSet);
-            foreach (var day in Recurrence.Occurrences(series.Date, series.Repeat, from, to, skipSet))
+
+            // An occurrence that started before the window can still reach into it.
+            foreach (var start in Recurrence.Occurrences(
+                         series.Date, series.Repeat, from.AddDays(-series.SpanDays), to, skipSet, series.RepeatUntil))
             {
-                result.Add(series.OnDay(day));
+                for (var i = 0; i <= series.SpanDays; i++)
+                {
+                    var day = start.AddDays(i);
+                    if (day >= from && day <= to)
+                    {
+                        result.Add(series.OnDay(day, i));
+                    }
+                }
             }
         }
 
@@ -262,7 +279,7 @@ public sealed class StorageService
 
         var skipped = LoadSkippedDays(connection, [eventId]);
         skipped.TryGetValue(eventId, out var skipSet);
-        var next = Recurrence.NextReminder(series.Date, series.Time, series.ReminderMinutes, series.Repeat, now, skipSet);
+        var next = Recurrence.NextReminder(series.Date, series.Time, series.ReminderMinutes, series.Repeat, now, skipSet, series.RepeatUntil);
 
         using var write = connection.CreateCommand();
         write.CommandText = "UPDATE events SET next_reminder = $next WHERE id = $id";
@@ -291,8 +308,15 @@ public sealed class StorageService
                     ? null
                     : DateTime.ParseExact(reader.GetString(6), DateTimeFormat, CultureInfo.InvariantCulture),
                 Repeat = (RepeatRule)reader.GetInt32(7),
-                IsImported = reader.FieldCount > 8,
-                SourceName = reader.FieldCount > 8 ? reader.GetString(8) : null,
+                EndTime = reader.IsDBNull(8)
+                    ? null
+                    : TimeOnly.ParseExact(reader.GetString(8), TimeFormat, CultureInfo.InvariantCulture),
+                SpanDays = reader.GetInt32(9),
+                RepeatUntil = reader.IsDBNull(10)
+                    ? null
+                    : DateOnly.ParseExact(reader.GetString(10), DateFormat, CultureInfo.InvariantCulture),
+                IsImported = reader.FieldCount > SourceNameColumn,
+                SourceName = reader.FieldCount > SourceNameColumn ? reader.GetString(SourceNameColumn) : null,
             });
         }
 
@@ -305,8 +329,10 @@ public sealed class StorageService
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO events (date, time, title, note, reminder_minutes, next_reminder, repeat, created_at, updated_at)
-            VALUES ($date, $time, $title, $note, $reminderMinutes, $nextReminder, $repeat, $now, $now);
+            INSERT INTO events (date, time, end_time, span_days, title, note, reminder_minutes, next_reminder,
+                                repeat, repeat_until, created_at, updated_at)
+            VALUES ($date, $time, $endTime, $spanDays, $title, $note, $reminderMinutes, $nextReminder,
+                    $repeat, $repeatUntil, $now, $now);
             SELECT last_insert_rowid();
             """;
         AddFields(command, calendarEvent);
@@ -323,9 +349,10 @@ public sealed class StorageService
             DELETE FROM event_exceptions WHERE event_id = $id AND (SELECT repeat FROM events WHERE id = $id) IS NOT $repeat;
 
             UPDATE events
-            SET date = $date, time = $time, title = $title, note = $note,
+            SET date = $date, time = $time, end_time = $endTime, span_days = $spanDays, title = $title, note = $note,
                 reminder_minutes = $reminderMinutes,
                 repeat = $repeat,
+                repeat_until = $repeatUntil,
                 -- Keep a reminder that already fired or is snoozed unless the date, time, lead time or repeat changed.
                 next_reminder = CASE
                     WHEN date IS $date AND time IS $time AND reminder_minutes IS $reminderMinutes AND repeat IS $repeat THEN next_reminder
@@ -345,19 +372,64 @@ public sealed class StorageService
         }
     }
 
+    /// <summary>
+    /// Deletes an event. It is only hidden, with its checklist and skipped days, so <see cref="Restore"/> can bring
+    /// it all back (the Undo button). <see cref="PurgeDeleted"/> removes it for good once it is old enough.
+    /// </summary>
     public void Delete(long id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE events SET deleted_at = $now, next_reminder = NULL WHERE id = $id";
+        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Brings back an event that was just deleted, and schedules its next reminder again.</summary>
+    public void Restore(long id)
+    {
+        using var connection = Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE events SET deleted_at = NULL WHERE id = $id";
+            command.Parameters.AddWithValue("$id", id);
+            command.ExecuteNonQuery();
+        }
+
+        AdvanceReminder(connection, id, DateTime.Now);
+    }
+
+    /// <summary>Permanently removes events that were deleted before <paramref name="cutoff"/> (UTC), with everything attached to them.</summary>
+    public void PurgeDeleted(DateTime cutoff)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            DELETE FROM checklist_checks WHERE item_id IN (SELECT id FROM checklist_items WHERE event_id = $id);
-            DELETE FROM checklist_items WHERE event_id = $id;
-            DELETE FROM event_exceptions WHERE event_id = $id;
-            DELETE FROM events WHERE id = $id;
+            DELETE FROM checklist_checks WHERE item_id IN
+                (SELECT id FROM checklist_items WHERE event_id IN (SELECT id FROM events WHERE deleted_at IS NOT NULL AND deleted_at < $cutoff));
+            DELETE FROM checklist_items WHERE event_id IN (SELECT id FROM events WHERE deleted_at IS NOT NULL AND deleted_at < $cutoff);
+            DELETE FROM event_exceptions WHERE event_id IN (SELECT id FROM events WHERE deleted_at IS NOT NULL AND deleted_at < $cutoff);
+            DELETE FROM events WHERE deleted_at IS NOT NULL AND deleted_at < $cutoff;
             """;
-        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$cutoff", cutoff.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
+    }
+
+    /// <summary>Puts a skipped day of a repeating event back.</summary>
+    public void UnskipDay(long eventId, DateOnly day)
+    {
+        using var connection = Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DELETE FROM event_exceptions WHERE event_id = $id AND date = $date";
+            command.Parameters.AddWithValue("$id", eventId);
+            command.Parameters.AddWithValue("$date", FormatDate(day));
+            command.ExecuteNonQuery();
+        }
+
+        AdvanceReminder(connection, eventId, DateTime.Now);
     }
 
     /// <summary>
@@ -789,6 +861,18 @@ public sealed class StorageService
                 """);
         }
 
+        if (version < 6)
+        {
+            steps.Add(
+                """
+                ALTER TABLE events ADD COLUMN end_time TEXT NULL;
+                ALTER TABLE events ADD COLUMN span_days INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE events ADD COLUMN repeat_until TEXT NULL;
+                -- Deleting an event only marks it, so it can be brought back with Undo.
+                ALTER TABLE events ADD COLUMN deleted_at TEXT NULL;
+                """);
+        }
+
         steps.Add($"PRAGMA user_version = {SchemaVersion};");
         upgrade.CommandText = string.Join(Environment.NewLine, steps);
         upgrade.ExecuteNonQuery();
@@ -814,8 +898,22 @@ public sealed class StorageService
         command.Parameters.AddWithValue("$note", (object?)calendarEvent.Note ?? DBNull.Value);
         command.Parameters.AddWithValue("$reminderMinutes", (object?)calendarEvent.ReminderMinutes ?? DBNull.Value);
         command.Parameters.AddWithValue("$repeat", (int)calendarEvent.Repeat);
+
+        // An end time only makes sense with a start time; a length of days needs a start day to count from.
+        command.Parameters.AddWithValue(
+            "$endTime",
+            calendarEvent.Time is not null && calendarEvent.EndTime is { } end
+                ? end.ToString(TimeFormat, CultureInfo.InvariantCulture)
+                : DBNull.Value);
+        command.Parameters.AddWithValue("$spanDays", Math.Max(0, calendarEvent.SpanDays));
+        command.Parameters.AddWithValue(
+            "$repeatUntil",
+            calendarEvent.Repeat != RepeatRule.None && calendarEvent.RepeatUntil is { } until
+                ? FormatDate(until)
+                : DBNull.Value);
         var next = Recurrence.NextReminder(
-            startDay, calendarEvent.Time, calendarEvent.ReminderMinutes, calendarEvent.Repeat, DateTime.Now);
+            startDay, calendarEvent.Time, calendarEvent.ReminderMinutes, calendarEvent.Repeat, DateTime.Now,
+            until: calendarEvent.Repeat != RepeatRule.None ? calendarEvent.RepeatUntil : null);
         command.Parameters.AddWithValue("$nextReminder", next is { } value ? FormatDateTime(value) : DBNull.Value);
         command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
     }

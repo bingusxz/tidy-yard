@@ -141,6 +141,11 @@
                                                                    Foreground="{DynamicResource Brush.TextDim}"
                                                                    Text="{Binding RepeatText}"
                                                                    Visibility="{Binding IsRepeating, Converter={StaticResource BoolToVisibility}}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   FontSize="{DynamicResource Size.Small}"
+                                                                   Foreground="{DynamicResource Brush.TextDim}"
+                                                                   Text="{Binding SpanText}"
+                                                                   Visibility="{Binding HasSpanText, Converter={StaticResource BoolToVisibility}}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
@@ -192,12 +197,27 @@
                                          AutomationProperties.Name="Time" />
                                 <TextBlock Margin="2,4,0,0" Style="{DynamicResource Text.Muted}" Text="{Binding TimeHint}" />
 
+                                <TextBox Margin="0,8,0,0"
+                                         Tag="End time (optional)"
+                                         Text="{Binding EndTimeText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="End time" />
+                                <TextBox Margin="0,8,0,0"
+                                         Tag="End date (optional, for several days)"
+                                         Text="{Binding EndDateText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="End date" />
+                                <TextBlock Margin="2,4,0,0" Style="{DynamicResource Text.Muted}" Text="{Binding DateHint}" />
+
                                 <TextBlock Margin="2,12,0,4" Style="{DynamicResource Text.Muted}" Text="Repeat" />
                                 <ComboBox Style="{DynamicResource ComboBox.Flat}"
                                           ItemsSource="{Binding RepeatOptions}"
                                           SelectedItem="{Binding SelectedRepeat}"
                                           DisplayMemberPath="Name"
                                           AutomationProperties.Name="Repeat" />
+                                <TextBox Margin="0,8,0,0"
+                                         Tag="Repeat until (optional)"
+                                         Text="{Binding RepeatUntilText, UpdateSourceTrigger=PropertyChanged}"
+                                         Visibility="{Binding CanRepeatUntil, Converter={StaticResource BoolToVisibility}}"
+                                         AutomationProperties.Name="Repeat until" />
 
                                 <TextBlock Margin="2,12,0,4">
                                     <TextBlock.Style>

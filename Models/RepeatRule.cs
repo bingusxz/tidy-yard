@@ -8,6 +8,9 @@ public enum RepeatRule
     Weekly = 2,
     Monthly = 3,
     Yearly = 4,
+
+    /// <summary>Monday to Friday.</summary>
+    Weekdays = 5,
 }
 
 /// <summary>One choice in the Repeat picker.</summary>
@@ -20,6 +23,7 @@ public sealed record RepeatOption(RepeatRule Rule, string Name)
         new(RepeatRule.Weekly, "Every week"),
         new(RepeatRule.Monthly, "Every month"),
         new(RepeatRule.Yearly, "Every year"),
+        new(RepeatRule.Weekdays, "Every weekday"),
     ];
 
     public static RepeatOption For(RepeatRule rule) => All.FirstOrDefault(o => o.Rule == rule) ?? All[0];
