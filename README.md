@@ -60,3 +60,7 @@ This writes the installer and update files to `releases\`. Upload that folder's 
 - The app is a tray app. Closing the calendar leaves it running; use Quit in the tray menu to exit.
 - Desktop pinning uses the WorkerW window, so it can behave differently on unusual shell replacements.
 - Inter is bundled under the SIL Open Font License (`Assets/Fonts/Inter-OFL.txt`).
+
+## License
+
+[MIT](LICENSE)
