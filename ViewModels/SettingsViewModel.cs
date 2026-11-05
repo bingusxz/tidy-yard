@@ -49,6 +49,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         _windows.SetCalendarVisible(value);
     }
 
+    public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
+
+    [ObservableProperty]
+    private ReminderOption _selectedReminder;
+
+    partial void OnSelectedReminderChanged(ReminderOption value) =>
+        _settings.Update(s => s.DefaultReminderMinutes = value.Minutes, notify: false);
+
     partial void OnSelectedIconSizeChanged(IconSizeOption value) => _settings.Update(s => s.FenceIconSize = value.Size);
 
     partial void OnHideDesktopIconsChanged(bool value) => Interop.NativeMethods.SetDesktopIconsVisible(!value);
@@ -94,6 +102,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _selectedIconSize = IconSizes.FirstOrDefault(o => o.Size == settings.Current.FenceIconSize) ?? IconSizes[1];
         _hideDesktopIcons = Interop.NativeMethods.AreDesktopIconsVisible() == false;
         _showCalendar = settings.Current.ShowCalendar;
+        _selectedReminder = ReminderOption.For(settings.Current.DefaultReminderMinutes);
         _selectedTheme = ThemeService.Resolve(settings.Current.Theme);
         _opacityPercent = settings.Current.OpacityPercent;
         _isLocked = settings.Current.IsLocked;

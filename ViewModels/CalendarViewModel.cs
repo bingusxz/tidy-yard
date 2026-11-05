@@ -81,7 +81,7 @@ public sealed partial class CalendarViewModel : ObservableObject
         ];
         _selectedView = ViewOptions.First(v => v.View == settings.Current.CalendarView);
 
-        Editor = new DayEditorViewModel(storage, clock);
+        Editor = new DayEditorViewModel(storage, clock, settings);
         Editor.EventsChanged += (_, date) =>
         {
             if (date != SelectedDate)

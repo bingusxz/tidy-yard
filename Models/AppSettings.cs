@@ -20,6 +20,9 @@ public sealed class AppSettings
 
     public ClockFormat ClockFormat { get; set; } = ClockFormat.Windows;
 
+    /// <summary>Reminder given to new events that have a time; null = none.</summary>
+    public int? DefaultReminderMinutes { get; set; } = 10;
+
     public CalendarView CalendarView { get; set; } = CalendarView.Month;
 
     /// <summary>Off = fences only: the calendar does not open at start-up.</summary>

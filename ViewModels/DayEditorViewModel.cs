@@ -12,6 +12,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
 {
     private readonly StorageService _storage;
     private readonly TimeFormatService _clock;
+    private readonly SettingsService _settings;
     private long? _editingId;
 
     [ObservableProperty]
@@ -38,7 +39,11 @@ public sealed partial class DayEditorViewModel : ObservableObject
     private string _title = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSetReminder))]
     private string _timeText = string.Empty;
+
+    [ObservableProperty]
+    private ReminderOption _selectedReminder = ReminderOption.All[0];
 
     [ObservableProperty]
     private string _note = string.Empty;
@@ -51,11 +56,17 @@ public sealed partial class DayEditorViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]
     private bool _canDelete;
 
-    public DayEditorViewModel(StorageService storage, TimeFormatService clock)
+    public DayEditorViewModel(StorageService storage, TimeFormatService clock, SettingsService settings)
     {
         _storage = storage;
         _clock = clock;
+        _settings = settings;
     }
+
+    public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
+
+    /// <summary>Reminders need a time, so the picker is disabled for all-day events.</summary>
+    public bool CanSetReminder => TimeText.Trim().Length > 0;
 
     /// <summary>Raised after an event is saved or deleted.</summary>
     public event EventHandler<DateOnly>? EventsChanged;
@@ -114,7 +125,13 @@ public sealed partial class DayEditorViewModel : ObservableObject
             return;
         }
 
-        _storage.Add(new CalendarEvent { Date = parsed.Date, Time = parsed.Time, Title = parsed.Title });
+        _storage.Add(new CalendarEvent
+        {
+            Date = parsed.Date,
+            Time = parsed.Time,
+            Title = parsed.Title,
+            ReminderMinutes = parsed.Time is null ? null : _settings.Current.DefaultReminderMinutes,
+        });
         QuickAddText = string.Empty;
         EventsChanged?.Invoke(this, parsed.Date);
     }
@@ -150,6 +167,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         FormHeading = "New event";
         Title = string.Empty;
         TimeText = string.Empty;
+        SelectedReminder = ReminderOption.For(_settings.Current.DefaultReminderMinutes);
         Note = string.Empty;
         Error = string.Empty;
         IsFormOpen = true;
@@ -168,6 +186,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         FormHeading = "Edit event";
         Title = item.Model.Title;
         TimeText = item.TimeText;
+        SelectedReminder = ReminderOption.For(item.Model.ReminderMinutes);
         Note = item.Model.Note ?? string.Empty;
         Error = string.Empty;
         IsFormOpen = true;
@@ -206,6 +225,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
             Time = time,
             Title = title,
             Note = note.Length == 0 ? null : note,
+            ReminderMinutes = time is null ? null : SelectedReminder.Minutes,
         };
 
         if (_editingId is null)

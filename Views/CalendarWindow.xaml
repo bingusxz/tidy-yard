@@ -155,6 +155,25 @@
                                          AutomationProperties.Name="Time" />
                                 <TextBlock Margin="2,4,0,0" Style="{DynamicResource Text.Muted}" Text="{Binding TimeHint}" />
 
+                                <TextBlock Margin="2,12,0,4">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                            <Setter Property="Text" Value="Reminder" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanSetReminder}" Value="False">
+                                                    <Setter Property="Text" Value="Reminder (add a time first)" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ComboBox Style="{DynamicResource ComboBox.Flat}"
+                                          ItemsSource="{Binding ReminderOptions}"
+                                          SelectedItem="{Binding SelectedReminder}"
+                                          DisplayMemberPath="Name"
+                                          IsEnabled="{Binding CanSetReminder}"
+                                          AutomationProperties.Name="Reminder" />
+
                                 <TextBox Margin="0,8,0,0"
                                          MinHeight="64"
                                          Padding="8,6"

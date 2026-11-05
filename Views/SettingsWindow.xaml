@@ -239,6 +239,25 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Default reminder" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Given to new events that have a time. You can change it per event." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  Width="176"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource ComboBox.Flat}"
+                                  ItemsSource="{Binding ReminderOptions}"
+                                  SelectedItem="{Binding SelectedReminder}"
+                                  DisplayMemberPath="Name"
+                                  AutomationProperties.Name="Default reminder" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Show calendar" />
                             <TextBlock Style="{DynamicResource Text.Muted}" Text="Turn off to use Tidy Yard for fences only. Open Calendar in the tray still works." />
                         </StackPanel>

@@ -13,6 +13,7 @@ public partial class App : Application
     private SingleInstanceService? _singleInstance;
     private SettingsService? _settings;
     private FenceStore? _fences;
+    private ReminderService? _reminders;
     private TaskbarIcon? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -56,6 +57,9 @@ public partial class App : Application
         var moves = new FileMoveService(AppPaths.MoveLogFile);
         var windows = new WindowService(_settings, storage, themes, fences, moves, Shutdown);
 
+        _reminders = new ReminderService(storage, new TimeFormatService(_settings), windows.ShowCalendar);
+        _reminders.Start();
+
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows, moves);
         _tray.Icon = TrayIconRenderer.Create();
@@ -74,6 +78,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+        _reminders?.Dispose();
         _settings?.Flush();
         _fences?.Flush();
         _tray?.Dispose();
