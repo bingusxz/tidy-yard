@@ -28,9 +28,14 @@ public partial class FenceWindow : Window
         GlassWindow.Attach(this);
         _widget = new DesktopWidget(this, DefaultWidth, DefaultHeight, () => viewModel.Model.Bounds, viewModel.SaveBounds)
         {
-            IsPinned = true, // fences always live on the desktop layer
+            // Locked = on the desktop layer, behind every window. Unlocked = an ordinary window
+            // that comes to the front when clicked and goes behind the next window you click.
+            IsPinned = viewModel.IsLocked,
             IsLocked = viewModel.IsLocked,
         };
+
+        // Fences never show in Alt+Tab, whether locked or not.
+        Interop.NativeMethods.HideFromAltTab(_widget.Handle);
 
         if (viewModel.IsRolledUp)
         {
@@ -49,44 +54,38 @@ public partial class FenceWindow : Window
     }
 
     /// <summary>
-    /// For a fence the user just created: lifts it above other windows with its name ready to type,
-    /// then sends it back to the desktop layer as soon as they click elsewhere.
+    /// For a fence the user just created (unlocked): shows it in front with its name ready to type.
     /// </summary>
     public void ShowForSetup()
     {
-        _widget.IsPinned = false;
         Show();
 
         // Wait until the tray menu that created this fence has closed, or it takes focus back at once.
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
-            Activate();
-            Interop.NativeMethods.BringToForeground(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            RaiseToFront();
             _viewModel.BeginRenameCommand.Execute(null);
         });
-
-        Deactivated += OnSetupDeactivated;
-
-        // If Windows refused to give it focus, do not leave the fence stuck above everything.
-        var fallback = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        fallback.Tick += (_, _) =>
-        {
-            fallback.Stop();
-            if (!IsActive)
-            {
-                ReturnToDesktop();
-            }
-        };
-        fallback.Start();
     }
 
-    private void OnSetupDeactivated(object? sender, EventArgs e) => ReturnToDesktop();
-
-    private void ReturnToDesktop()
+    /// <summary>Lifts an unlocked fence above other windows. Locked fences stay on the desktop layer.</summary>
+    public void BringToFront()
     {
-        Deactivated -= OnSetupDeactivated;
-        _widget.IsPinned = true;
-        _widget.SettleAtBottom();
+        if (!_viewModel.IsLocked)
+        {
+            RaiseToFront();
+        }
+    }
+
+    private void RaiseToFront()
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
+        Interop.NativeMethods.BringToForeground(_widget.Handle);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -101,6 +100,13 @@ public partial class FenceWindow : Window
         {
             case nameof(FenceViewModel.IsLocked):
                 _widget.IsLocked = _viewModel.IsLocked;
+                _widget.IsPinned = _viewModel.IsLocked;
+                if (!_viewModel.IsLocked)
+                {
+                    // Unlocking is how you start arranging it, so make sure it can be seen.
+                    RaiseToFront();
+                }
+
                 break;
             case nameof(FenceViewModel.IsRolledUp):
                 ApplyRollUp(_viewModel.IsRolledUp);

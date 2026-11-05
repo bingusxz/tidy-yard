@@ -33,5 +33,8 @@ public interface IWindowService
     /// <summary>Moves the last batch of moved files back where they came from.</summary>
     void UndoLastMove();
 
+    /// <summary>Lifts every unlocked fence above other windows. Locked fences stay on the desktop.</summary>
+    void BringFencesToFront();
+
     void Quit();
 }

@@ -55,6 +55,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LockMenuText))]
+    [NotifyPropertyChangedFor(nameof(LockToolTip))]
     private bool _isLocked;
 
     [ObservableProperty]
@@ -109,7 +110,12 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     public bool HasMessage => Message.Length > 0;
 
-    public string LockMenuText => IsLocked ? "Unlock this fence" : "Lock this fence";
+    public string LockMenuText => IsLocked ? "Unlock" : "Lock to desktop";
+
+    /// <summary>Says what the click will do and what that means, since the icon alone does not.</summary>
+    public string LockToolTip => IsLocked
+        ? "Locked to the desktop. Click to unlock, move and bring to front."
+        : "Unlocked. Click to lock it to the desktop, behind your windows.";
 
     public bool IsGridLayout => Layout == FenceLayout.Grid;
 

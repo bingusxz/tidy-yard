@@ -192,6 +192,23 @@ internal static class NativeMethods
 
     public static IntPtr GetOwner(IntPtr hwnd) => GetWindowLongPtr(hwnd, GWLP_HWNDPARENT);
 
+    private const int GWL_EXSTYLE = -20;
+    private const long WS_EX_TOOLWINDOW = 0x00000080;
+    private const long WS_EX_APPWINDOW = 0x00040000;
+
+    /// <summary>Keeps a window out of Alt+Tab (and the taskbar) while it still behaves as a normal window.</summary>
+    public static void HideFromAltTab(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var style = GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
+        style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(style));
+    }
+
     /// <summary>Sets a window's owner. Windows owned by the desktop stay visible on Show desktop (Win+D).</summary>
     public static void SetOwner(IntPtr hwnd, IntPtr owner)
     {

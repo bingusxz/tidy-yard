@@ -136,6 +136,14 @@ public sealed class WindowService : IWindowService
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
 
+    public void BringFencesToFront()
+    {
+        foreach (var window in _fenceWindows.Values)
+        {
+            window.BringToFront();
+        }
+    }
+
     public void Quit()
     {
         _settingsWindow?.Close();

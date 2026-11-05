@@ -56,6 +56,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock VerticalAlignment="Center"
@@ -93,7 +94,26 @@
                            Foreground="{DynamicResource Brush.TextMuted}"
                            Text="{Binding CountText}" />
 
+                <!-- Lock state at a glance; one click to change it. -->
                 <Button Grid.Column="2"
+                        Command="{Binding ToggleLockCommand}"
+                        ToolTip="{Binding LockToolTip}"
+                        AutomationProperties.Name="{Binding LockToolTip}"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                            <Setter Property="Content" Value="{DynamicResource Glyph.Unlock}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                    <Setter Property="Content" Value="{DynamicResource Glyph.Lock}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Button Grid.Column="3"
                         Command="{Binding ToggleRollUpCommand}"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button.Style>
@@ -113,7 +133,7 @@
                 </Button>
 
                 <Button x:Name="MenuButton"
-                        Grid.Column="3"
+                        Grid.Column="4"
                         Style="{DynamicResource Button.Icon}"
                         Content="{DynamicResource Glyph.More}"
                         Click="OnMenuClick"
@@ -139,7 +159,7 @@
                     </Button.ContextMenu>
                 </Button>
 
-                <Popup Grid.Column="3"
+                <Popup Grid.Column="4"
                        IsOpen="{Binding IsColorPickerOpen, Mode=TwoWay}"
                        PlacementTarget="{Binding ElementName=MenuButton}"
                        Placement="Bottom"
