@@ -19,6 +19,29 @@ public sealed class CalendarEvent
     /// <summary>Local time of the next reminder to show, or null when none is waiting.</summary>
     public DateTime? NextReminder { get; set; }
 
+    /// <summary>How often the event repeats. Needs no time of day.</summary>
+    public RepeatRule Repeat { get; set; }
+
+    /// <summary>
+    /// For a repeating event shown on one of its days: the day the series began. <see cref="Date"/> is then
+    /// the day being shown. Null for events that do not repeat.
+    /// </summary>
+    public DateOnly? SeriesStart { get; set; }
+
+    /// <summary>A copy of a repeating event as it appears on one of its days.</summary>
+    public CalendarEvent OnDay(DateOnly day) => new()
+    {
+        Id = Id,
+        Date = day,
+        SeriesStart = SeriesStart ?? Date,
+        Time = Time,
+        Title = Title,
+        Note = Note,
+        ReminderMinutes = ReminderMinutes,
+        NextReminder = NextReminder,
+        Repeat = Repeat,
+    };
+
     /// <summary>From a subscribed calendar link: shown, reminded about, but not editable here.</summary>
     public bool IsImported { get; set; }
 

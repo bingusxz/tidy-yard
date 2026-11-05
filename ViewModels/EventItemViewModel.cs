@@ -50,6 +50,11 @@ public sealed class EventItemViewModel : ObservableObject
     /// <summary>"Work" or "Family": which subscribed calendar the event came from.</summary>
     public string SourceText => Model.SourceName ?? string.Empty;
 
+    /// <summary>"Every week" under the title of a repeating event; empty otherwise.</summary>
+    public string RepeatText => Model.Repeat == RepeatRule.None ? string.Empty : RepeatOption.For(Model.Repeat).Name;
+
+    public bool IsRepeating => Model.Repeat != RepeatRule.None;
+
     public ObservableCollection<ChecklistItemViewModel> Checklist { get; }
 
     public bool HasChecklist => Checklist.Count > 0;

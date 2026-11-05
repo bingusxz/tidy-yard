@@ -80,14 +80,23 @@ public sealed class ReminderService : IDisposable
             var now = DateTime.Now;
             foreach (var due in _storage.GetDueReminders(now))
             {
-                // Clear first so a failing toast cannot repeat every check.
-                _storage.SetNextReminder(due.Id, null);
-                if (due.Start is { } start && now > start + StaleAfter)
+                // Schedule the next one (or clear it) first, so a failing toast cannot repeat every check.
+                if (due.Repeat == RepeatRule.None)
+                {
+                    _storage.SetNextReminder(due.Id, null);
+                }
+                else
+                {
+                    _storage.AdvanceReminder(due.Id, now);
+                }
+
+                var occurrence = due.Repeat == RepeatRule.None ? due : NearestOccurrence(due, now);
+                if (occurrence is null || (occurrence.Start is { } start && now > start + StaleAfter))
                 {
                     continue;
                 }
 
-                Show(due, now);
+                Show(occurrence, now);
             }
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
@@ -134,7 +143,7 @@ public sealed class ReminderService : IDisposable
                     .SetBackgroundActivation())
                 .AddButton(new ToastButtonDismiss("Dismiss"));
 
-            var progress = DescribeChecklist(due.Id);
+            var progress = DescribeChecklist(due.Id, due.Date);
             if (progress.Length > 0)
             {
                 builder.AddText(progress);
@@ -153,10 +162,34 @@ public sealed class ReminderService : IDisposable
         }
     }
 
-    /// <summary>"2 of 5 items done", or an empty line when the event has no checklist.</summary>
-    private string DescribeChecklist(long eventId)
+    /// <summary>
+    /// The day of a repeating event this reminder is about: the first one that has not ended more than
+    /// <see cref="StaleAfter"/> ago. Null if there is none, in which case nothing is shown.
+    /// </summary>
+    private static CalendarEvent? NearestOccurrence(CalendarEvent series, DateTime now)
     {
-        if (!_storage.GetChecklists([eventId]).TryGetValue(eventId, out var items) || items.Count == 0)
+        if (series.Time is not { } time)
+        {
+            return null;
+        }
+
+        var from = DateOnly.FromDateTime(now - StaleAfter);
+        var to = DateOnly.FromDateTime(now).AddDays(2);
+        foreach (var day in Recurrence.Occurrences(series.Date, series.Repeat, from, to))
+        {
+            if (day.ToDateTime(time) >= now - StaleAfter)
+            {
+                return series.OnDay(day);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>"2 of 5 items done", or an empty line when the event has no checklist.</summary>
+    private string DescribeChecklist(long eventId, DateOnly day)
+    {
+        if (!_storage.GetChecklists([eventId], day).TryGetValue(eventId, out var items) || items.Count == 0)
         {
             return string.Empty;
         }

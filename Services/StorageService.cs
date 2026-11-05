@@ -12,7 +12,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class StorageService
 {
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
     private const string DateFormat = "yyyy-MM-dd";
     private const string TimeFormat = "HH:mm";
     private const string DateTimeFormat = "yyyy-MM-dd'T'HH:mm";
@@ -71,16 +71,17 @@ public sealed class StorageService
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
+        // Single events inside the window, plus every repeating event that has started by the end of it.
         command.CommandText =
             $"""
             SELECT {Columns}
             FROM events
-            WHERE date BETWEEN $from AND $to
+            WHERE (repeat = 0 AND date BETWEEN $from AND $to) OR (repeat <> 0 AND date <= $to)
             ORDER BY date, time IS NOT NULL, time, id
             """;
         command.Parameters.AddWithValue("$from", FormatDate(from));
         command.Parameters.AddWithValue("$to", FormatDate(to));
-        var own = ReadEvents(command);
+        var own = ExpandRepeats(connection, ReadEvents(command), from, to);
 
         using var imported = connection.CreateCommand();
         imported.CommandText =
@@ -161,10 +162,114 @@ public sealed class StorageService
         return ReadEvents(command).FirstOrDefault();
     }
 
-    private const string Columns = "id, date, time, title, note, reminder_minutes, next_reminder";
+    private const string Columns = "id, date, time, title, note, reminder_minutes, next_reminder, repeat";
 
-    /// <summary>Same column order as <see cref="Columns"/>, plus the calendar's name; the id is negated.</summary>
-    private const string ImportedColumns = "-e.id, e.date, e.time, e.title, e.location, NULL, e.next_reminder, s.name";
+    /// <summary>Same column order as <see cref="Columns"/> (never repeating), plus the calendar's name; the id is negated.</summary>
+    private const string ImportedColumns = "-e.id, e.date, e.time, e.title, e.location, NULL, e.next_reminder, 0, s.name";
+
+    /// <summary>
+    /// Turns each repeating event into one copy per day it falls on inside the window. The copies share the
+    /// event's id; <see cref="CalendarEvent.SeriesStart"/> keeps the day the series began.
+    /// </summary>
+    private static List<CalendarEvent> ExpandRepeats(
+        SqliteConnection connection, List<CalendarEvent> events, DateOnly from, DateOnly to)
+    {
+        var repeating = events.Where(e => e.Repeat != RepeatRule.None).ToList();
+        if (repeating.Count == 0)
+        {
+            return events;
+        }
+
+        var skipped = LoadSkippedDays(connection, repeating.Select(e => e.Id));
+        var result = events.Where(e => e.Repeat == RepeatRule.None).ToList();
+        foreach (var series in repeating)
+        {
+            skipped.TryGetValue(series.Id, out var skipSet);
+            foreach (var day in Recurrence.Occurrences(series.Date, series.Repeat, from, to, skipSet))
+            {
+                result.Add(series.OnDay(day));
+            }
+        }
+
+        return result;
+    }
+
+    private static Dictionary<long, HashSet<DateOnly>> LoadSkippedDays(SqliteConnection connection, IEnumerable<long> eventIds)
+    {
+        var result = new Dictionary<long, HashSet<DateOnly>>();
+        var ids = eventIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return result;
+        }
+
+        using var command = connection.CreateCommand();
+        var names = ids.Select((id, i) => $"$s{i}").ToList();
+        for (var i = 0; i < ids.Count; i++)
+        {
+            command.Parameters.AddWithValue(names[i], ids[i]);
+        }
+
+        command.CommandText = $"SELECT event_id, date FROM event_exceptions WHERE event_id IN ({string.Join(", ", names)})";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var id = reader.GetInt64(0);
+            if (!result.TryGetValue(id, out var set))
+            {
+                result[id] = set = [];
+            }
+
+            set.Add(DateOnly.ParseExact(reader.GetString(1), DateFormat, CultureInfo.InvariantCulture));
+        }
+
+        return result;
+    }
+
+    /// <summary>Leaves one day of a repeating event out. The rest of the series is unchanged.</summary>
+    public void SkipDay(long eventId, DateOnly day)
+    {
+        using var connection = Open();
+        using (var insert = connection.CreateCommand())
+        {
+            insert.CommandText = "INSERT OR IGNORE INTO event_exceptions (event_id, date) VALUES ($id, $date)";
+            insert.Parameters.AddWithValue("$id", eventId);
+            insert.Parameters.AddWithValue("$date", FormatDate(day));
+            insert.ExecuteNonQuery();
+        }
+
+        // If that day held the next reminder, move the reminder on to the following one.
+        AdvanceReminder(connection, eventId, DateTime.Now);
+    }
+
+    /// <summary>After a repeating event's reminder fired, schedules the one for its next day.</summary>
+    public void AdvanceReminder(long eventId, DateTime now)
+    {
+        using var connection = Open();
+        AdvanceReminder(connection, eventId, now);
+    }
+
+    private static void AdvanceReminder(SqliteConnection connection, long eventId, DateTime now)
+    {
+        using var read = connection.CreateCommand();
+        read.CommandText = $"SELECT {Columns} FROM events WHERE id = $id";
+        read.Parameters.AddWithValue("$id", eventId);
+        var series = ReadEvents(read).FirstOrDefault();
+        if (series is null)
+        {
+            return;
+        }
+
+        var skipped = LoadSkippedDays(connection, [eventId]);
+        skipped.TryGetValue(eventId, out var skipSet);
+        var next = Recurrence.NextReminder(series.Date, series.Time, series.ReminderMinutes, series.Repeat, now, skipSet);
+
+        using var write = connection.CreateCommand();
+        write.CommandText = "UPDATE events SET next_reminder = $next WHERE id = $id";
+        write.Parameters.AddWithValue("$next", next is { } value ? FormatDateTime(value) : DBNull.Value);
+        write.Parameters.AddWithValue("$id", eventId);
+        write.ExecuteNonQuery();
+    }
 
     private static List<CalendarEvent> ReadEvents(SqliteCommand command)
     {
@@ -185,8 +290,9 @@ public sealed class StorageService
                 NextReminder = reader.IsDBNull(6)
                     ? null
                     : DateTime.ParseExact(reader.GetString(6), DateTimeFormat, CultureInfo.InvariantCulture),
-                IsImported = reader.FieldCount > 7,
-                SourceName = reader.FieldCount > 7 ? reader.GetString(7) : null,
+                Repeat = (RepeatRule)reader.GetInt32(7),
+                IsImported = reader.FieldCount > 8,
+                SourceName = reader.FieldCount > 8 ? reader.GetString(8) : null,
             });
         }
 
@@ -199,8 +305,8 @@ public sealed class StorageService
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO events (date, time, title, note, reminder_minutes, next_reminder, created_at, updated_at)
-            VALUES ($date, $time, $title, $note, $reminderMinutes, $nextReminder, $now, $now);
+            INSERT INTO events (date, time, title, note, reminder_minutes, next_reminder, repeat, created_at, updated_at)
+            VALUES ($date, $time, $title, $note, $reminderMinutes, $nextReminder, $repeat, $now, $now);
             SELECT last_insert_rowid();
             """;
         AddFields(command, calendarEvent);
@@ -213,12 +319,16 @@ public sealed class StorageService
         using var command = connection.CreateCommand();
         command.CommandText =
             """
+            -- Changing how often it repeats makes the skipped days meaningless, so they are cleared.
+            DELETE FROM event_exceptions WHERE event_id = $id AND (SELECT repeat FROM events WHERE id = $id) IS NOT $repeat;
+
             UPDATE events
             SET date = $date, time = $time, title = $title, note = $note,
                 reminder_minutes = $reminderMinutes,
-                -- Keep a reminder that already fired or is snoozed unless the date, time or lead time changed.
+                repeat = $repeat,
+                -- Keep a reminder that already fired or is snoozed unless the date, time, lead time or repeat changed.
                 next_reminder = CASE
-                    WHEN date IS $date AND time IS $time AND reminder_minutes IS $reminderMinutes THEN next_reminder
+                    WHEN date IS $date AND time IS $time AND reminder_minutes IS $reminderMinutes AND repeat IS $repeat THEN next_reminder
                     ELSE $nextReminder
                 END,
                 updated_at = $now
@@ -227,6 +337,12 @@ public sealed class StorageService
         AddFields(command, calendarEvent);
         command.Parameters.AddWithValue("$id", calendarEvent.Id);
         command.ExecuteNonQuery();
+
+        // Pick the next reminder with this series' skipped days taken into account.
+        if (calendarEvent.Repeat != RepeatRule.None)
+        {
+            AdvanceReminder(connection, calendarEvent.Id, DateTime.Now);
+        }
     }
 
     public void Delete(long id)
@@ -235,15 +351,20 @@ public sealed class StorageService
         using var command = connection.CreateCommand();
         command.CommandText =
             """
+            DELETE FROM checklist_checks WHERE item_id IN (SELECT id FROM checklist_items WHERE event_id = $id);
             DELETE FROM checklist_items WHERE event_id = $id;
+            DELETE FROM event_exceptions WHERE event_id = $id;
             DELETE FROM events WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", id);
         command.ExecuteNonQuery();
     }
 
-    /// <summary>Checklist items for the given events, in the order the user arranged them.</summary>
-    public IReadOnlyDictionary<long, List<ChecklistItem>> GetChecklists(IReadOnlyCollection<long> eventIds)
+    /// <summary>
+    /// Checklist items for the given events, in the order the user arranged them. For a repeating event
+    /// "done" is per day: ticking Monday's item leaves Tuesday's unticked.
+    /// </summary>
+    public IReadOnlyDictionary<long, List<ChecklistItem>> GetChecklists(IReadOnlyCollection<long> eventIds, DateOnly day)
     {
         var result = new Dictionary<long, List<ChecklistItem>>();
         if (eventIds.Count == 0)
@@ -262,12 +383,17 @@ public sealed class StorageService
             command.Parameters.AddWithValue(name, id);
         }
 
+        command.Parameters.AddWithValue("$day", FormatDate(day));
         command.CommandText =
             $"""
-            SELECT id, event_id, text, done
-            FROM checklist_items
-            WHERE event_id IN ({string.Join(", ", names)})
-            ORDER BY event_id, position, id
+            SELECT ci.id, ci.event_id, ci.text,
+                   CASE WHEN e.repeat = 0
+                        THEN ci.done
+                        ELSE EXISTS (SELECT 1 FROM checklist_checks k WHERE k.item_id = ci.id AND k.date = $day)
+                   END
+            FROM checklist_items ci JOIN events e ON e.id = ci.event_id
+            WHERE ci.event_id IN ({string.Join(", ", names)})
+            ORDER BY ci.event_id, ci.position, ci.id
             """;
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -290,46 +416,116 @@ public sealed class StorageService
         return result;
     }
 
-    /// <summary>Replaces an event's whole checklist with <paramref name="items"/>, in that order.</summary>
-    public void SaveChecklist(long eventId, IEnumerable<ChecklistItem> items)
+    /// <summary>
+    /// Saves an event's checklist as the user arranged it. Items keep their identity (so a repeating
+    /// event's ticks on other days survive), new ones are added, and removed ones are deleted.
+    /// <paramref name="day"/> is the day whose ticks <paramref name="items"/> describe.
+    /// </summary>
+    public void SaveChecklist(long eventId, IEnumerable<ChecklistItem> items, DateOnly day)
     {
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
 
-        using (var delete = connection.CreateCommand())
+        var repeats = Scalar<long>(connection, transaction, "SELECT repeat FROM events WHERE id = $e", ("$e", eventId)) != 0;
+        var list = items.ToList();
+        var keep = list.Where(i => i.Id != 0).Select(i => i.Id).ToHashSet();
+
+        // Remove items the user took out of the list, with their per-day ticks.
+        var existing = new List<long>();
+        using (var read = connection.CreateCommand())
         {
-            delete.Transaction = transaction;
-            delete.CommandText = "DELETE FROM checklist_items WHERE event_id = $event";
-            delete.Parameters.AddWithValue("$event", eventId);
-            delete.ExecuteNonQuery();
+            read.Transaction = transaction;
+            read.CommandText = "SELECT id FROM checklist_items WHERE event_id = $e";
+            read.Parameters.AddWithValue("$e", eventId);
+            using var reader = read.ExecuteReader();
+            while (reader.Read())
+            {
+                existing.Add(reader.GetInt64(0));
+            }
+        }
+
+        foreach (var id in existing.Where(id => !keep.Contains(id)))
+        {
+            Run(connection, transaction, "DELETE FROM checklist_checks WHERE item_id = $i; DELETE FROM checklist_items WHERE id = $i", ("$i", id));
         }
 
         var position = 0;
-        foreach (var item in items)
+        foreach (var item in list)
         {
-            using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            insert.CommandText =
-                "INSERT INTO checklist_items (event_id, text, done, position) VALUES ($event, $text, $done, $position)";
-            insert.Parameters.AddWithValue("$event", eventId);
-            insert.Parameters.AddWithValue("$text", item.Text);
-            insert.Parameters.AddWithValue("$done", item.IsDone ? 1 : 0);
-            insert.Parameters.AddWithValue("$position", position++);
-            insert.ExecuteNonQuery();
+            var isExisting = item.Id != 0 && existing.Contains(item.Id);
+            if (isExisting)
+            {
+                Run(connection, transaction,
+                    "UPDATE checklist_items SET text = $t, position = $p WHERE id = $i",
+                    ("$t", item.Text), ("$p", position), ("$i", item.Id));
+            }
+            else
+            {
+                item.Id = Scalar<long>(connection, transaction,
+                    "INSERT INTO checklist_items (event_id, text, done, position) VALUES ($e, $t, 0, $p); SELECT last_insert_rowid()",
+                    ("$e", eventId), ("$t", item.Text), ("$p", position));
+            }
+
+            WriteDone(connection, transaction, item.Id, item.IsDone, day, repeats);
+            position++;
         }
 
         transaction.Commit();
     }
 
-    /// <summary>Ticks or unticks one item straight from the agenda.</summary>
-    public void SetItemDone(long itemId, bool done)
+    /// <summary>Ticks or unticks one item straight from the agenda, for the given day.</summary>
+    public void SetItemDone(long itemId, bool done, DateOnly day)
     {
         using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        var repeats = Scalar<long>(connection, transaction,
+            "SELECT e.repeat FROM checklist_items ci JOIN events e ON e.id = ci.event_id WHERE ci.id = $i", ("$i", itemId)) != 0;
+        WriteDone(connection, transaction, itemId, done, day, repeats);
+        transaction.Commit();
+    }
+
+    /// <summary>A single event stores "done" on the item; a repeating one stores a tick per day.</summary>
+    private static void WriteDone(
+        SqliteConnection connection, SqliteTransaction transaction, long itemId, bool done, DateOnly day, bool repeats)
+    {
+        if (!repeats)
+        {
+            Run(connection, transaction, "UPDATE checklist_items SET done = $d WHERE id = $i", ("$d", done ? 1 : 0), ("$i", itemId));
+            return;
+        }
+
+        Run(connection, transaction, "DELETE FROM checklist_checks WHERE item_id = $i AND date = $day", ("$i", itemId), ("$day", FormatDate(day)));
+        if (done)
+        {
+            Run(connection, transaction, "INSERT INTO checklist_checks (item_id, date) VALUES ($i, $day)", ("$i", itemId), ("$day", FormatDate(day)));
+        }
+    }
+
+    private static void Run(SqliteConnection connection, SqliteTransaction transaction, string sql, params (string Name, object Value)[] args)
+    {
         using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE checklist_items SET done = $done WHERE id = $id";
-        command.Parameters.AddWithValue("$done", done ? 1 : 0);
-        command.Parameters.AddWithValue("$id", itemId);
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        foreach (var (name, value) in args)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
         command.ExecuteNonQuery();
+    }
+
+    private static T Scalar<T>(SqliteConnection connection, SqliteTransaction transaction, string sql, params (string Name, object Value)[] args)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        foreach (var (name, value) in args)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
+        var result = command.ExecuteScalar();
+        return result is null or DBNull ? default! : (T)Convert.ChangeType(result, typeof(T), CultureInfo.InvariantCulture);
     }
 
     // ---- Subscribed calendars ----------------------------------------------------------------
@@ -575,6 +771,24 @@ public sealed class StorageService
                 """);
         }
 
+        if (version < 5)
+        {
+            steps.Add(
+                """
+                ALTER TABLE events ADD COLUMN repeat INTEGER NOT NULL DEFAULT 0;
+                CREATE TABLE IF NOT EXISTS event_exceptions (
+                    event_id  INTEGER NOT NULL,
+                    date      TEXT NOT NULL,
+                    PRIMARY KEY (event_id, date)
+                );
+                CREATE TABLE IF NOT EXISTS checklist_checks (
+                    item_id   INTEGER NOT NULL,
+                    date      TEXT NOT NULL,
+                    PRIMARY KEY (item_id, date)
+                );
+                """);
+        }
+
         steps.Add($"PRAGMA user_version = {SchemaVersion};");
         upgrade.CommandText = string.Join(Environment.NewLine, steps);
         upgrade.ExecuteNonQuery();
@@ -590,15 +804,18 @@ public sealed class StorageService
 
     private static void AddFields(SqliteCommand command, CalendarEvent calendarEvent)
     {
-        command.Parameters.AddWithValue("$date", FormatDate(calendarEvent.Date));
+        // A repeating event is stored under the day it began, not the day it was opened from.
+        var startDay = calendarEvent.SeriesStart ?? calendarEvent.Date;
+        command.Parameters.AddWithValue("$date", FormatDate(startDay));
         command.Parameters.AddWithValue(
             "$time",
             calendarEvent.Time is { } time ? time.ToString(TimeFormat, CultureInfo.InvariantCulture) : DBNull.Value);
         command.Parameters.AddWithValue("$title", calendarEvent.Title);
         command.Parameters.AddWithValue("$note", (object?)calendarEvent.Note ?? DBNull.Value);
         command.Parameters.AddWithValue("$reminderMinutes", (object?)calendarEvent.ReminderMinutes ?? DBNull.Value);
-        var next = CalendarEvent.ComputeNextReminder(
-            calendarEvent.Date, calendarEvent.Time, calendarEvent.ReminderMinutes, DateTime.Now);
+        command.Parameters.AddWithValue("$repeat", (int)calendarEvent.Repeat);
+        var next = Recurrence.NextReminder(
+            startDay, calendarEvent.Time, calendarEvent.ReminderMinutes, calendarEvent.Repeat, DateTime.Now);
         command.Parameters.AddWithValue("$nextReminder", next is { } value ? FormatDateTime(value) : DBNull.Value);
         command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
     }

@@ -91,6 +91,35 @@ public sealed partial class DayEditorViewModel : ObservableObject
         }
     }
 
+    public IReadOnlyList<RepeatOption> RepeatOptions => RepeatOption.All;
+
+    [ObservableProperty]
+    private RepeatOption _selectedRepeat = RepeatOption.All[0];
+
+    private DateOnly? _editingSeriesStart;
+
+    /// <summary>The event being edited already repeats, so "Delete" removes every day and "Skip this day" removes one.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeleteText))]
+    [NotifyCanExecuteChangedFor(nameof(SkipDayCommand))]
+    private bool _isEditingSeries;
+
+    public string DeleteText => IsEditingSeries ? "Delete all" : "Delete";
+
+    /// <summary>Leaves out just the day being viewed; the rest of the series stays.</summary>
+    [RelayCommand(CanExecute = nameof(IsEditingSeries))]
+    private void SkipDay()
+    {
+        if (_editingId is not { } id)
+        {
+            return;
+        }
+
+        _storage.SkipDay(id, Date);
+        CloseForm();
+        EventsChanged?.Invoke(this, Date);
+    }
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     /// <summary>Reminders need a time, so the picker is disabled for all-day events.</summary>
@@ -174,11 +203,11 @@ public sealed partial class DayEditorViewModel : ObservableObject
         Date = date;
         Events.Clear();
         var list = events.ToList();
-        var checklists = _storage.GetChecklists(list.Select(e => e.Id).ToList());
+        var checklists = _storage.GetChecklists(list.Select(e => e.Id).ToList(), date);
         foreach (var e in list)
         {
             checklists.TryGetValue(e.Id, out var items);
-            Events.Add(new EventItemViewModel(e, _clock, items, item => _storage.SetItemDone(item.Id, item.IsDone)));
+            Events.Add(new EventItemViewModel(e, _clock, items, item => _storage.SetItemDone(item.Id, item.IsDone, date)));
         }
 
         OnPropertyChanged(nameof(HasEvents));
@@ -194,6 +223,9 @@ public sealed partial class DayEditorViewModel : ObservableObject
     private void NewEvent()
     {
         _editingId = null;
+        _editingSeriesStart = null;
+        IsEditingSeries = false;
+        SelectedRepeat = RepeatOption.All[0];
         CanDelete = false;
         FormHeading = "New event";
         Title = string.Empty;
@@ -216,6 +248,9 @@ public sealed partial class DayEditorViewModel : ObservableObject
         }
 
         _editingId = item.Model.Id;
+        _editingSeriesStart = item.Model.SeriesStart;
+        IsEditingSeries = item.Model.Repeat != RepeatRule.None;
+        SelectedRepeat = RepeatOption.For(item.Model.Repeat);
         CanDelete = true;
         FormHeading = "Edit event";
         Title = item.Model.Title;
@@ -226,7 +261,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         foreach (var line in item.Checklist)
         {
             FormChecklist.Add(new ChecklistItemViewModel(
-                new ChecklistItem { Text = line.Text, IsDone = line.IsDone }));
+                new ChecklistItem { Id = line.Model.Id, Text = line.Text, IsDone = line.IsDone }));
         }
 
         Note = item.Model.Note ?? string.Empty;
@@ -268,6 +303,9 @@ public sealed partial class DayEditorViewModel : ObservableObject
             Title = title,
             Note = note.Length == 0 ? null : note,
             ReminderMinutes = time is null ? null : SelectedReminder.Minutes,
+            Repeat = SelectedRepeat.Rule,
+            // A series is saved under the day it began. Turning repeats off keeps the event on the day being edited.
+            SeriesStart = SelectedRepeat.Rule == RepeatRule.None ? null : _editingSeriesStart,
         };
 
         // Text typed in the "Add item" box but not yet added still counts.
@@ -282,7 +320,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
             _storage.Update(model);
         }
 
-        _storage.SaveChecklist(model.Id, FormChecklist.Select(i => i.Model));
+        _storage.SaveChecklist(model.Id, FormChecklist.Select(i => i.Model), Date);
 
         CloseForm();
         EventsChanged?.Invoke(this, Date);

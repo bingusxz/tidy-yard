@@ -136,6 +136,11 @@
                                                                    Foreground="{DynamicResource Brush.TextDim}"
                                                                    Text="{Binding SourceText}"
                                                                    Visibility="{Binding IsImported, Converter={StaticResource BoolToVisibility}}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   FontSize="{DynamicResource Size.Small}"
+                                                                   Foreground="{DynamicResource Brush.TextDim}"
+                                                                   Text="{Binding RepeatText}"
+                                                                   Visibility="{Binding IsRepeating, Converter={StaticResource BoolToVisibility}}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
@@ -186,6 +191,13 @@
                                          Text="{Binding TimeText, UpdateSourceTrigger=PropertyChanged}"
                                          AutomationProperties.Name="Time" />
                                 <TextBlock Margin="2,4,0,0" Style="{DynamicResource Text.Muted}" Text="{Binding TimeHint}" />
+
+                                <TextBlock Margin="2,12,0,4" Style="{DynamicResource Text.Muted}" Text="Repeat" />
+                                <ComboBox Style="{DynamicResource ComboBox.Flat}"
+                                          ItemsSource="{Binding RepeatOptions}"
+                                          SelectedItem="{Binding SelectedRepeat}"
+                                          DisplayMemberPath="Name"
+                                          AutomationProperties.Name="Repeat" />
 
                                 <TextBlock Margin="2,12,0,4">
                                     <TextBlock.Style>
@@ -267,10 +279,17 @@
                                             Command="{Binding CancelCommand}" />
                                     <Button DockPanel.Dock="Right"
                                             Style="{DynamicResource Button.Text}"
-                                            Content="Delete"
+                                            Content="{Binding DeleteText}"
                                             Command="{Binding DeleteCommand}"
                                             Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}" />
                                 </DockPanel>
+                                <!-- Repeating events: leave out just this day. -->
+                                <Button Margin="0,4,0,0"
+                                        HorizontalAlignment="Left"
+                                        Style="{DynamicResource Button.Text}"
+                                        Content="Skip this day"
+                                        Command="{Binding SkipDayCommand}"
+                                        Visibility="{Binding IsEditingSeries, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
