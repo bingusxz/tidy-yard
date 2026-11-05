@@ -40,6 +40,9 @@ public partial class App : Application
             AppPaths.EnsureDataDirectory();
             _settings = new SettingsService(AppPaths.SettingsFile);
             storage = new StorageService(AppPaths.DatabaseFile);
+
+            // Events deleted more than 30 days ago are removed for good; newer ones can still be undone.
+            storage.PurgeDeleted(DateTime.UtcNow.AddDays(-30));
             fences = new FenceStore(AppPaths.FencesFile);
         }
         catch (Exception ex)

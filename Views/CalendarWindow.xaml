@@ -75,6 +75,24 @@
                         </TextBox.Style>
                     </TextBox>
 
+                    <!-- After a delete or a skip: one click to take it back. Goes away after a few seconds. -->
+                    <Border DockPanel.Dock="Top"
+                            Margin="0,12,0,0"
+                            Padding="12,4,4,4"
+                            CornerRadius="8"
+                            Background="{DynamicResource Brush.Surface}"
+                            Visibility="{Binding HasUndo, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right"
+                                    Style="{DynamicResource Button.Text}"
+                                    Content="Undo"
+                                    Command="{Binding UndoCommand}" />
+                            <TextBlock VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding UndoText}" />
+                        </DockPanel>
+                    </Border>
+
                     <Grid Margin="0,12,0,0">
                         <!-- Agenda for the selected day -->
                         <Grid>

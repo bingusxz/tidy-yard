@@ -143,9 +143,57 @@ public sealed partial class DayEditorViewModel : ObservableObject
             return;
         }
 
-        _storage.SkipDay(id, Date);
+        var day = Date;
+        _storage.SkipDay(id, day);
         CloseForm();
-        EventsChanged?.Invoke(this, Date);
+        EventsChanged?.Invoke(this, day);
+        OfferUndo("Skipped this day", day, () => _storage.UnskipDay(id, day));
+    }
+
+    // ---- Undo bar: shown for a few seconds after a delete or a skip ----------------------
+
+    private static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(10);
+    private readonly System.Windows.Threading.DispatcherTimer _undoTimer = new() { Interval = UndoWindow };
+    private Action? _undoAction;
+    private DateOnly _undoDay;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUndo))]
+    private string _undoText = string.Empty;
+
+    public bool HasUndo => UndoText.Length > 0;
+
+    private void OfferUndo(string text, DateOnly day, Action undo)
+    {
+        _undoAction = undo;
+        _undoDay = day;
+        UndoText = text;
+        _undoTimer.Stop();
+        _undoTimer.Tick -= OnUndoExpired;
+        _undoTimer.Tick += OnUndoExpired;
+        _undoTimer.Start();
+    }
+
+    private void OnUndoExpired(object? sender, EventArgs e) => ClearUndo();
+
+    private void ClearUndo()
+    {
+        _undoTimer.Stop();
+        _undoAction = null;
+        UndoText = string.Empty;
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        var undo = _undoAction;
+        var day = _undoDay;
+        ClearUndo();
+        if (undo is not null)
+        {
+            undo();
+            EventsChanged?.Invoke(this, day);
+        }
     }
 
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
@@ -452,9 +500,12 @@ public sealed partial class DayEditorViewModel : ObservableObject
             return;
         }
 
+        var day = Date;
+        var title = Title.Trim();
         _storage.Delete(id);
         CloseForm();
-        EventsChanged?.Invoke(this, Date);
+        EventsChanged?.Invoke(this, day);
+        OfferUndo(title.Length > 0 ? $"Deleted “{title}”" : "Event deleted", day, () => _storage.Restore(id));
     }
 
     [RelayCommand(CanExecute = nameof(IsFormOpen))]
