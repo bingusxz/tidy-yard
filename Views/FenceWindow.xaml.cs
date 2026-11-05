@@ -48,6 +48,47 @@ public partial class FenceWindow : Window
         _widget.SettleAtBottom();
     }
 
+    /// <summary>
+    /// For a fence the user just created: lifts it above other windows with its name ready to type,
+    /// then sends it back to the desktop layer as soon as they click elsewhere.
+    /// </summary>
+    public void ShowForSetup()
+    {
+        _widget.IsPinned = false;
+        Show();
+
+        // Wait until the tray menu that created this fence has closed, or it takes focus back at once.
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            Activate();
+            Interop.NativeMethods.BringToForeground(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            _viewModel.BeginRenameCommand.Execute(null);
+        });
+
+        Deactivated += OnSetupDeactivated;
+
+        // If Windows refused to give it focus, do not leave the fence stuck above everything.
+        var fallback = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        fallback.Tick += (_, _) =>
+        {
+            fallback.Stop();
+            if (!IsActive)
+            {
+                ReturnToDesktop();
+            }
+        };
+        fallback.Start();
+    }
+
+    private void OnSetupDeactivated(object? sender, EventArgs e) => ReturnToDesktop();
+
+    private void ReturnToDesktop()
+    {
+        Deactivated -= OnSetupDeactivated;
+        _widget.IsPinned = true;
+        _widget.SettleAtBottom();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;

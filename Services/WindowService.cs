@@ -96,7 +96,7 @@ public sealed class WindowService : IWindowService
         try
         {
             var (title, folder) = AppPaths.CreateFenceFolder();
-            AddFence(title, folder);
+            AddFence(title, folder, bringToFront: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -110,7 +110,7 @@ public sealed class WindowService : IWindowService
         if (PickFolder(null) is { } folder)
         {
             var title = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar));
-            AddFence(string.IsNullOrEmpty(title) ? folder : title, folder);
+            AddFence(string.IsNullOrEmpty(title) ? folder : title, folder, bringToFront: true);
         }
     }
 
@@ -210,7 +210,8 @@ public sealed class WindowService : IWindowService
         return folder;
     }
 
-    private void AddFence(string title, string folder)
+    /// <summary>bringToFront lifts the new fence above other windows so the user can name it; cleanup-made fences stay on the desktop.</summary>
+    private void AddFence(string title, string folder, bool bringToFront = false)
     {
         var fence = new Fence
         {
@@ -219,10 +220,10 @@ public sealed class WindowService : IWindowService
             Bounds = ScreenService.Cascade(_fences.Fences.Count, 360, 280),
         };
         _fences.Add(fence);
-        OpenFence(fence);
+        OpenFence(fence, bringToFront);
     }
 
-    private void OpenFence(Fence fence)
+    private void OpenFence(Fence fence, bool bringToFront = false)
     {
         if (_fenceWindows.ContainsKey(fence.Id))
         {
@@ -231,6 +232,13 @@ public sealed class WindowService : IWindowService
 
         var window = new FenceWindow(new FenceViewModel(fence, _fences, _settings, _moves, this));
         _fenceWindows[fence.Id] = window;
-        window.ShowOnDesktop();
+        if (bringToFront)
+        {
+            window.ShowForSetup();
+        }
+        else
+        {
+            window.ShowOnDesktop();
+        }
     }
 }
