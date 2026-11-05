@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:tb="http://www.hardcodet.net/taskbar">
+
+    <!-- DataContext (TrayViewModel) and Icon are set in App.OnStartup. -->
+    <tb:TaskbarIcon x:Key="TrayIcon"
+                    x:Shared="False"
+                    ToolTipText="Tidy Yard"
+                    NoLeftClickDelay="True"
+                    MenuActivation="RightClick"
+                    LeftClickCommand="{Binding OpenCalendarCommand}">
+        <tb:TaskbarIcon.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
+                <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+                <Separator />
+                <MenuItem Header="Quit" Command="{Binding QuitCommand}" />
+            </ContextMenu>
+        </tb:TaskbarIcon.ContextMenu>
+    </tb:TaskbarIcon>
+
+</ResourceDictionary>

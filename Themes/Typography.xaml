@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Bundled OFL fonts, compiled in as resources. Shared by every theme. -->
+    <FontFamily x:Key="Font.Heading">pack://application:,,,/Assets/Fonts/#Fraunces 9pt</FontFamily>
+    <FontFamily x:Key="Font.UI">pack://application:,,,/Assets/Fonts/#Inter</FontFamily>
+    <FontFamily x:Key="Font.Mono">pack://application:,,,/Assets/Fonts/#IBM Plex Mono</FontFamily>
+    <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!-- The whole type scale. Four sizes, nothing else. -->
+    <sys:Double x:Key="Size.Small">11</sys:Double>
+    <sys:Double x:Key="Size.Body">13</sys:Double>
+    <sys:Double x:Key="Size.Title">16</sys:Double>
+    <sys:Double x:Key="Size.Display">24</sys:Double>
+
+    <!-- Icon glyph size (Segoe Fluent Icons), not part of the type scale. -->
+    <sys:Double x:Key="Size.Icon">12</sys:Double>
+
+    <!-- Icon glyphs, single stroke weight. -->
+    <sys:String x:Key="Glyph.ChevronLeft">&#xE76B;</sys:String>
+    <sys:String x:Key="Glyph.ChevronRight">&#xE76C;</sys:String>
+    <sys:String x:Key="Glyph.Settings">&#xE713;</sys:String>
+    <sys:String x:Key="Glyph.Close">&#xE711;</sys:String>
+    <sys:String x:Key="Glyph.Add">&#xE710;</sys:String>
+
+</ResourceDictionary>
