@@ -9,11 +9,14 @@
 #>
 param(
     [Parameter(Mandatory)] [string] $Version,
-    [string] $Output = (Join-Path $PSScriptRoot 'releases')
+    [string] $Output = ''
 )
 
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
+
+# Worked out here, not in the parameter list: Windows PowerShell 5.1 cannot read $PSScriptRoot there.
+if (-not $Output) { $Output = Join-Path $PSScriptRoot 'releases' }
 
 $publish = Join-Path $PSScriptRoot 'publish'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
