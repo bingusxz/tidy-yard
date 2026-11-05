@@ -153,37 +153,13 @@ internal static class NativeMethods
         Marshal.StructureToPtr(pos, windowPosPtr, fDeleteOld: false);
     }
 
-    private const int DWMSBT_NONE = 1;
-    private const int WCA_ACCENT_POLICY = 19;
-    private const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+    private const int DWMSBT_TRANSIENTWINDOW = 3; // acrylic
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ACCENT_POLICY
-    {
-        public int AccentState;
-        public int AccentFlags;
-        public uint GradientColor; // AABBGGRR
-        public int AnimationId;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WINDOWCOMPOSITIONATTRIBDATA
-    {
-        public int Attribute;
-        public IntPtr Data;
-        public int SizeOfData;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WINDOWCOMPOSITIONATTRIBDATA data);
-
-    /// <summary>Acrylic blur-behind needs Windows 10 1803 (build 17134) or later.</summary>
-    public static bool SupportsAcrylicBackdrop => Environment.OSVersion.Version.Build >= 17134;
+    /// <summary>System acrylic backdrops need Windows 11 22H2 (build 22621) or later.</summary>
+    public static bool SupportsAcrylicBackdrop => Environment.OSVersion.Version.Build >= 22621;
 
     /// <summary>
-    /// Gives a borderless window an acrylic blur of whatever is behind it, with rounded corners
-    /// on Windows 11. Unlike the Windows 11 system backdrop (DWMWA_SYSTEMBACKDROP_TYPE), this blur
-    /// stays on when the window is not focused, which a desktop widget almost never is.
+    /// Gives a borderless window the Windows 11 acrylic backdrop with rounded corners.
     /// Returns false when the system refuses, so the caller can fall back to a solid fill.
     /// </summary>
     public static bool TryApplyAcrylic(IntPtr hwnd)
@@ -196,41 +172,27 @@ internal static class NativeMethods
         var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
         DwmExtendFrameIntoClientArea(hwnd, ref margins);
 
-        // Make sure the focus-dependent system backdrop is off; it would grey out when inactive.
-        var none = DWMSBT_NONE;
-        DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref none, sizeof(int));
-
         var corner = DWMWCP_ROUND;
         DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
 
-        // The app paints its own tint on top, so the blur itself carries an almost clear colour.
-        var accent = new ACCENT_POLICY
-        {
-            AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND,
-            GradientColor = 0x01FFFFFF,
-        };
-        var size = Marshal.SizeOf<ACCENT_POLICY>();
-        var buffer = Marshal.AllocHGlobal(size);
-        try
-        {
-            Marshal.StructureToPtr(accent, buffer, fDeleteOld: false);
-            var data = new WINDOWCOMPOSITIONATTRIBDATA
-            {
-                Attribute = WCA_ACCENT_POLICY,
-                Data = buffer,
-                SizeOfData = size,
-            };
-            return SetWindowCompositionAttribute(hwnd, ref data) != 0;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return false;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(buffer);
-        }
+        // Windows 11 acrylic. It fades to a flat fill when the window is shown as inactive,
+        // so the window also keeps its frame "active" (see KeepFrameActive).
+        var backdrop = DWMSBT_TRANSIENTWINDOW;
+        return DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) == 0;
     }
+
+    public const int WM_NCACTIVATE = 0x0086;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr DefWindowProcW(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>
+    /// Answers WM_NCACTIVATE as if the window stayed active, so the acrylic backdrop keeps
+    /// blurring when focus moves to another window. lParam -1 skips repainting the frame.
+    /// Focus itself is unaffected; only the frame's active look is kept.
+    /// </summary>
+    public static IntPtr KeepFrameActive(IntPtr hwnd) =>
+        DefWindowProcW(hwnd, WM_NCACTIVATE, new IntPtr(1), new IntPtr(-1));
 
     /// <summary>Switches the acrylic base between light and dark to match the theme.</summary>
     public static void SetDarkFrame(IntPtr hwnd, bool dark)

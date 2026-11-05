@@ -294,7 +294,9 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <ItemsControl ItemsSource="{Binding Days}" Focusable="False">
+                        <!-- Hairline grid: each cell draws its right and bottom rule; the outer 1px is clipped. -->
+                        <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,1,0,0" ClipToBounds="True">
+                        <ItemsControl Margin="0,0,-1,-1" ItemsSource="{Binding Days}" Focusable="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Rows="6" Columns="7" />
@@ -302,6 +304,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:DayCellViewModel}">
+                                    <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,1,1">
                                     <Button Margin="2"
                                             Style="{DynamicResource Button.Bare}"
                                             Command="{Binding SelectCommand}"
@@ -339,6 +342,7 @@
                                                        Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}" />
                                         </DockPanel>
                                     </Button>
+                                    </Border>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsInMonth}" Value="False">
                                             <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
@@ -358,6 +362,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </Border>
                     </DockPanel>
 
                     <!-- Week view: seven columns, each day's events listed -->

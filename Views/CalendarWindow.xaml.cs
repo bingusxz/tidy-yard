@@ -45,6 +45,9 @@ public partial class CalendarWindow : Window
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         LocationChanged += (_, _) => RememberBounds();
+
+        // Moving to a monitor with different scaling resizes the window after it moved; save the final size.
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Background, RememberBounds);
         SizeChanged += (_, _) =>
         {
             RememberBounds();
@@ -153,12 +156,13 @@ public partial class CalendarWindow : Window
         _applyingBounds = true;
         try
         {
-            NativeMethods.SetWindowBounds(
-                Handle,
-                (int)Math.Round(bounds.Left),
-                (int)Math.Round(bounds.Top),
-                (int)Math.Round(bounds.Width),
-                (int)Math.Round(bounds.Height));
+            var (x, y, w, h) = ((int)Math.Round(bounds.Left), (int)Math.Round(bounds.Top),
+                (int)Math.Round(bounds.Width), (int)Math.Round(bounds.Height));
+
+            // If this lands on a monitor with different scaling, Windows rescales the window on
+            // arrival. Placing it a second time, now on the right monitor, sets the exact size.
+            NativeMethods.SetWindowBounds(Handle, x, y, w, h);
+            NativeMethods.SetWindowBounds(Handle, x, y, w, h);
         }
         finally
         {

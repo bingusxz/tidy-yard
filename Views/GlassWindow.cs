@@ -16,6 +16,10 @@ internal static class GlassWindow
     {
         window.SourceInitialized += (_, _) => Apply(window);
 
+        // Added on Loaded so it runs before WindowChrome's own handler for the same message.
+        window.Loaded += (_, _) =>
+            HwndSource.FromHwnd(new WindowInteropHelper(window).Handle)?.AddHook(KeepActiveHook);
+
         void OnThemeApplied(object? sender, EventArgs e) =>
             NativeMethods.SetDarkFrame(new WindowInteropHelper(window).Handle, ThemeService.CurrentIsDark);
 
@@ -30,6 +34,18 @@ internal static class GlassWindow
                 window.WindowState = WindowState.Normal;
             }
         };
+    }
+
+    /// <summary>Keeps the frame looking active so the acrylic does not fade to grey when unfocused.</summary>
+    private static IntPtr KeepActiveHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == NativeMethods.WM_NCACTIVATE && wParam == IntPtr.Zero)
+        {
+            handled = true;
+            return NativeMethods.KeepFrameActive(hwnd);
+        }
+
+        return IntPtr.Zero;
     }
 
     /// <summary>
