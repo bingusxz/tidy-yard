@@ -349,6 +349,49 @@
                 </StackPanel>
             </Border>
 
+            <!-- Updates -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="UPDATES" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <StackPanel>
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="{Binding VersionText}" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" TextWrapping="Wrap" Text="{Binding UpdateStatus}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{DynamicResource Button.Text}"
+                                    Content="Check now"
+                                    Command="{Binding CheckNowCommand}" />
+                            <Button Margin="4,0,0,0"
+                                    Style="{DynamicResource Button.Primary}"
+                                    Content="Restart and update"
+                                    Command="{Binding InstallUpdateCommand}"
+                                    Visibility="{Binding IsUpdateReady, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Check automatically" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Downloads new versions in the background. Your events, settings and fences are never touched." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding CheckForUpdates}"
+                                  AutomationProperties.Name="Check for updates automatically" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Data -->
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="DATA" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">

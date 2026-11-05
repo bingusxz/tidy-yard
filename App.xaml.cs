@@ -14,6 +14,7 @@ public partial class App : Application
     private SettingsService? _settings;
     private FenceStore? _fences;
     private ReminderService? _reminders;
+    private UpdateService? _updates;
     private TaskbarIcon? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -55,10 +56,12 @@ public partial class App : Application
 
         _fences = fences;
         var moves = new FileMoveService(AppPaths.MoveLogFile);
-        var windows = new WindowService(_settings, storage, themes, fences, moves, Shutdown);
+        _updates = new UpdateService(_settings, SaveBeforeRestart);
+        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, Shutdown);
 
         _reminders = new ReminderService(storage, new TimeFormatService(_settings), windows.ShowCalendar);
         _reminders.Start();
+        _updates.Start();
 
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows, moves);
@@ -73,6 +76,16 @@ public partial class App : Application
         {
             windows.ShowCalendar(activate: !launchedAtSignIn);
         }
+    }
+
+    /// <summary>The updater ends the process right after this, so write everything out and release the tray icon.</summary>
+    private void SaveBeforeRestart()
+    {
+        _settings?.Flush();
+        _fences?.Flush();
+        _reminders?.Dispose();
+        _tray?.Dispose();
+        _singleInstance?.Dispose();
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -49,6 +49,28 @@ public sealed partial class SettingsViewModel : ObservableObject
         _windows.SetCalendarVisible(value);
     }
 
+    private readonly UpdateService _updates;
+
+    [ObservableProperty]
+    private bool _checkForUpdates;
+
+    partial void OnCheckForUpdatesChanged(bool value) =>
+        _settings.Update(s => s.CheckForUpdates = value, notify: false);
+
+    public string VersionText => $"Version {_updates.CurrentVersion}";
+
+    public string UpdateStatus => _updates.Status;
+
+    public bool IsUpdateReady => _updates.IsReady;
+
+    [RelayCommand(CanExecute = nameof(CanCheckNow))]
+    private Task CheckNowAsync() => _updates.CheckAsync(manual: true);
+
+    private bool CanCheckNow() => _updates.CanCheck;
+
+    [RelayCommand(CanExecute = nameof(IsUpdateReady))]
+    private void InstallUpdate() => _updates.ApplyAndRestart();
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     [ObservableProperty]
@@ -94,11 +116,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
-    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows)
+    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates)
     {
         _settings = settings;
         _themes = themes;
         _windows = windows;
+        _updates = updates;
+        _checkForUpdates = settings.Current.CheckForUpdates;
+        updates.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(UpdateStatus));
+            OnPropertyChanged(nameof(IsUpdateReady));
+            CheckNowCommand.NotifyCanExecuteChanged();
+            InstallUpdateCommand.NotifyCanExecuteChanged();
+        };
         _selectedIconSize = IconSizes.FirstOrDefault(o => o.Size == settings.Current.FenceIconSize) ?? IconSizes[1];
         _hideDesktopIcons = Interop.NativeMethods.AreDesktopIconsVisible() == false;
         _showCalendar = settings.Current.ShowCalendar;

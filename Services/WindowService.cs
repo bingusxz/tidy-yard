@@ -21,9 +21,13 @@ public sealed class WindowService : IWindowService
     private CalendarWindow? _calendar;
     private SettingsWindow? _settingsWindow;
 
+    private readonly UpdateService _updates;
+
     public WindowService(
-        SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves, Action quit)
+        SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves,
+        UpdateService updates, Action quit)
     {
+        _updates = updates;
         _settings = settings;
         _storage = storage;
         _themes = themes;
@@ -65,7 +69,7 @@ public sealed class WindowService : IWindowService
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this));
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates));
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
         }

@@ -20,6 +20,12 @@ public sealed class AppSettings
 
     public ClockFormat ClockFormat { get; set; } = ClockFormat.Windows;
 
+    /// <summary>Look for a newer version in the background (installed copies only).</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>Overrides the built-in update address: a web address or a folder holding the release files.</summary>
+    public string? UpdateFeed { get; set; }
+
     /// <summary>Reminder given to new events that have a time; null = none.</summary>
     public int? DefaultReminderMinutes { get; set; } = 10;
 
