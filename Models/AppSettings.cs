@@ -22,11 +22,14 @@ public sealed class AppSettings
 
     public CalendarView CalendarView { get; set; } = CalendarView.Month;
 
+    /// <summary>Off = fences only: the calendar does not open at start-up.</summary>
+    public bool ShowCalendar { get; set; } = true;
+
     /// <summary>Locked widgets cannot be moved or resized and stay out of the taskbar.</summary>
     public bool IsLocked { get; set; }
 
-    /// <summary>Locked fences cannot be moved or resized.</summary>
-    public bool FencesLocked { get; set; }
+    /// <summary>Icon size in fences: 32 (small), 48 (medium) or 64 (large).</summary>
+    public int FenceIconSize { get; set; } = 48;
 
     public WindowBounds? CalendarBounds { get; set; }
 }

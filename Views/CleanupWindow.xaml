@@ -1,0 +1,114 @@
+<Window x:Class="TidyYard.Views.CleanupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:TidyYard.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:CleanupViewModel}"
+        Title="Tidy desktop"
+        Style="{DynamicResource Style.Window}"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        SizeToContent="Height"
+        MaxHeight="760"
+        Width="520"
+        WindowStartupLocation="CenterScreen">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="56"
+                      ResizeBorderThickness="0"
+                      GlassFrameThickness="-1"
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Grid>
+        <Border Background="{DynamicResource Brush.Glass}" Opacity="0.92" />
+
+        <DockPanel Margin="24,12,16,20">
+            <Grid DockPanel.Dock="Top" Height="44">
+                <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Title}" Text="Tidy desktop" />
+                <Button HorizontalAlignment="Right"
+                        Style="{DynamicResource Button.Icon}"
+                        Content="{DynamicResource Glyph.Close}"
+                        Command="{Binding CloseCommand}"
+                        ToolTip="Close"
+                        AutomationProperties.Name="Close"
+                        WindowChrome.IsHitTestVisibleInChrome="True" />
+            </Grid>
+
+            <TextBlock DockPanel.Dock="Top" Margin="0,4,8,16" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" Text="{Binding Summary}" />
+
+            <!-- Buttons -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,16,8,0" LastChildFill="False">
+                <Button DockPanel.Dock="Right"
+                        Style="{DynamicResource Button.Primary}"
+                        Content="{Binding MoveButtonText}"
+                        Command="{Binding MoveCommand}" />
+                <Button DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Command="{Binding CloseCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                            <Setter Property="Content" Value="Cancel" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                    <Setter Property="Content" Value="Close" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </DockPanel>
+
+            <TextBlock DockPanel.Dock="Bottom"
+                       Margin="0,12,8,0"
+                       FontWeight="Medium"
+                       TextWrapping="Wrap"
+                       Text="{Binding Result}"
+                       Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- Groups -->
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,4" Margin="0,0,8,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Groups}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:CleanupGroupViewModel}">
+                                <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,0,1" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock>
+                                                <Run FontWeight="Medium" Text="{Binding Category, Mode=OneWay}" />
+                                                <Run Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding CountText, Mode=OneWay}" />
+                                            </TextBlock>
+                                            <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="{Binding Examples}" />
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1"
+                                                  VerticalAlignment="Center"
+                                                  Style="{DynamicResource CheckBox.Switch}"
+                                                  IsChecked="{Binding IsIncluded}"
+                                                  AutomationProperties.Name="{Binding Category}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+    </Grid>
+</Window>

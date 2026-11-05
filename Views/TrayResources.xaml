@@ -15,6 +15,8 @@
                 <Separator />
                 <MenuItem Header="New fence" Command="{Binding NewFenceCommand}" />
                 <MenuItem Header="Fence from folder…" Command="{Binding NewFenceFromFolderCommand}" />
+                <MenuItem Header="Tidy desktop…" Command="{Binding TidyDesktopCommand}" />
+                <MenuItem Header="{Binding UndoText}" Command="{Binding UndoLastMoveCommand}" />
                 <Separator />
                 <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
                 <Separator />

@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:TidyYard.ViewModels"
+        xmlns:views="clr-namespace:TidyYard.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:FenceViewModel}"
         Title="{Binding Title}"
@@ -13,7 +14,12 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Width="360" Height="280"
-        MinWidth="200" MinHeight="44">
+        MinWidth="200" MinHeight="44"
+        AllowDrop="True"
+        DragEnter="OnDragOver"
+        DragOver="OnDragOver"
+        DragLeave="OnDragLeave"
+        Drop="OnDrop">
 
     <!-- Drag by the title bar, resize from the edges. -->
     <WindowChrome.WindowChrome>
@@ -25,7 +31,22 @@
     </WindowChrome.WindowChrome>
 
     <Grid>
-        <Border Background="{DynamicResource Brush.Glass}" Opacity="{Binding GlassOpacity}" />
+        <!-- Tint: the theme glass, or this fence's own colour. -->
+        <Border Opacity="{Binding GlassOpacity}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasCustomTint}" Value="True">
+                            <Setter Property="Background" Value="{Binding TintBrush}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
+        <!-- Shown while files are dragged over the fence. -->
+        <Border x:Name="DropHighlight" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Background="{DynamicResource Brush.AccentSoft}" Visibility="Collapsed" IsHitTestVisible="False" />
 
         <DockPanel>
             <!-- Title bar -->
@@ -104,6 +125,12 @@
                             <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
                             <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
                             <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
+                            <MenuItem Header="Colour…" Command="{Binding PickColorCommand}" />
+                            <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
+                            <Separator />
+                            <MenuItem Header="Grid layout" Command="{Binding SetLayoutCommand}" CommandParameter="Grid" IsChecked="{Binding IsGridLayout, Mode=OneWay}" />
+                            <MenuItem Header="Row layout" Command="{Binding SetLayoutCommand}" CommandParameter="Row" IsChecked="{Binding IsRowLayout, Mode=OneWay}" />
+                            <MenuItem Header="List layout" Command="{Binding SetLayoutCommand}" CommandParameter="List" IsChecked="{Binding IsListLayout, Mode=OneWay}" />
                             <Separator />
                             <MenuItem Header="{Binding LockMenuText}" Command="{Binding ToggleLockCommand}" />
                             <Separator />
@@ -111,9 +138,30 @@
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
+
+                <Popup Grid.Column="3"
+                       IsOpen="{Binding IsColorPickerOpen, Mode=TwoWay}"
+                       PlacementTarget="{Binding ElementName=MenuButton}"
+                       Placement="Bottom"
+                       HorizontalOffset="-232"
+                       StaysOpen="False"
+                       AllowsTransparency="True">
+                    <Border Margin="0,8,0,0" Padding="16" CornerRadius="12"
+                            Background="{DynamicResource Brush.Window}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
+                            TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
+                        <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    </Border>
+                </Popup>
             </Grid>
 
             <Border DockPanel.Dock="Top" Height="1" Margin="14,0" Background="{DynamicResource Brush.Rule}" />
+
+            <TextBlock DockPanel.Dock="Bottom"
+                       Margin="14,4,14,10"
+                       Style="{DynamicResource Text.Muted}"
+                       Foreground="{DynamicResource Brush.Accent}"
+                       Text="{Binding Notice}"
+                       Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Contents -->
             <Grid>
@@ -125,27 +173,33 @@
                            Text="{Binding Message}"
                            Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />
 
-                <ScrollViewer Padding="6" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <!-- Items. Layout (Grid / Row / List) swaps the panel, the item look and the scroll direction. -->
+                <ScrollViewer Padding="6" Focusable="False">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+                            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRowLayout}" Value="True">
+                                    <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+                                    <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
+
                     <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:FenceItemViewModel}">
-                                <Button Width="84"
-                                        Padding="4,8,4,4"
-                                        Style="{DynamicResource Button.Bare}"
-                                        VerticalContentAlignment="Top"
-                                        ToolTip="{Binding Path}"
-                                        AutomationProperties.Name="{Binding Name}">
-                                    <Button.InputBindings>
-                                        <MouseBinding MouseAction="LeftDoubleClick"
-                                                      Command="{Binding DataContext.OpenItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      CommandParameter="{Binding}" />
-                                    </Button.InputBindings>
-                                    <Button.ContextMenu>
+                        <ItemsControl.Resources>
+                            <!-- Shared item behaviour: double-click opens, drag out, right-click menu. -->
+                            <Style x:Key="FenceItem" TargetType="Button" BasedOn="{StaticResource Button.Bare}">
+                                <Setter Property="ToolTip" Value="{Binding Path}" />
+                                <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                                <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemMouseDown" />
+                                <EventSetter Event="PreviewMouseMove" Handler="OnItemMouseMove" />
+                                <EventSetter Event="MouseDoubleClick" Handler="OnItemDoubleClick" />
+                                <Setter Property="ContextMenu">
+                                    <Setter.Value>
                                         <ContextMenu>
                                             <MenuItem Header="Open"
                                                       Command="{Binding PlacementTarget.Tag.OpenItemCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
@@ -154,12 +208,21 @@
                                                       Command="{Binding PlacementTarget.Tag.ShowItemInFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding}" />
                                         </ContextMenu>
-                                    </Button.ContextMenu>
-                                    <Button.Tag>
-                                        <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                    </Button.Tag>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+
+                            <!-- Grid and Row: icon above a two-line name. -->
+                            <DataTemplate x:Key="TileItem" DataType="{x:Type vm:FenceItemViewModel}">
+                                <Button Width="{Binding DataContext.ItemWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Padding="4,8,4,4"
+                                        VerticalContentAlignment="Top"
+                                        Style="{StaticResource FenceItem}">
                                     <StackPanel>
-                                        <Image Width="48" Height="48" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <Image Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               Source="{Binding Icon}"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
                                         <TextBlock Margin="0,6,0,0"
                                                    MaxHeight="32"
                                                    FontSize="{DynamicResource Size.Small}"
@@ -170,7 +233,51 @@
                                     </StackPanel>
                                 </Button>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
+
+                            <!-- List: small icon and name on one line. -->
+                            <DataTemplate x:Key="ListItem" DataType="{x:Type vm:FenceItemViewModel}">
+                                <Button Padding="8,4" HorizontalContentAlignment="Stretch" Style="{StaticResource FenceItem}">
+                                    <DockPanel>
+                                        <Image DockPanel.Dock="Left" Width="24" Height="24" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                    </DockPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.Resources>
+
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Setter Property="ItemTemplate" Value="{StaticResource TileItem}" />
+                                <Setter Property="ItemsPanel">
+                                    <Setter.Value>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRowLayout}" Value="True">
+                                        <Setter Property="ItemsPanel">
+                                            <Setter.Value>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsListLayout}" Value="True">
+                                        <Setter Property="ItemTemplate" Value="{StaticResource ListItem}" />
+                                        <Setter Property="ItemsPanel">
+                                            <Setter.Value>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel />
+                                                </ItemsPanelTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
                     </ItemsControl>
                 </ScrollViewer>
             </Grid>

@@ -53,10 +53,11 @@ public partial class App : Application
         themes.Apply(_settings.Current.Theme, _settings.Current.AccentColor, _settings.Current.TintColor);
 
         _fences = fences;
-        var windows = new WindowService(_settings, storage, themes, fences, Shutdown);
+        var moves = new FileMoveService(AppPaths.MoveLogFile);
+        var windows = new WindowService(_settings, storage, themes, fences, moves, Shutdown);
 
         _tray = (TaskbarIcon)FindResource("TrayIcon");
-        _tray.DataContext = new TrayViewModel(windows);
+        _tray.DataContext = new TrayViewModel(windows, moves);
         _tray.Icon = TrayIconRenderer.Create();
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
@@ -64,7 +65,10 @@ public partial class App : Application
 
         var launchedAtSignIn = e.Args.Contains(StartupService.StartupArgument, StringComparer.OrdinalIgnoreCase);
         windows.ShowFences();
-        windows.ShowCalendar(activate: !launchedAtSignIn);
+        if (_settings.Current.ShowCalendar)
+        {
+            windows.ShowCalendar(activate: !launchedAtSignIn);
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

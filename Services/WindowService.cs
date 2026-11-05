@@ -13,6 +13,7 @@ public sealed class WindowService : IWindowService
     private readonly StorageService _storage;
     private readonly ThemeService _themes;
     private readonly FenceStore _fences;
+    private readonly FileMoveService _moves;
     private readonly TimeFormatService _clock;
     private readonly Action _quit;
     private readonly Dictionary<Guid, FenceWindow> _fenceWindows = [];
@@ -20,12 +21,14 @@ public sealed class WindowService : IWindowService
     private CalendarWindow? _calendar;
     private SettingsWindow? _settingsWindow;
 
-    public WindowService(SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, Action quit)
+    public WindowService(
+        SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves, Action quit)
     {
         _settings = settings;
         _storage = storage;
         _themes = themes;
         _fences = fences;
+        _moves = moves;
         _clock = new TimeFormatService(settings);
         _quit = quit;
     }
@@ -46,11 +49,23 @@ public sealed class WindowService : IWindowService
         }
     }
 
+    public void SetCalendarVisible(bool visible)
+    {
+        if (visible)
+        {
+            ShowCalendar(activate: false);
+        }
+        else
+        {
+            _calendar?.Hide();
+        }
+    }
+
     public void ShowSettings()
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes));
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this));
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
         }
@@ -130,6 +145,67 @@ public sealed class WindowService : IWindowService
         _quit();
     }
 
+    private CleanupWindow? _cleanupWindow;
+
+    public void TidyDesktop()
+    {
+        if (_cleanupWindow is null)
+        {
+            _cleanupWindow = new CleanupWindow(new CleanupViewModel(this));
+            _cleanupWindow.Closed += (_, _) => _cleanupWindow = null;
+            _cleanupWindow.Show();
+        }
+
+        _cleanupWindow.Activate();
+    }
+
+    /// <summary>Moves each group into the fence named after its category, creating fences as needed.</summary>
+    public MoveResult MoveIntoCategoryFences(IReadOnlyList<CleanupGroup> groups)
+    {
+        var problems = new List<string>();
+        var paths = new List<(string Path, string Folder)>();
+        foreach (var group in groups)
+        {
+            try
+            {
+                var folder = FindOrCreateCategoryFence(group.Category);
+                paths.AddRange(group.Paths.Select(p => (p, folder)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problems.Add($"{group.Category}: {ex.Message}");
+            }
+        }
+
+        var result = _moves.MoveInto(paths, "desktop cleanup");
+        return new MoveResult(result.Moved, [.. problems, .. result.Problems]);
+    }
+
+    public void UndoLastMove()
+    {
+        var result = _moves.Undo();
+        if (result.Problems.Count > 0)
+        {
+            MessageBox.Show(
+                $"Moved {result.Moved} items back. Not moved:\n\n{string.Join("\n", result.Problems.Take(10))}",
+                "Tidy Yard", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    private string FindOrCreateCategoryFence(string category)
+    {
+        var existing = _fences.Fences.FirstOrDefault(f =>
+            string.Equals(f.Title, category, StringComparison.CurrentCultureIgnoreCase) && Directory.Exists(f.FolderPath));
+        if (existing is not null)
+        {
+            return existing.FolderPath;
+        }
+
+        var folder = AppPaths.EnsureNamedFenceFolder(category);
+        AddFence(category, folder);
+        return folder;
+    }
+
     private void AddFence(string title, string folder)
     {
         var fence = new Fence
@@ -149,7 +225,7 @@ public sealed class WindowService : IWindowService
             return;
         }
 
-        var window = new FenceWindow(new FenceViewModel(fence, _fences, _settings, this));
+        var window = new FenceWindow(new FenceViewModel(fence, _fences, _settings, _moves, this));
         _fenceWindows[fence.Id] = window;
         window.ShowOnDesktop();
     }

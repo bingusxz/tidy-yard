@@ -12,6 +12,7 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         SizeToContent="Height"
+        MaxHeight="{Binding Source={x:Static SystemParameters.WorkArea}, Path=Height}"
         Width="520"
         WindowStartupLocation="CenterScreen">
 
@@ -75,9 +76,9 @@
     <Grid>
         <Border Background="{DynamicResource Brush.Glass}" Opacity="0.92" />
 
-        <StackPanel Margin="24,12,16,24">
+        <DockPanel Margin="24,12,8,24">
             <!-- Header -->
-            <Grid Height="44">
+            <Grid DockPanel.Dock="Top" Height="44" Margin="0,0,8,0">
                 <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Title}" Text="Settings" />
                 <Button HorizontalAlignment="Right"
                         Style="{DynamicResource Button.Icon}"
@@ -87,6 +88,10 @@
                         AutomationProperties.Name="Close"
                         WindowChrome.IsHitTestVisibleInChrome="True" />
             </Grid>
+
+            <!-- Scrolls on small screens; the window never grows taller than the work area. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <StackPanel Margin="0,0,8,0">
 
             <!-- Appearance -->
             <TextBlock Margin="0,16,0,8" Style="{DynamicResource Text.Label}" Text="APPEARANCE" />
@@ -225,9 +230,25 @@
             </Border>
 
             <!-- Widget -->
-            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="WIDGET" />
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="CALENDAR" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Show calendar" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Turn off to use Tidy Yard for fences only. Open Calendar in the tray still works." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding ShowCalendar}"
+                                  AutomationProperties.Name="Show calendar" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
                     <Grid Style="{StaticResource Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
@@ -245,7 +266,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Start with Windows" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Opens the calendar in its saved spot when you sign in." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Starts Tidy Yard when you sign in, with fences and calendar where you left them." />
                             <TextBlock Style="{DynamicResource Text.Muted}"
                                        Foreground="{DynamicResource Brush.Accent}"
                                        Text="{Binding StartupError}"
@@ -256,6 +277,55 @@
                                   Style="{DynamicResource CheckBox.Switch}"
                                   IsChecked="{Binding StartWithWindows}"
                                   AutomationProperties.Name="Start with Windows" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Fences -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="FENCES" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <StackPanel>
+                    <Grid Style="{StaticResource Row}">
+                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Icon size" />
+                        <ListBox HorizontalAlignment="Right"
+                                 VerticalAlignment="Center"
+                                 Style="{DynamicResource ListBox.Segmented}"
+                                 ItemsSource="{Binding IconSizes}"
+                                 SelectedItem="{Binding SelectedIconSize}"
+                                 DisplayMemberPath="Name"
+                                 AutomationProperties.Name="Fence icon size" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Hide desktop icons" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Same as right-click desktop > View > Show desktop icons. Fences stay visible." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding HideDesktopIcons}"
+                                  AutomationProperties.Name="Hide desktop icons" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Tidy desktop" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Sorts loose desktop files into fences by type. Shows you the plan first." />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Button.Text}"
+                                Content="Tidy…"
+                                Command="{Binding TidyDesktopCommand}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -284,6 +354,8 @@
                             Command="{Binding OpenDataFolderCommand}" />
                 </Grid>
             </Border>
-        </StackPanel>
+            </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Grid>
 </Window>

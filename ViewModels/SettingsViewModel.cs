@@ -14,10 +14,47 @@ public sealed record ClockOption(ClockFormat Format, string Name)
     public override string ToString() => Name;
 }
 
+public sealed record IconSizeOption(int Size, string Name)
+{
+    public override string ToString() => Name;
+}
+
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
     private readonly ThemeService _themes;
+    private readonly IWindowService _windows;
+
+    [ObservableProperty]
+    private IconSizeOption _selectedIconSize;
+
+    /// <summary>Uses Windows' own "Show desktop icons" setting (desktop right-click > View).</summary>
+    [ObservableProperty]
+    private bool _hideDesktopIcons;
+
+    public IReadOnlyList<IconSizeOption> IconSizes { get; } =
+    [
+        new(32, "Small"),
+        new(48, "Medium"),
+        new(64, "Large"),
+    ];
+
+    /// <summary>Off = use Tidy Yard for fences only.</summary>
+    [ObservableProperty]
+    private bool _showCalendar;
+
+    partial void OnShowCalendarChanged(bool value)
+    {
+        _settings.Update(s => s.ShowCalendar = value);
+        _windows.SetCalendarVisible(value);
+    }
+
+    partial void OnSelectedIconSizeChanged(IconSizeOption value) => _settings.Update(s => s.FenceIconSize = value.Size);
+
+    partial void OnHideDesktopIconsChanged(bool value) => Interop.NativeMethods.SetDesktopIconsVisible(!value);
+
+    [RelayCommand]
+    private void TidyDesktop() => _windows.TidyDesktop();
 
     [ObservableProperty]
     private ThemeOption _selectedTheme;
@@ -49,10 +86,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
-    public SettingsViewModel(SettingsService settings, ThemeService themes)
+    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows)
     {
         _settings = settings;
         _themes = themes;
+        _windows = windows;
+        _selectedIconSize = IconSizes.FirstOrDefault(o => o.Size == settings.Current.FenceIconSize) ?? IconSizes[1];
+        _hideDesktopIcons = Interop.NativeMethods.AreDesktopIconsVisible() == false;
+        _showCalendar = settings.Current.ShowCalendar;
         _selectedTheme = ThemeService.Resolve(settings.Current.Theme);
         _opacityPercent = settings.Current.OpacityPercent;
         _isLocked = settings.Current.IsLocked;

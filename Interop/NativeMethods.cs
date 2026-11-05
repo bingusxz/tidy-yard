@@ -201,6 +201,72 @@ internal static class NativeMethods
         }
     }
 
+    // ---- Desktop icons ------------------------------------------------------------------
+
+    private const int WM_COMMAND = 0x0111;
+    private const int DesktopToggleIconsCommand = 0x7402; // View > Show desktop icons
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowExW(IntPtr parent, IntPtr childAfter, string? className, string? windowName);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessageW(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>The desktop's icon view host (SHELLDLL_DefView), under Progman or a WorkerW.</summary>
+    private static IntPtr FindDesktopView()
+    {
+        var view = FindWindowExW(DesktopShellWindow, IntPtr.Zero, "SHELLDLL_DefView", null);
+        var worker = IntPtr.Zero;
+        while (view == IntPtr.Zero)
+        {
+            worker = FindWindowExW(IntPtr.Zero, worker, "WorkerW", null);
+            if (worker == IntPtr.Zero)
+            {
+                break;
+            }
+
+            view = FindWindowExW(worker, IntPtr.Zero, "SHELLDLL_DefView", null);
+        }
+
+        return view;
+    }
+
+    /// <summary>Whether Explorer is currently showing desktop icons; null if the desktop was not found.</summary>
+    public static bool? AreDesktopIconsVisible()
+    {
+        var view = FindDesktopView();
+        if (view == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        var list = FindWindowExW(view, IntPtr.Zero, "SysListView32", null);
+        return list != IntPtr.Zero && IsWindowVisible(list);
+    }
+
+    /// <summary>
+    /// Shows or hides desktop icons using Explorer's own "Show desktop icons" command, so the
+    /// choice is the normal Windows setting and can be changed back from the desktop menu.
+    /// </summary>
+    public static bool SetDesktopIconsVisible(bool visible)
+    {
+        if (AreDesktopIconsVisible() is not { } current)
+        {
+            return false;
+        }
+
+        if (current != visible)
+        {
+            SendMessageW(FindDesktopView(), WM_COMMAND, new IntPtr(DesktopToggleIconsCommand), IntPtr.Zero);
+        }
+
+        return true;
+    }
+
     public static void SendToBottom(IntPtr hwnd)
     {
         if (hwnd != IntPtr.Zero)

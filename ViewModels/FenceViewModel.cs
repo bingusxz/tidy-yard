@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,7 +19,9 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private readonly FenceStore _store;
     private readonly SettingsService _settings;
     private readonly IWindowService _windows;
+    private readonly FileMoveService _moves;
     private readonly DispatcherTimer _refreshDelay;
+    private bool _syncingTint;
     private FileSystemWatcher? _watcher;
 
     [ObservableProperty]
@@ -40,6 +43,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _countText = string.Empty;
 
+    /// <summary>Short-lived note, e.g. files that could not be moved into the fence.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNotice))]
+    private string _notice = string.Empty;
+
+    public bool HasNotice => Notice.Length > 0;
+
     [ObservableProperty]
     private double _glassOpacity;
 
@@ -47,16 +57,38 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(LockMenuText))]
     private bool _isLocked;
 
-    public FenceViewModel(Fence model, FenceStore store, SettingsService settings, IWindowService windows)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ItemWidth))]
+    private int _iconSize;
+
+    [ObservableProperty]
+    private FenceLayout _layout;
+
+    /// <summary>The fence's own colour; only used when HasCustomTint.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomTint))]
+    [NotifyPropertyChangedFor(nameof(TintBrush))]
+    private Color _tintColor;
+
+    [ObservableProperty]
+    private bool _isColorPickerOpen;
+
+    public FenceViewModel(Fence model, FenceStore store, SettingsService settings, FileMoveService moves, IWindowService windows)
     {
         Model = model;
         _store = store;
         _settings = settings;
+        _moves = moves;
         _windows = windows;
+        _iconSize = settings.Current.FenceIconSize;
+        _syncingTint = true;
+        _tintColor = ThemeService.TryParseHex(model.TintColor, out var tint) ? tint : Colors.White;
+        _syncingTint = false;
         _title = model.Title;
         _isRolledUp = model.IsRolledUp;
         _glassOpacity = settings.Current.OpacityPercent / 100.0;
-        _isLocked = settings.Current.FencesLocked;
+        _isLocked = model.IsLocked;
+        _layout = model.Layout;
         settings.Changed += OnSettingsChanged;
 
         // Coalesce bursts of file events (a copy of 50 files) into one refresh.
@@ -77,7 +109,86 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     public bool HasMessage => Message.Length > 0;
 
-    public string LockMenuText => IsLocked ? "Unlock fences" : "Lock fences";
+    public string LockMenuText => IsLocked ? "Unlock this fence" : "Lock this fence";
+
+    public bool IsGridLayout => Layout == FenceLayout.Grid;
+
+    public bool IsRowLayout => Layout == FenceLayout.Row;
+
+    public bool IsListLayout => Layout == FenceLayout.List;
+
+    partial void OnLayoutChanged(FenceLayout value)
+    {
+        Model.Layout = value;
+        _store.Changed();
+        OnPropertyChanged(nameof(IsGridLayout));
+        OnPropertyChanged(nameof(IsRowLayout));
+        OnPropertyChanged(nameof(IsListLayout));
+    }
+
+    [RelayCommand]
+    private void SetLayout(string? name)
+    {
+        if (Enum.TryParse<FenceLayout>(name, out var layout))
+        {
+            Layout = layout;
+        }
+    }
+
+    public double ItemWidth => IconSize + 36;
+
+    public IReadOnlyList<Color> TintPresets { get; } =
+    [
+        Color.FromRgb(0xF3, 0xEF, 0xE6), Color.FromRgb(0xE6, 0xEC, 0xF2), Color.FromRgb(0xE4, 0xEE, 0xE2), Color.FromRgb(0xF4, 0xE6, 0xE4),
+        Color.FromRgb(0x14, 0x14, 0x13), Color.FromRgb(0x1C, 0x30, 0x25), Color.FromRgb(0x1A, 0x22, 0x33), Color.FromRgb(0x2A, 0x1E, 0x2C),
+    ];
+
+    public bool HasCustomTint => Model.TintColor is not null;
+
+    public Brush TintBrush => new SolidColorBrush(TintColor);
+
+    /// <summary>Moves dropped files and folders into this fence's folder.</summary>
+    public void DropFiles(IEnumerable<string> paths)
+    {
+        var result = _moves.MoveInto(paths, Model.FolderPath, $"move into {Title}");
+        if (result.Problems.Count > 0)
+        {
+            // Shown at the bottom of the fence for a few seconds; folder refreshes do not clear it.
+            Notice = string.Join("\n", result.Problems.Take(4));
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                Notice = string.Empty;
+            };
+            timer.Start();
+        }
+    }
+
+    partial void OnTintColorChanged(Color value)
+    {
+        if (_syncingTint)
+        {
+            return;
+        }
+
+        Model.TintColor = ThemeService.ToHex(value);
+        _store.Changed();
+        OnPropertyChanged(nameof(HasCustomTint));
+        OnPropertyChanged(nameof(TintBrush));
+    }
+
+    [RelayCommand]
+    private void PickColor() => IsColorPickerOpen = true;
+
+    [RelayCommand]
+    private void ResetColor()
+    {
+        Model.TintColor = null;
+        _store.Changed();
+        OnPropertyChanged(nameof(HasCustomTint));
+        OnPropertyChanged(nameof(TintBrush));
+    }
 
     public void SaveBounds(WindowBounds bounds)
     {
@@ -161,7 +272,12 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ToggleLock() => _settings.Update(s => s.FencesLocked = !s.FencesLocked);
+    private void ToggleLock()
+    {
+        IsLocked = !IsLocked;
+        Model.IsLocked = IsLocked;
+        _store.Changed();
+    }
 
     [RelayCommand]
     private void Remove() => _windows.RemoveFence(this);
@@ -196,7 +312,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
         GlassOpacity = _settings.Current.OpacityPercent / 100.0;
-        IsLocked = _settings.Current.FencesLocked;
+        IconSize = _settings.Current.FenceIconSize;
     }
 
     private void Watch()

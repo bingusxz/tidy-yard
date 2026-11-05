@@ -416,6 +416,31 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="8" />
+                <Setter Property="MinHeight" Value="8" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Track x:Name="PART_Track" Margin="0,2">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageLeftCommand" Style="{StaticResource ScrollBar.Page}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageRightCommand" Style="{StaticResource ScrollBar.Page}" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollBar.Thumb}" />
+                                </Track.Thumb>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Slider: accent-filled rounded track, round handle. -->
@@ -506,12 +531,23 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="Bd" Background="Transparent" Height="32" Padding="12,0" CornerRadius="6">
-                        <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    <Border x:Name="Bd" Background="Transparent" Height="32" Padding="8,0,12,0" CornerRadius="6">
+                        <DockPanel>
+                            <!-- Checked items (the current layout) get a small accent dot. -->
+                            <Ellipse x:Name="Check" DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,8,0"
+                                     VerticalAlignment="Center" Fill="{DynamicResource Brush.Accent}" Visibility="Hidden" />
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                        </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

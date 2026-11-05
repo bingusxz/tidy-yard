@@ -9,6 +9,9 @@ public interface IWindowService
 
     void ShowSettings();
 
+    /// <summary>Shows or hides the calendar for the "Show calendar" setting (fences-only mode).</summary>
+    void SetCalendarVisible(bool visible);
+
     /// <summary>Creates a fence with a new, empty folder.</summary>
     void NewFence();
 
@@ -20,6 +23,15 @@ public interface IWindowService
 
     /// <summary>Asks the user for a folder; null if cancelled.</summary>
     string? PickFolder(string? startFolder);
+
+    /// <summary>Opens the desktop cleanup preview.</summary>
+    void TidyDesktop();
+
+    /// <summary>Moves each cleanup group into the fence named after its category.</summary>
+    MoveResult MoveIntoCategoryFences(IReadOnlyList<CleanupGroup> groups);
+
+    /// <summary>Moves the last batch of moved files back where they came from.</summary>
+    void UndoLastMove();
 
     void Quit();
 }

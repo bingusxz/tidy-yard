@@ -15,6 +15,20 @@ public static class AppPaths
 
     public static string FencesFile { get; } = Path.Combine(DataDirectory, "fences.json");
 
+    /// <summary>Every file move Tidy Yard makes, one JSON object per line.</summary>
+    public static string MoveLogFile { get; } = Path.Combine(DataDirectory, "moves.log");
+
+    /// <summary>
+    /// The folder for a fence called <paramref name="title"/> under the fence root, created if
+    /// needed. Used by desktop cleanup so "Documents" always lands in the same folder.
+    /// </summary>
+    public static string EnsureNamedFenceFolder(string title)
+    {
+        var folder = Path.Combine(FenceFoldersRoot, title);
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
     /// <summary>Where folders for new fences are created: %USERPROFILE%\Tidy Yard Fences.</summary>
     public static string FenceFoldersRoot { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Tidy Yard Fences");

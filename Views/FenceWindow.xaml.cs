@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Threading;
 using TidyYard.ViewModels;
 
@@ -63,6 +64,9 @@ public partial class FenceWindow : Window
             case nameof(FenceViewModel.IsRolledUp):
                 ApplyRollUp(_viewModel.IsRolledUp);
                 break;
+            case nameof(FenceViewModel.Layout) when _viewModel.IsRowLayout && !_viewModel.IsRolledUp:
+                FitToOneRow();
+                break;
         }
     }
 
@@ -81,6 +85,15 @@ public partial class FenceWindow : Window
             Height = Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80);
         }
 
+        _widget.IsLocked = wasLocked;
+    }
+
+    /// <summary>Row layout: shrink the fence to a single strip of tiles (title + one row + scrollbar).</summary>
+    private void FitToOneRow()
+    {
+        var wasLocked = _widget.IsLocked;
+        _widget.IsLocked = false;
+        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 56 + 10;
         _widget.IsLocked = wasLocked;
     }
 
@@ -110,4 +123,70 @@ public partial class FenceWindow : Window
     }
 
     private void OnRenameBoxLostFocus(object sender, RoutedEventArgs e) => _viewModel.CommitRenameCommand.Execute(null);
+
+    // ---- Drop files onto the fence: they move into its folder --------------------------
+
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        var hasFiles = e.Data.GetDataPresent(DataFormats.FileDrop) && !ReferenceEquals(e.Data, _dragOut);
+        e.Effects = hasFiles ? DragDropEffects.Move : DragDropEffects.None;
+        DropHighlight.Visibility = hasFiles ? Visibility.Visible : Visibility.Collapsed;
+        e.Handled = true;
+    }
+
+    private void OnDragLeave(object sender, DragEventArgs e) => DropHighlight.Visibility = Visibility.Collapsed;
+
+    private void OnDrop(object sender, DragEventArgs e)
+    {
+        DropHighlight.Visibility = Visibility.Collapsed;
+        if (!ReferenceEquals(e.Data, _dragOut) && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+        {
+            _viewModel.DropFiles(paths);
+            e.Effects = DragDropEffects.Move;
+        }
+
+        e.Handled = true;
+    }
+
+    // ---- Drag items out of the fence to Explorer or the desktop ------------------------
+
+    private Point _dragStart;
+    private DataObject? _dragOut;
+
+    private void OnItemMouseDown(object sender, MouseButtonEventArgs e) => _dragStart = e.GetPosition(this);
+
+    private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceItemViewModel item })
+        {
+            _viewModel.OpenItemCommand.Execute(item);
+            e.Handled = true;
+        }
+    }
+
+    private void OnItemMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: FenceItemViewModel item })
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(this) - _dragStart;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        // Explorer decides move or copy (and does the work); the fence refreshes from its folder watcher.
+        _dragOut = new DataObject(DataFormats.FileDrop, new[] { item.Path });
+        try
+        {
+            DragDrop.DoDragDrop((DependencyObject)sender, _dragOut, DragDropEffects.Move | DragDropEffects.Copy | DragDropEffects.Link);
+        }
+        finally
+        {
+            _dragOut = null;
+        }
+    }
 }
