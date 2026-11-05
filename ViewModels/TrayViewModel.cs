@@ -38,6 +38,12 @@ public sealed partial class TrayViewModel : ObservableObject
     private void BringFencesToFront() => _windows.BringFencesToFront();
 
     [RelayCommand]
+    private void LockAllFences() => _windows.SetAllFencesLocked(true);
+
+    [RelayCommand]
+    private void UnlockAllFences() => _windows.SetAllFencesLocked(false);
+
+    [RelayCommand]
     private void TidyDesktop() => _windows.TidyDesktop();
 
     [RelayCommand(CanExecute = nameof(CanUndo))]

@@ -144,6 +144,14 @@ public sealed class WindowService : IWindowService
         }
     }
 
+    public void SetAllFencesLocked(bool locked)
+    {
+        foreach (var window in _fenceWindows.Values)
+        {
+            window.ViewModel.SetLocked(locked);
+        }
+    }
+
     public void Quit()
     {
         _settingsWindow?.Close();

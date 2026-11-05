@@ -15,6 +15,7 @@ public partial class App : Application
     private FenceStore? _fences;
     private ReminderService? _reminders;
     private UpdateService? _updates;
+    private HotkeyService? _hotkeys;
     private TaskbarIcon? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -63,6 +64,10 @@ public partial class App : Application
         _reminders.Start();
         _updates.Start();
 
+        // Win+Alt+F brings unlocked fences to the front, for when a window covers them.
+        _hotkeys = new HotkeyService(windows.BringFencesToFront);
+        _hotkeys.Register(virtualKey: 0x46);
+
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows, moves);
         _tray.Icon = TrayIconRenderer.Create();
@@ -91,6 +96,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+        _hotkeys?.Dispose();
         _reminders?.Dispose();
         _settings?.Flush();
         _fences?.Flush();

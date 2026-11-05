@@ -36,5 +36,8 @@ public interface IWindowService
     /// <summary>Lifts every unlocked fence above other windows. Locked fences stay on the desktop.</summary>
     void BringFencesToFront();
 
+    /// <summary>Locks or unlocks every fence at once.</summary>
+    void SetAllFencesLocked(bool locked);
+
     void Quit();
 }

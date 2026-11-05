@@ -278,10 +278,17 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ToggleLock()
+    private void ToggleLock() => SetLocked(!IsLocked);
+
+    public void SetLocked(bool locked)
     {
-        IsLocked = !IsLocked;
-        Model.IsLocked = IsLocked;
+        if (IsLocked == locked)
+        {
+            return;
+        }
+
+        IsLocked = locked;
+        Model.IsLocked = locked;
         _store.Changed();
     }
 

@@ -534,6 +534,30 @@ internal static class NativeMethods
         }
     }
 
+    // ---- Global hotkey -------------------------------------------------------------------
+
+    public const int WM_HOTKEY = 0x0312;
+    public const uint MOD_ALT = 0x0001;
+    public const uint MOD_WIN = 0x0008;
+    public const uint MOD_NOREPEAT = 0x4000;
+
+    /// <summary>Parent for a window that only receives messages and is never shown.</summary>
+    public static readonly IntPtr HWND_MESSAGE = new(-3);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    /// <summary>False when another program already owns the key combination.</summary>
+    public static bool TryRegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint virtualKey) =>
+        RegisterHotKey(hwnd, id, modifiers | MOD_NOREPEAT, virtualKey);
+
+    public static void UnregisterHotKeyQuietly(IntPtr hwnd, int id) => UnregisterHotKey(hwnd, id);
+
     /// <summary>Lets the running instance take the foreground when a second launch hands off to it.</summary>
     public static void AllowAnyProcessToSetForeground() => AllowSetForegroundWindow(ASFW_ANY);
 
