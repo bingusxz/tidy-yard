@@ -249,8 +249,90 @@ public partial class FenceWindow : Window
             ? tab
             : null;
 
+    // Dragging a tab sideways reorders it. Tabs swap as the pointer passes the middle of the next one.
+    private const string TabDragFormat = "TidyYard.FenceTab";
+    private Point _tabDragStart;
+    private FenceTabViewModel? _tabPressed;
+
+    private FenceTabViewModel? TabUnder(DependencyObject? source) =>
+        source is not null && !IsInsideTextBox(source)
+        && ItemsControl.ContainerFromElement(TabList, source) is ListBoxItem { DataContext: FenceTabViewModel tab }
+            ? tab
+            : null;
+
+    private static bool IsInsideTextBox(DependencyObject source)
+    {
+        for (var node = source; node is not null; node = System.Windows.Media.VisualTreeHelper.GetParent(node))
+        {
+            if (node is TextBox)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void OnTabMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _tabPressed = TabUnder(e.OriginalSource as DependencyObject);
+        _tabDragStart = e.GetPosition(this);
+    }
+
+    private void OnTabMouseUp(object sender, MouseButtonEventArgs e) => _tabPressed = null;
+
+    private void OnTabMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _tabPressed is not { IsEditing: false } tab)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(this) - _tabDragStart;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        _tabPressed = null;
+        DragDrop.DoDragDrop(TabList, new DataObject(TabDragFormat, tab), DragDropEffects.Move);
+    }
+
+    /// <summary>True when a tab is being dragged and the pointer is past the middle of another tab.</summary>
+    private bool TryReorder(DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(TabDragFormat) || e.Data.GetData(TabDragFormat) is not FenceTabViewModel dragged)
+        {
+            return false;
+        }
+
+        if (e.OriginalSource is DependencyObject source
+            && ItemsControl.ContainerFromElement(TabList, source) is ListBoxItem { DataContext: FenceTabViewModel over } item
+            && !ReferenceEquals(over, dragged))
+        {
+            var from = _viewModel.Tabs.IndexOf(dragged);
+            var to = _viewModel.Tabs.IndexOf(over);
+            var x = e.GetPosition(item).X;
+            var pastMiddle = from < to ? x > item.ActualWidth / 2 : x < item.ActualWidth / 2;
+            if (pastMiddle)
+            {
+                _viewModel.MoveTab(dragged, to);
+            }
+        }
+
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+        return true;
+    }
+
     private void OnTabDragOver(object sender, DragEventArgs e)
     {
+        if (TryReorder(e))
+        {
+            return;
+        }
+
         if (IsFileDropFromOutside(e) && TabAt(e) is not null)
         {
             DropHighlight.Visibility = Visibility.Collapsed;
@@ -261,6 +343,11 @@ public partial class FenceWindow : Window
 
     private void OnTabDrop(object sender, DragEventArgs e)
     {
+        if (TryReorder(e))
+        {
+            return;
+        }
+
         if (IsFileDropFromOutside(e) && TabAt(e) is { } tab && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
         {
             DropHighlight.Visibility = Visibility.Collapsed;

@@ -273,6 +273,23 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Moves a tab to a new position in the tab bar. The tabs' folders are not touched.</summary>
+    public void MoveTab(FenceTabViewModel tab, int newIndex)
+    {
+        var oldIndex = Tabs.IndexOf(tab);
+        newIndex = Math.Clamp(newIndex, 0, Tabs.Count - 1);
+        if (oldIndex < 0 || oldIndex == newIndex)
+        {
+            return;
+        }
+
+        Tabs.Move(oldIndex, newIndex);
+        Model.Tabs.RemoveAt(oldIndex);
+        Model.Tabs.Insert(newIndex, tab.Model);
+        Model.EnsureTabs(); // the first tab's folder is also the fence's own FolderPath
+        _store.Changed();
+    }
+
     [RelayCommand]
     private void BeginRenameTab(FenceTabViewModel? tab)
     {
