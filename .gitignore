@@ -1,9 +1,61 @@
+# Build output
 bin/
 obj/
-.vs/
-*.user
-*.suo
 publish/
 releases/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*_wpftmp.csproj
+*.nupkg
+*.snupkg
+
+# Visual Studio, Rider, VS Code
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userprefs
+*.rsuser
+*.DotSettings.user
+
+# Test output and logs
+TestResults/
+*.log
+*.tmp
+
+# Secrets and signing material. Nothing like this should ever be committed.
+.env
+.env.*
+secrets.json
+*.secrets.json
+appsettings.*.local.json
+*.pfx
+*.p12
+*.snk
+*.pem
+*.key
+*.keystore
+
+# Local data, never part of the source
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.backup-v*
+settings.json
+fences.json
+moves.log
+
+# Operating system
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Personal tooling and notes
 CLAUDE.md
 .claude/
+.planning/
