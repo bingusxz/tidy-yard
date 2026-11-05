@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -111,7 +112,8 @@ public partial class FenceWindow : Window
             case nameof(FenceViewModel.IsRolledUp):
                 ApplyRollUp(_viewModel.IsRolledUp);
                 break;
-            case nameof(FenceViewModel.Layout) when _viewModel.IsRowLayout && !_viewModel.IsRolledUp:
+            case nameof(FenceViewModel.Layout) or nameof(FenceViewModel.HasTabBar) or nameof(FenceViewModel.CanGoBack)
+                when _viewModel.IsRowLayout && !_viewModel.IsRolledUp:
                 FitToOneRow();
                 break;
         }
@@ -140,7 +142,9 @@ public partial class FenceWindow : Window
     {
         var wasLocked = _widget.IsLocked;
         _widget.IsLocked = false;
-        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 56 + 10;
+        // Plus the tab bar (34) and the back bar (32) when they are showing.
+        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 56 + 10
+            + (_viewModel.HasTabBar ? 34 : 0) + (_viewModel.CanGoBack ? 32 : 0);
         _widget.IsLocked = wasLocked;
     }
 
@@ -193,6 +197,107 @@ public partial class FenceWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    // ---- Drop onto a folder icon inside the fence: the files move into that folder ------
+
+    private bool IsFileDropFromOutside(DragEventArgs e) =>
+        e.Data.GetDataPresent(DataFormats.FileDrop) && !ReferenceEquals(e.Data, _dragOut);
+
+    private void OnItemDragOver(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceItemViewModel { IsFolder: true } folder } && IsFileDropFromOutside(e))
+        {
+            folder.IsDropTarget = true;
+            DropHighlight.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+        else if (sender is FrameworkElement { DataContext: FenceItemViewModel other })
+        {
+            other.IsDropTarget = false; // a plain file: the fence itself takes the drop
+        }
+    }
+
+    private void OnItemDragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceItemViewModel item })
+        {
+            item.IsDropTarget = false;
+        }
+    }
+
+    private void OnItemDrop(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceItemViewModel { IsFolder: true } folder }
+            && IsFileDropFromOutside(e)
+            && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+        {
+            folder.IsDropTarget = false;
+            DropHighlight.Visibility = Visibility.Collapsed;
+            _viewModel.DropFiles(paths, folder.Path);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    // ---- Tabs: drop files on a tab, rename in place ------------------------------------
+
+    private FenceTabViewModel? TabAt(DragEventArgs e) =>
+        e.OriginalSource is DependencyObject source
+        && ItemsControl.ContainerFromElement(TabList, source) is ListBoxItem { DataContext: FenceTabViewModel tab }
+            ? tab
+            : null;
+
+    private void OnTabDragOver(object sender, DragEventArgs e)
+    {
+        if (IsFileDropFromOutside(e) && TabAt(e) is not null)
+        {
+            DropHighlight.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    private void OnTabDrop(object sender, DragEventArgs e)
+    {
+        if (IsFileDropFromOutside(e) && TabAt(e) is { } tab && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+        {
+            DropHighlight.Visibility = Visibility.Collapsed;
+            _viewModel.DropFiles(paths, tab.Model.FolderPath);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    private void OnTabDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceTabViewModel tab })
+        {
+            _viewModel.BeginRenameTabCommand.Execute(tab);
+            e.Handled = true;
+        }
+    }
+
+    private void OnTabEditVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true && sender is TextBox box && IsVisible)
+        {
+            Activate();
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                box.Focus();
+                box.SelectAll();
+            });
+        }
+    }
+
+    private void OnTabEditLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FenceTabViewModel tab })
+        {
+            _viewModel.CommitRenameTabCommand.Execute(tab);
+        }
     }
 
     // ---- Drag items out of the fence to Explorer or the desktop ------------------------

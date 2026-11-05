@@ -52,5 +52,30 @@ public static class AppPaths
         }
     }
 
+    /// <summary>
+    /// Creates a new, empty folder for an extra tab of a fence, named after the fence and tab. Never
+    /// reuses a folder that already exists: a name clash gets "(2)", "(3)" and so on.
+    /// </summary>
+    public static string CreateTabFolder(string fenceTitle, string tabTitle)
+    {
+        Directory.CreateDirectory(FenceFoldersRoot);
+        var invalid = Path.GetInvalidFileNameChars();
+        var clean = new string($"{fenceTitle} - {tabTitle}".Where(c => !invalid.Contains(c)).ToArray()).Trim();
+        if (clean.Length == 0)
+        {
+            clean = "Tab";
+        }
+
+        for (var n = 1; ; n++)
+        {
+            var folder = Path.Combine(FenceFoldersRoot, n == 1 ? clean : $"{clean} ({n})");
+            if (!Directory.Exists(folder) && !File.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+                return folder;
+            }
+        }
+    }
+
     public static void EnsureDataDirectory() => Directory.CreateDirectory(DataDirectory);
 }

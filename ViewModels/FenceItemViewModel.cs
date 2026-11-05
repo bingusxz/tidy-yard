@@ -11,6 +11,10 @@ public sealed partial class FenceItemViewModel : ObservableObject
     [ObservableProperty]
     private ImageSource? _icon;
 
+    /// <summary>True while files are dragged over this folder, so it lights up as the place they will land.</summary>
+    [ObservableProperty]
+    private bool _isDropTarget;
+
     public FenceItemViewModel(string path, bool isFolder)
     {
         Path = path;

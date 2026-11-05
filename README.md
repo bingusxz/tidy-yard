@@ -19,6 +19,8 @@ Runs on Windows 10 and 11. Windows 11 gets the acrylic glass look.
 **Fences**
 - Boxes on the desktop backed by real folders
 - Drag files in and out
+- Tabs: one fence can hold several folders, switched with a tab bar that appears once there is more than one tab
+- Folders open inside the fence with a back button, and you can drop files onto a folder icon or a tab to move them in
 - Tidy Desktop sorts loose files into fences by type. It shows you the plan first, logs every move, and can undo the last one
 - Files are only ever moved, never deleted or overwritten
 

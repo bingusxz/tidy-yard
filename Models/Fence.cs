@@ -23,8 +23,31 @@ public sealed class Fence
 
     public string Title { get; set; } = "Fence";
 
-    /// <summary>The folder whose contents the fence shows. Removing the fence never touches it.</summary>
+    /// <summary>
+    /// The folder of the fence's first tab. Kept for fences saved before tabs existed, and so that
+    /// Tidy Desktop can find the folder of a category fence. Removing the fence never touches it.
+    /// </summary>
     public string FolderPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The fence's tabs. A fence with one tab shows no tab bar. Older fences have none saved;
+    /// <see cref="EnsureTabs"/> gives them a single tab for <see cref="FolderPath"/>.
+    /// </summary>
+    public List<FenceTab> Tabs { get; set; } = [];
+
+    /// <summary>The tab that was showing when the fence was last used.</summary>
+    public Guid? ActiveTabId { get; set; }
+
+    /// <summary>Makes sure there is at least one tab and that the first tab matches <see cref="FolderPath"/>.</summary>
+    public void EnsureTabs()
+    {
+        if (Tabs.Count == 0)
+        {
+            Tabs.Add(new FenceTab { Title = "Main", FolderPath = FolderPath });
+        }
+
+        FolderPath = Tabs[0].FolderPath;
+    }
 
     /// <summary>Physical-pixel bounds on screen.</summary>
     public WindowBounds? Bounds { get; set; }
@@ -42,4 +65,14 @@ public sealed class Fence
 
     /// <summary>Height (WPF units) to return to when the fence is rolled back down.</summary>
     public double ExpandedHeight { get; set; } = 280;
+}
+
+/// <summary>One tab of a fence: a name and the folder it shows. Removing a tab never touches the folder.</summary>
+public sealed class FenceTab
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public string Title { get; set; } = "Main";
+
+    public string FolderPath { get; set; } = string.Empty;
 }

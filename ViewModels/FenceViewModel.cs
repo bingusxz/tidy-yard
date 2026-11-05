@@ -74,6 +74,38 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isColorPickerOpen;
 
+    private FenceTabViewModel _selectedTab;
+
+    /// <summary>
+    /// The tab being shown. Never null once the fence is built: the tab list pushes "nothing selected"
+    /// when the selected tab is removed, and that is ignored because a new tab is chosen right after.
+    /// </summary>
+    public FenceTabViewModel SelectedTab
+    {
+        get => _selectedTab;
+        set
+        {
+            if (value is null || ReferenceEquals(value, _selectedTab))
+            {
+                return;
+            }
+
+            _selectedTab = value;
+            OnPropertyChanged();
+            Model.ActiveTabId = value.Model.Id;
+            _store.Changed();
+            CurrentPath = value.Model.FolderPath;
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(LocationText));
+        }
+    }
+
+    /// <summary>The folder being shown: the tab's own folder, or a folder opened inside it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGoBack))]
+    [NotifyPropertyChangedFor(nameof(LocationText))]
+    private string _currentPath;
+
     public FenceViewModel(Fence model, FenceStore store, SettingsService settings, FileMoveService moves, IWindowService windows)
     {
         Model = model;
@@ -90,6 +122,17 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _glassOpacity = settings.Current.OpacityPercent / 100.0;
         _isLocked = model.IsLocked;
         _layout = model.Layout;
+
+        // Fences saved before tabs existed get one tab for their folder.
+        model.EnsureTabs();
+        foreach (var tab in model.Tabs)
+        {
+            Tabs.Add(new FenceTabViewModel(tab));
+        }
+
+        _selectedTab = Tabs.FirstOrDefault(t => t.Model.Id == model.ActiveTabId) ?? Tabs[0];
+        _currentPath = _selectedTab.Model.FolderPath;
+        Tabs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasTabBar));
         settings.Changed += OnSettingsChanged;
 
         // Coalesce bursts of file events (a copy of 50 files) into one refresh.
@@ -107,6 +150,182 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     public Fence Model { get; }
 
     public ObservableCollection<FenceItemViewModel> Items { get; } = [];
+
+    public ObservableCollection<FenceTabViewModel> Tabs { get; } = [];
+
+    /// <summary>The tab bar only appears once a fence has more than one tab.</summary>
+    public bool HasTabBar => Tabs.Count > 1;
+
+    /// <summary>The selected tab's own folder; "back" never goes above it.</summary>
+    private string RootPath => SelectedTab.Model.FolderPath;
+
+    public bool CanGoBack => !SamePath(CurrentPath, RootPath);
+
+    /// <summary>"Bills › 2026": where you are inside the tab, shown next to the back button.</summary>
+    public string LocationText
+    {
+        get
+        {
+            if (!CanGoBack)
+            {
+                return string.Empty;
+            }
+
+            var relative = Path.GetRelativePath(RootPath, CurrentPath);
+            return string.Join(" › ", relative.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries));
+        }
+    }
+
+    private static bool SamePath(string a, string b) =>
+        string.Equals(
+            Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar),
+            Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase);
+
+    partial void OnCurrentPathChanged(string value)
+    {
+        Watch();
+        Refresh();
+    }
+
+    /// <summary>Opens a folder inside the fence instead of in Explorer.</summary>
+    private void GoInto(string folder) => CurrentPath = folder;
+
+    [RelayCommand]
+    private void GoBack()
+    {
+        if (!CanGoBack)
+        {
+            return;
+        }
+
+        var parent = Path.GetDirectoryName(CurrentPath.TrimEnd(Path.DirectorySeparatorChar));
+        CurrentPath = parent is null || !CanStepUpTo(parent) ? RootPath : parent;
+    }
+
+    /// <summary>True while <paramref name="folder"/> is still the tab's folder or inside it.</summary>
+    private bool CanStepUpTo(string folder) =>
+        (Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar)
+            .StartsWith(Path.GetFullPath(RootPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase);
+
+    // ---- Tabs ---------------------------------------------------------------------------
+
+    /// <summary>A new tab with its own new folder, opened for naming.</summary>
+    [RelayCommand]
+    private void NewTab()
+    {
+        try
+        {
+            var title = $"Tab {Tabs.Count + 1}";
+            var folder = AppPaths.CreateTabFolder(Title, title);
+            var tab = AddTab(title, folder);
+            BeginRenameTab(tab);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowNotice($"Could not create a folder for the tab: {ex.Message}");
+        }
+    }
+
+    /// <summary>A new tab that shows a folder the user picks.</summary>
+    [RelayCommand]
+    private void NewTabFromFolder()
+    {
+        if (_windows.PickFolder(CurrentPath) is not { } folder)
+        {
+            return;
+        }
+
+        var name = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar));
+        AddTab(string.IsNullOrEmpty(name) ? folder : name, folder);
+    }
+
+    private FenceTabViewModel AddTab(string title, string folder)
+    {
+        var model = new FenceTab { Title = title, FolderPath = folder };
+        Model.Tabs.Add(model);
+        var tab = new FenceTabViewModel(model);
+        Tabs.Add(tab);
+        _store.Changed();
+        SelectedTab = tab;
+        return tab;
+    }
+
+    /// <summary>Forgets a tab. Its folder and files stay where they are.</summary>
+    [RelayCommand]
+    private void RemoveTab(FenceTabViewModel? tab)
+    {
+        if (tab is null || Tabs.Count <= 1)
+        {
+            return;
+        }
+
+        var index = Tabs.IndexOf(tab);
+        var wasSelected = ReferenceEquals(tab, SelectedTab);
+        Tabs.Remove(tab);
+        Model.Tabs.Remove(tab.Model);
+        Model.EnsureTabs(); // the first tab's folder is also the fence's own FolderPath
+        _store.Changed();
+        if (wasSelected)
+        {
+            SelectedTab = Tabs[Math.Min(index, Tabs.Count - 1)];
+        }
+    }
+
+    [RelayCommand]
+    private void BeginRenameTab(FenceTabViewModel? tab)
+    {
+        if (tab is null)
+        {
+            return;
+        }
+
+        tab.EditText = tab.Title;
+        tab.IsEditing = true;
+    }
+
+    /// <summary>Renames the tab only. Its folder keeps its name, so no files move.</summary>
+    [RelayCommand]
+    private void CommitRenameTab(FenceTabViewModel? tab)
+    {
+        if (tab is not { IsEditing: true })
+        {
+            return;
+        }
+
+        var text = tab.EditText.Trim();
+        if (text.Length > 0)
+        {
+            tab.Title = text;
+            tab.Model.Title = text;
+            _store.Changed();
+        }
+
+        tab.IsEditing = false;
+    }
+
+    [RelayCommand]
+    private void CancelRenameTab(FenceTabViewModel? tab)
+    {
+        if (tab is not null)
+        {
+            tab.IsEditing = false;
+        }
+    }
+
+    /// <summary>Shows a note at the bottom of the fence for a few seconds.</summary>
+    private void ShowNotice(string text)
+    {
+        Notice = text;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            Notice = string.Empty;
+        };
+        timer.Start();
+    }
 
     public bool HasMessage => Message.Length > 0;
 
@@ -153,21 +372,19 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     public Brush TintBrush => new SolidColorBrush(TintColor);
 
-    /// <summary>Moves dropped files and folders into this fence's folder.</summary>
-    public void DropFiles(IEnumerable<string> paths)
+    /// <summary>
+    /// Moves dropped files and folders into the folder being shown, or into <paramref name="folder"/>
+    /// when they were dropped onto a folder icon or a tab.
+    /// </summary>
+    public void DropFiles(IEnumerable<string> paths, string? folder = null)
     {
-        var result = _moves.MoveInto(paths, Model.FolderPath, $"move into {Title}");
+        var target = folder ?? CurrentPath;
+        var label = folder is null ? Title : Path.GetFileName(target.TrimEnd(Path.DirectorySeparatorChar));
+        var result = _moves.MoveInto(paths, target, $"move into {label}");
         if (result.Problems.Count > 0)
         {
             // Shown at the bottom of the fence for a few seconds; folder refreshes do not clear it.
-            Notice = string.Join("\n", result.Problems.Take(4));
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
-            timer.Tick += (_, _) =>
-            {
-                timer.Stop();
-                Notice = string.Empty;
-            };
-            timer.Start();
+            ShowNotice(string.Join("\n", result.Problems.Take(4)));
         }
     }
 
@@ -257,24 +474,27 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenFolder()
     {
-        if (Directory.Exists(Model.FolderPath))
+        if (Directory.Exists(CurrentPath))
         {
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{Model.FolderPath}\"") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{CurrentPath}\"") { UseShellExecute = true });
         }
     }
 
+    /// <summary>Points the selected tab at another folder. The old folder and its files are left alone.</summary>
     [RelayCommand]
     private void ChangeFolder()
     {
-        if (_windows.PickFolder(Model.FolderPath) is not { } folder)
+        if (_windows.PickFolder(CurrentPath) is not { } folder)
         {
             return;
         }
 
-        Model.FolderPath = folder;
+        SelectedTab.Model.FolderPath = folder;
+        Model.EnsureTabs(); // keeps FolderPath in step when this is the first tab
         _store.Changed();
-        Watch();
-        Refresh();
+        CurrentPath = folder;
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(LocationText));
     }
 
     [RelayCommand]
@@ -300,6 +520,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     {
         if (item is null)
         {
+            return;
+        }
+
+        // A folder opens inside the fence; "Show in folder" is the way to reach it in Explorer.
+        if (item.IsFolder)
+        {
+            GoInto(item.Path);
             return;
         }
 
@@ -332,12 +559,12 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     {
         _watcher?.Dispose();
         _watcher = null;
-        if (!Directory.Exists(Model.FolderPath))
+        if (!Directory.Exists(CurrentPath))
         {
             return;
         }
 
-        _watcher = new FileSystemWatcher(Model.FolderPath)
+        _watcher = new FileSystemWatcher(CurrentPath)
         {
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
             IncludeSubdirectories = false,
@@ -360,16 +587,16 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private void Refresh()
     {
         Items.Clear();
-        if (!Directory.Exists(Model.FolderPath))
+        if (!Directory.Exists(CurrentPath))
         {
-            Message = $"Folder not found: {Model.FolderPath}";
+            Message = $"Folder not found: {CurrentPath}";
             CountText = string.Empty;
             return;
         }
 
         try
         {
-            var dir = new DirectoryInfo(Model.FolderPath);
+            var dir = new DirectoryInfo(CurrentPath);
             var entries = dir.EnumerateFileSystemInfos()
                 .Where(e => (e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)
                 .OrderBy(e => e is FileInfo)

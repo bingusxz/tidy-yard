@@ -145,6 +145,17 @@
                             <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
                             <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
                             <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
+                            <Separator />
+                            <MenuItem Header="New tab" Command="{Binding NewTabCommand}" />
+                            <MenuItem Header="Tab from folder…" Command="{Binding NewTabFromFolderCommand}" />
+                            <MenuItem Header="Rename tab"
+                                      Command="{Binding BeginRenameTabCommand}"
+                                      CommandParameter="{Binding SelectedTab}"
+                                      Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
+                            <MenuItem Header="Remove tab (keeps the folder)"
+                                      Command="{Binding RemoveTabCommand}"
+                                      CommandParameter="{Binding SelectedTab}"
+                                      Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
                             <MenuItem Header="Colour…" Command="{Binding PickColorCommand}" />
                             <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
                             <Separator />
@@ -175,6 +186,147 @@
             </Grid>
 
             <Border DockPanel.Dock="Top" Height="1" Margin="14,0" Background="{DynamicResource Brush.Rule}" />
+
+            <!-- Tabs: only when the fence has more than one. Each tab is a folder. Drop files on a tab to move them in. -->
+            <Grid DockPanel.Dock="Top"
+                  Margin="10,6,10,0"
+                  Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <ListBox x:Name="TabList"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         ItemsSource="{Binding Tabs}"
+                         SelectedItem="{Binding SelectedTab}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                         AllowDrop="True"
+                         DragOver="OnTabDragOver"
+                         Drop="OnTabDrop"
+                         AutomationProperties.Name="Tabs"
+                         WindowChrome.IsHitTestVisibleInChrome="True">
+                    <ListBox.Template>
+                        <ControlTemplate TargetType="ListBox">
+                            <ScrollViewer Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                                <ItemsPresenter />
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ListBox.Template>
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+                            <Setter Property="FontWeight" Value="Medium" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="Margin" Value="0,0,2,0" />
+                            <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <EventSetter Event="MouseDoubleClick" Handler="OnTabDoubleClick" />
+                            <Setter Property="ContextMenu">
+                                <Setter.Value>
+                                    <ContextMenu>
+                                        <MenuItem Header="Rename"
+                                                  Command="{Binding PlacementTarget.Tag.BeginRenameTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Remove tab (keeps the folder)"
+                                                  Command="{Binding PlacementTarget.Tag.RemoveTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding}" />
+                                    </ContextMenu>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Height="26" MinWidth="48" Padding="12,0" CornerRadius="8" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Raised}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:FenceTabViewModel}">
+                            <Grid>
+                                <TextBlock Text="{Binding Title}" AutomationProperties.Name="{Binding Title}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBox MinWidth="72"
+                                         Text="{Binding EditText, UpdateSourceTrigger=PropertyChanged}"
+                                         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"
+                                         IsVisibleChanged="OnTabEditVisibleChanged"
+                                         LostKeyboardFocus="OnTabEditLostFocus"
+                                         AutomationProperties.Name="Tab name">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter"
+                                                    Command="{Binding DataContext.CommitRenameTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" />
+                                        <KeyBinding Key="Escape"
+                                                    Command="{Binding DataContext.CancelRenameTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <Button Grid.Column="1"
+                        Width="26" Height="26"
+                        Margin="4,0,0,0"
+                        Style="{DynamicResource Button.Icon}"
+                        Content="{DynamicResource Glyph.Add}"
+                        Command="{Binding NewTabCommand}"
+                        ToolTip="New tab"
+                        AutomationProperties.Name="New tab"
+                        WindowChrome.IsHitTestVisibleInChrome="True" />
+            </Grid>
+
+            <!-- Inside a folder: back button and where you are. -->
+            <Grid DockPanel.Dock="Top"
+                  Margin="10,4,14,0"
+                  Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Button Width="28" Height="28"
+                            Style="{DynamicResource Button.Icon}"
+                            Content="{DynamicResource Glyph.ChevronLeft}"
+                            Command="{Binding GoBackCommand}"
+                            ToolTip="Back"
+                            AutomationProperties.Name="Back"
+                            WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <TextBlock Margin="4,0,0,0"
+                               VerticalAlignment="Center"
+                               FontWeight="Medium"
+                               Foreground="{DynamicResource Brush.TextMuted}"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding LocationText}" />
+                </StackPanel>
+            </Grid>
 
             <TextBlock DockPanel.Dock="Bottom"
                        Margin="14,4,14,10"
@@ -218,6 +370,11 @@
                                 <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemMouseDown" />
                                 <EventSetter Event="PreviewMouseMove" Handler="OnItemMouseMove" />
                                 <EventSetter Event="MouseDoubleClick" Handler="OnItemDoubleClick" />
+                                <!-- Folders accept drops: files dropped on one move into it. -->
+                                <Setter Property="AllowDrop" Value="True" />
+                                <EventSetter Event="DragOver" Handler="OnItemDragOver" />
+                                <EventSetter Event="DragLeave" Handler="OnItemDragLeave" />
+                                <EventSetter Event="Drop" Handler="OnItemDrop" />
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
                                         <ContextMenu>
@@ -230,6 +387,11 @@
                                         </ContextMenu>
                                     </Setter.Value>
                                 </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
 
                             <!-- Grid and Row: icon above a two-line name. -->
