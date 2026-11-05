@@ -13,6 +13,9 @@ namespace TidyYard.Services;
 public sealed class StorageService
 {
     private const int SchemaVersion = 6;
+
+    /// <summary>The database layout this version of the app uses. A backup from a higher number was made by a newer version.</summary>
+    public const int CurrentSchemaVersion = SchemaVersion;
     private const string DateFormat = "yyyy-MM-dd";
     private const string TimeFormat = "HH:mm";
     private const string DateTimeFormat = "yyyy-MM-dd'T'HH:mm";

@@ -10,6 +10,9 @@ namespace TidyYard;
 
 public partial class App : Application
 {
+    /// <summary>Passed to the new copy when the app restarts itself, so it can wait for the old one to close.</summary>
+    public const string RestartArgument = "--restarted-from";
+
     private SingleInstanceService? _singleInstance;
     private SettingsService? _settings;
     private FenceStore? _fences;
@@ -21,6 +24,22 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // After "Restart now" (restoring a backup) the old copy may still be closing: wait for it,
+        // or this copy would think another one is running and quit.
+        var restartedFrom = Array.IndexOf(e.Args, RestartArgument);
+        if (restartedFrom >= 0 && restartedFrom + 1 < e.Args.Length && int.TryParse(e.Args[restartedFrom + 1], out var oldProcess))
+        {
+            try
+            {
+                using var old = System.Diagnostics.Process.GetProcessById(oldProcess);
+                old.WaitForExit(15000);
+            }
+            catch (ArgumentException)
+            {
+                // Already gone.
+            }
+        }
+
         _singleInstance = new SingleInstanceService();
         if (!_singleInstance.TryClaim())
         {
@@ -38,6 +57,9 @@ public partial class App : Application
         try
         {
             AppPaths.EnsureDataDirectory();
+
+            // A backup the person chose to restore is applied here, before anything has opened the data.
+            BackupService.ApplyPendingRestore(AppPaths.DataDirectory);
             _settings = new SettingsService(AppPaths.SettingsFile);
             storage = new StorageService(AppPaths.DatabaseFile);
 
@@ -63,7 +85,12 @@ public partial class App : Application
         var moves = new FileMoveService(AppPaths.MoveLogFile);
         _updates = new UpdateService(_settings, SaveBeforeRestart);
         var sync = new CalendarSyncService(storage, _settings);
-        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, sync, Shutdown);
+        var backup = new BackupService(AppPaths.DataDirectory, () =>
+        {
+            _settings.Flush();
+            fences.Flush();
+        });
+        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, sync, backup, Shutdown);
 
         _reminders = new ReminderService(storage, new TimeFormatService(_settings), windows.ShowCalendar);
         _reminders.Start();

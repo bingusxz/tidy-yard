@@ -24,13 +24,15 @@ public sealed class WindowService : IWindowService
     private readonly UpdateService _updates;
     private readonly CalendarSyncService _sync;
     private CalendarLinksViewModel? _links;
+    private readonly BackupService _backup;
 
     public WindowService(
         SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves,
-        UpdateService updates, CalendarSyncService sync, Action quit)
+        UpdateService updates, CalendarSyncService sync, BackupService backup, Action quit)
     {
         _updates = updates;
         _sync = sync;
+        _backup = backup;
         _settings = settings;
         _storage = storage;
         _themes = themes;
@@ -72,7 +74,7 @@ public sealed class WindowService : IWindowService
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates, _links ??= new CalendarLinksViewModel(_storage, _sync), new AutoSortViewModel(_settings, _fences)));
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates, _links ??= new CalendarLinksViewModel(_storage, _sync), new AutoSortViewModel(_settings, _fences), new BackupViewModel(_backup, this)));
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
         }
@@ -137,6 +139,38 @@ public sealed class WindowService : IWindowService
         }
 
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
+    }
+
+    public string? PickSaveFile(string suggestedName, string filter)
+    {
+        var dialog = new SaveFileDialog { FileName = suggestedName, Filter = filter, OverwritePrompt = true, Title = "Save backup" };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? PickOpenFile(string filter)
+    {
+        var dialog = new OpenFileDialog { Filter = filter, CheckFileExists = true, Title = "Choose a backup" };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public void RestartApp()
+    {
+        _settings.Flush();
+        _fences.Flush();
+        try
+        {
+            // The new copy waits for this one to close before it starts, so the two never run together.
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                Environment.ProcessPath!, $"{App.RestartArgument} {Environment.ProcessId}") { UseShellExecute = false });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            MessageBox.Show($"Could not restart Tidy Yard. Start it yourself to finish.\n\n{ex.Message}", "Tidy Yard",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        Quit();
     }
 
     public void BringFencesToFront()

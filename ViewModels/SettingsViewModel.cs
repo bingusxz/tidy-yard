@@ -77,6 +77,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>The Auto-sort section.</summary>
     public AutoSortViewModel AutoSort { get; }
 
+    /// <summary>The Backup section.</summary>
+    public BackupViewModel Backup { get; }
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     [ObservableProperty]
@@ -122,7 +125,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
-    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links, AutoSortViewModel autoSort)
+    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links, AutoSortViewModel autoSort, BackupViewModel backup)
     {
         _settings = settings;
         _themes = themes;
@@ -130,6 +133,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _updates = updates;
         Links = links;
         AutoSort = autoSort;
+        Backup = backup;
         _checkForUpdates = settings.Current.CheckForUpdates;
         updates.Changed += (_, _) =>
         {

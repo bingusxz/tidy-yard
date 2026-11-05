@@ -24,6 +24,15 @@ public interface IWindowService
     /// <summary>Asks the user for a folder; null if cancelled.</summary>
     string? PickFolder(string? startFolder);
 
+    /// <summary>Asks where to save a file; null if cancelled. The dialog asks before replacing an existing file.</summary>
+    string? PickSaveFile(string suggestedName, string filter);
+
+    /// <summary>Asks which file to open; null if cancelled.</summary>
+    string? PickOpenFile(string filter);
+
+    /// <summary>Saves everything and starts Tidy Yard again, for finishing a restore.</summary>
+    void RestartApp();
+
     /// <summary>Opens the desktop cleanup preview.</summary>
     void TidyDesktop();
 

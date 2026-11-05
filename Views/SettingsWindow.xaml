@@ -595,6 +595,56 @@
                             Command="{Binding OpenDataFolderCommand}" />
                 </Grid>
             </Border>
+
+            <!-- Backup -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="BACKUP" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
+                <StackPanel DataContext="{Binding Backup}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Back up your data" />
+                            <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                                       Text="Saves your events, checklists, settings and fence layout as one file. Your files and folders are not included." />
+                        </StackPanel>
+                        <Button Grid.Column="1" VerticalAlignment="Top" Style="{DynamicResource Button.Text}" Content="Back up…" Command="{Binding BackUpCommand}" />
+                    </Grid>
+                    <Border Height="1" Margin="0,12,0,12" Background="{DynamicResource Brush.Rule}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Restore from a backup" />
+                            <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                                       Text="Replaces your current events, settings and fences. What you have now is saved first, in the backups folder. Calendar links need adding again on another PC." />
+                        </StackPanel>
+                        <Button Grid.Column="1" VerticalAlignment="Top" Style="{DynamicResource Button.Text}" Content="Restore…" Command="{Binding RestoreCommand}" />
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0" Orientation="Horizontal"
+                                Visibility="{Binding HasPendingRestore, Converter={StaticResource BoolToVisibility}}">
+                        <Button Style="{DynamicResource Button.Primary}" Content="Restart now" Command="{Binding RestartNowCommand}" />
+                        <Button Margin="4,0,0,0" Style="{DynamicResource Button.Text}" Content="Cancel" Command="{Binding CancelRestoreCommand}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}"
+                               Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                        <Setter Property="FontWeight" Value="Medium" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
             </StackPanel>
             </ScrollViewer>
         </DockPanel>

@@ -9,7 +9,8 @@ Runs on Windows 10 and 11. Windows 11 gets the acrylic glass look.
 **Calendar widget**
 - Month, week and day views, with a day card for quick add and the agenda
 - Quick add understands things like `Dentist 3pm` or `Pay rent tomorrow 9:30`
-- Repeating events (every day, week, month or year), with "Skip this day" for a single exception
+- Events can have an end time or last several days. They can repeat every day, weekday, week, month or year, optionally until an end date, with "Skip this day" for a single exception
+- Drag an event to another day to reschedule it. Search (Ctrl+F) finds events or jumps to a date. Deleting an event or skipping a day has an Undo
 - Reminders as Windows toast notifications, with snooze
 - Checklists on events
 - Read-only calendar links: show events from Google Calendar, Outlook or iCloud by pasting the calendar's secret iCal link. Repeating events and time zones are handled. The link is stored encrypted for your Windows account, and the PC reads it directly, with no server in between
@@ -38,6 +39,8 @@ Everything lives in `%APPDATA%\TidyYard`:
 | `error.log` | Errors, if any |
 
 Updates replace the program files only. Before the database layout changes, a copy is saved as `tidyyard.db.backup-vN` next to it.
+
+Settings has Back up and Restore: one `.zip` with your events, checklists, settings and fence layout. A restore is checked first and applied the next time the app starts, after the current data is copied to a `backups` folder here. Nothing is deleted. A deleted event can be undone for a few seconds, and is removed from the database for good after 30 days.
 
 ## Building
 
