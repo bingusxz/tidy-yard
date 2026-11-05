@@ -29,6 +29,10 @@ public sealed partial class DayCellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>True while an event is being dragged over this day, so it lights up as the place it will land.</summary>
+    [ObservableProperty]
+    private bool _isDropTarget;
+
     /// <summary>One entry per dot under the day number (max 3).</summary>
     [ObservableProperty]
     private IReadOnlyList<int> _dots = [];

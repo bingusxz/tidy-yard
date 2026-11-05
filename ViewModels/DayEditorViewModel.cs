@@ -163,7 +163,8 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
     public bool HasUndo => UndoText.Length > 0;
 
-    private void OfferUndo(string text, DateOnly day, Action undo)
+    /// <summary>Shows the Undo bar for a few seconds. <paramref name="day"/> is where the calendar goes back to after undoing.</summary>
+    public void OfferUndo(string text, DateOnly day, Action undo)
     {
         _undoAction = undo;
         _undoDay = day;

@@ -126,6 +126,9 @@
                                             <StackPanel>
                                             <Button Style="{DynamicResource Button.Bare}"
                                                     Padding="8"
+                                                    PreviewMouseLeftButtonDown="OnEventPress"
+                                                    PreviewMouseLeftButtonUp="OnEventRelease"
+                                                    PreviewMouseMove="OnEventMove"
                                                     IsEnabled="{Binding IsEditable}"
                                                     ToolTip="{Binding SourceText}"
                                                     Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -441,9 +444,16 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:DayCellViewModel}">
-                                    <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,1,1">
+                                    <Border x:Name="Cell"
+                                            BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,1,1"
+                                            Background="Transparent"
+                                            AllowDrop="True"
+                                            DragOver="OnDayDragOver" DragLeave="OnDayDragLeave" Drop="OnDayDrop">
                                     <Button Margin="2"
                                             Style="{DynamicResource Button.Bare}"
+                                            PreviewMouseLeftButtonDown="OnEventPress"
+                                            PreviewMouseLeftButtonUp="OnEventRelease"
+                                            PreviewMouseMove="OnEventMove"
                                             Command="{Binding SelectCommand}"
                                             AutomationProperties.Name="{Binding AccessibleName}">
                                         <!-- Day number top-left, then up to two event titles as plain text. -->
@@ -490,6 +500,9 @@
                                             <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
                                             <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.Text}" />
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                            <Setter TargetName="Cell" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding IsToday}" Value="True">
                                             <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.Accent}" />
                                             <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
@@ -513,7 +526,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:DayCellViewModel}">
-                                <Border x:Name="Column" Margin="2" CornerRadius="10" Background="{DynamicResource Brush.Surface}">
+                                <Border x:Name="Column" Margin="2" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                        AllowDrop="True" DragOver="OnDayDragOver" DragLeave="OnDayDragLeave" Drop="OnDayDrop">
                                     <DockPanel>
                                         <Button DockPanel.Dock="Top"
                                                 Padding="8"
@@ -539,6 +553,9 @@
                                                         <Button Margin="0,0,0,4"
                                                                 Padding="6"
                                                                 Style="{DynamicResource Button.Bare}"
+                                                                PreviewMouseLeftButtonDown="OnEventPress"
+                                                                PreviewMouseLeftButtonUp="OnEventRelease"
+                                                                PreviewMouseMove="OnEventMove"
                                                                 Background="{DynamicResource Brush.AccentSoft}"
                                                                 Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                 CommandParameter="{Binding}"
@@ -561,6 +578,9 @@
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                         <Setter TargetName="Column" Property="Background" Value="{DynamicResource Brush.Card}" />
                                         <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                        <Setter TargetName="Column" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsToday}" Value="True">
                                         <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.Accent}" />

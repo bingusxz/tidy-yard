@@ -231,6 +231,55 @@ public sealed partial class CalendarViewModel : ObservableObject
 
     private void SelectDay(DayCellViewModel cell) => SelectedDate = cell.Date;
 
+    /// <summary>
+    /// Drag and drop: moves an event to another day. An event that does not repeat moves whole, keeping its
+    /// time and length. For a repeating one only the dragged occurrence moves: that day is skipped and a
+    /// single event is made on the new day. Events from a subscribed calendar cannot be moved. Undo is offered.
+    /// </summary>
+    public void MoveEvent(EventItemViewModel item, DateOnly target)
+    {
+        var shown = item.Model;
+        if (shown.IsImported || target == shown.Date)
+        {
+            return;
+        }
+
+        var shift = target.DayNumber - shown.Date.DayNumber;
+        var occurrenceStart = shown.Date.AddDays(-shown.DayIndex);
+        var newStart = occurrenceStart.AddDays(shift);
+        var label = $"Moved “{shown.Title}” to {target.ToString("ddd d MMM", CultureInfo.CurrentCulture)}";
+        var from = shown.Date;
+
+        if (shown.Repeat == RepeatRule.None)
+        {
+            var originalStart = shown.StartDay;
+            _storage.MoveEvent(shown.Id, newStart);
+            Editor.OfferUndo(label, from, () => _storage.MoveEvent(shown.Id, originalStart));
+        }
+        else
+        {
+            _storage.SkipDay(shown.Id, occurrenceStart);
+            var single = new CalendarEvent
+            {
+                Date = newStart,
+                Time = shown.Time,
+                EndTime = shown.EndTime,
+                SpanDays = shown.SpanDays,
+                Title = shown.Title,
+                Note = shown.Note,
+                ReminderMinutes = shown.ReminderMinutes,
+            };
+            _storage.Add(single);
+            Editor.OfferUndo(label, from, () =>
+            {
+                _storage.Delete(single.Id);
+                _storage.UnskipDay(shown.Id, occurrenceStart);
+            });
+        }
+
+        Refresh();
+    }
+
     private void Refresh()
     {
         _today = DateOnly.FromDateTime(DateTime.Today);

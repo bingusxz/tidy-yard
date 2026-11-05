@@ -124,4 +124,85 @@ public partial class CalendarWindow : Window
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () => box.Focus());
         }
     }
+
+    // ---- Drag an event to another day ---------------------------------------------------
+    // The window only turns mouse movement into a drag; CalendarViewModel.MoveEvent decides what happens.
+
+    private const string EventDragFormat = "TidyYard.Event";
+    private EventItemViewModel? _pressedEvent;
+    private Point _pressPoint;
+
+    /// <summary>The event under the pointer: the nearest element up the tree whose data is an event.</summary>
+    private static EventItemViewModel? EventAt(DependencyObject? source)
+    {
+        for (var node = source; node is not null; node = node is System.Windows.Media.Visual
+                 ? System.Windows.Media.VisualTreeHelper.GetParent(node)
+                 : LogicalTreeHelper.GetParent(node))
+        {
+            if (node is FrameworkElement { DataContext: EventItemViewModel item })
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    private void OnEventPress(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _pressedEvent = EventAt(e.OriginalSource as DependencyObject);
+        _pressPoint = e.GetPosition(this);
+    }
+
+    private void OnEventRelease(object sender, System.Windows.Input.MouseButtonEventArgs e) => _pressedEvent = null;
+
+    private void OnEventMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed || _pressedEvent is not { IsImported: false } item)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(this) - _pressPoint;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        _pressedEvent = null;
+        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(EventDragFormat, item), DragDropEffects.Move);
+    }
+
+    private void OnDayDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(EventDragFormat) && sender is FrameworkElement { DataContext: DayCellViewModel cell })
+        {
+            cell.IsDropTarget = true;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+    }
+
+    private void OnDayDragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DayCellViewModel cell })
+        {
+            cell.IsDropTarget = false;
+        }
+    }
+
+    private void OnDayDrop(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: DayCellViewModel cell })
+        {
+            cell.IsDropTarget = false;
+            if (e.Data.GetData(EventDragFormat) is EventItemViewModel item && DataContext is CalendarViewModel calendar)
+            {
+                calendar.MoveEvent(item, cell.Date);
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            }
+        }
+    }
 }

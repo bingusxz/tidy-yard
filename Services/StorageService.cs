@@ -417,6 +417,23 @@ public sealed class StorageService
         command.ExecuteNonQuery();
     }
 
+    /// <summary>Moves an event that does not repeat to start on another day, keeping its time and length.</summary>
+    public void MoveEvent(long id, DateOnly newStart)
+    {
+        using var connection = Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE events SET date = $date, updated_at = $now WHERE id = $id AND deleted_at IS NULL";
+            command.Parameters.AddWithValue("$date", FormatDate(newStart));
+            command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$id", id);
+            command.ExecuteNonQuery();
+        }
+
+        // Its reminder moves with it (or is dropped if the new day is in the past).
+        AdvanceReminder(connection, id, DateTime.Now);
+    }
+
     /// <summary>Puts a skipped day of a repeating event back.</summary>
     public void UnskipDay(long eventId, DateOnly day)
     {
