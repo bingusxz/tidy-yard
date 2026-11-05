@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using TidyYard.Interop;
@@ -17,12 +16,11 @@ namespace TidyYard.Views;
 /// </summary>
 public partial class CalendarWindow : Window
 {
-    private const double CaptionHeight = 56;
-    private const double ResizeBorder = 6;
-
     private readonly SettingsService _settings;
     private readonly CalendarViewModel _viewModel;
     private bool _closingForExit;
+    private bool _locked;
+    private bool _applyingBounds;
 
     public CalendarWindow(CalendarViewModel viewModel, SettingsService settings)
     {
@@ -35,6 +33,9 @@ public partial class CalendarWindow : Window
         WindowStartupLocation = WindowStartupLocation.Manual;
         ApplyBounds(settings.Current.CalendarBounds);
         ApplyLock(viewModel.IsLocked);
+
+        // Added on Loaded, after WindowChrome's own hook, so this hook sees messages first.
+        Loaded += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(LockHook);
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         LocationChanged += (_, _) => RememberBounds();
@@ -103,27 +104,54 @@ public partial class CalendarWindow : Window
         }
     }
 
-    /// <summary>Locked: no drag strip, no resize edges, and out of the taskbar like a desktop widget.</summary>
+    /// <summary>
+    /// Locked: dragging, edge-resizing and snapping are ignored, and the taskbar button goes away.
+    /// The window chrome itself is never swapped: replacing it at runtime makes WPF rebuild the
+    /// frame, which drops the acrylic backdrop and can resize the window.
+    /// </summary>
     private void ApplyLock(bool locked)
     {
-        WindowChrome.SetWindowChrome(this, new WindowChrome
-        {
-            CaptionHeight = locked ? 0 : CaptionHeight,
-            ResizeBorderThickness = new Thickness(locked ? 0 : ResizeBorder),
-            GlassFrameThickness = new Thickness(-1),
-            CornerRadius = new CornerRadius(0),
-            UseAeroCaptionButtons = false,
-        });
+        _locked = locked;
         ShowInTaskbar = !locked;
+        GlassWindow.Apply(this);
+    }
+
+    /// <summary>While locked, the whole window is plain client area and position changes are refused.</summary>
+    private IntPtr LockHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (!_locked)
+        {
+            return IntPtr.Zero;
+        }
+
+        switch (msg)
+        {
+            case NativeMethods.WM_NCHITTEST:
+                handled = true;
+                return new IntPtr(NativeMethods.HTCLIENT);
+            case NativeMethods.WM_WINDOWPOSCHANGING when !_applyingBounds:
+                NativeMethods.KeepPositionAndSize(lParam);
+                break;
+        }
+
+        return IntPtr.Zero;
     }
 
     private void ApplyBounds(WindowBounds? saved)
     {
         var bounds = ScreenService.FitToScreen(saved, Width, Height, MinWidth, MinHeight);
-        Left = bounds.Left;
-        Top = bounds.Top;
-        Width = bounds.Width;
-        Height = bounds.Height;
+        _applyingBounds = true;
+        try
+        {
+            Left = bounds.Left;
+            Top = bounds.Top;
+            Width = bounds.Width;
+            Height = bounds.Height;
+        }
+        finally
+        {
+            _applyingBounds = false;
+        }
     }
 
     private void RememberBounds()

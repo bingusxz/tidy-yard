@@ -74,6 +74,37 @@ internal static class NativeMethods
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
 
+    public const int WM_NCHITTEST = 0x0084;
+    public const int WM_WINDOWPOSCHANGING = 0x0046;
+    public const int HTCLIENT = 1;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOMOVE = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x;
+        public int y;
+        public int cx;
+        public int cy;
+        public uint flags;
+    }
+
+    /// <summary>Rewrites a pending WM_WINDOWPOSCHANGING so the window keeps its position and size.</summary>
+    public static void KeepPositionAndSize(IntPtr windowPosPtr)
+    {
+        if (windowPosPtr == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var pos = Marshal.PtrToStructure<WINDOWPOS>(windowPosPtr);
+        pos.flags |= SWP_NOMOVE | SWP_NOSIZE;
+        Marshal.StructureToPtr(pos, windowPosPtr, fDeleteOld: false);
+    }
+
     /// <summary>System acrylic backdrops need Windows 11 22H2 (build 22621) or later.</summary>
     public static bool SupportsAcrylicBackdrop => Environment.OSVersion.Version.Build >= 22621;
 

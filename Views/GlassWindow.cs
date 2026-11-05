@@ -14,23 +14,7 @@ internal static class GlassWindow
 {
     public static void Attach(Window window)
     {
-        window.SourceInitialized += (_, _) =>
-        {
-            var hwnd = new WindowInteropHelper(window).Handle;
-            var source = HwndSource.FromHwnd(hwnd);
-            NativeMethods.SetDarkFrame(hwnd, ThemeService.CurrentIsDark);
-
-            if (source?.CompositionTarget is not null && NativeMethods.TryApplyAcrylic(hwnd))
-            {
-                source.CompositionTarget.BackgroundColor = Colors.Transparent;
-                window.Background = Brushes.Transparent;
-            }
-            else
-            {
-                // No acrylic: paint the theme's solid window colour instead.
-                window.SetResourceReference(Window.BackgroundProperty, "Brush.Window");
-            }
-        };
+        window.SourceInitialized += (_, _) => Apply(window);
 
         void OnThemeApplied(object? sender, EventArgs e) =>
             NativeMethods.SetDarkFrame(new WindowInteropHelper(window).Handle, ThemeService.CurrentIsDark);
@@ -46,5 +30,32 @@ internal static class GlassWindow
                 window.WindowState = WindowState.Normal;
             }
         };
+    }
+
+    /// <summary>
+    /// Applies (or re-applies) the acrylic backdrop. Safe to call again after anything that
+    /// may reset the frame, such as changing the taskbar button.
+    /// </summary>
+    public static void Apply(Window window)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var source = HwndSource.FromHwnd(hwnd);
+        NativeMethods.SetDarkFrame(hwnd, ThemeService.CurrentIsDark);
+
+        if (source?.CompositionTarget is not null && NativeMethods.TryApplyAcrylic(hwnd))
+        {
+            source.CompositionTarget.BackgroundColor = Colors.Transparent;
+            window.Background = Brushes.Transparent;
+        }
+        else
+        {
+            // No acrylic: paint the theme's solid window colour instead.
+            window.SetResourceReference(Window.BackgroundProperty, "Brush.Window");
+        }
     }
 }

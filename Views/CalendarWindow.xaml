@@ -10,8 +10,8 @@
         Style="{DynamicResource Style.Window}"
         WindowStyle="None"
         ResizeMode="CanResize"
-        Width="800" Height="500"
-        MinWidth="660" MinHeight="440">
+        Width="900" Height="540"
+        MinWidth="760" MinHeight="460">
 
     <!-- Drag by the top strip, resize from the edges. Swapped in code when the widget is locked. -->
     <WindowChrome.WindowChrome>
