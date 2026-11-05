@@ -49,7 +49,8 @@ public sealed partial class CalendarViewModel : ObservableObject
     private IReadOnlyList<HourRowViewModel> _hours = [];
 
     public CalendarViewModel(
-        StorageService storage, SettingsService settings, TimeFormatService clock, IWindowService windows)
+        StorageService storage, SettingsService settings, TimeFormatService clock, IWindowService windows,
+        CalendarSyncService sync)
     {
         _storage = storage;
         _settings = settings;
@@ -93,6 +94,9 @@ public sealed partial class CalendarViewModel : ObservableObject
                 Refresh();
             }
         };
+
+        // Subscribed calendars finish refreshing in the background; show what they brought in.
+        sync.Changed += (_, _) => Refresh();
 
         _glassOpacity = settings.Current.OpacityPercent / 100.0;
         _isLocked = settings.Current.IsLocked;

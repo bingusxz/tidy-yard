@@ -19,6 +19,12 @@ public sealed class CalendarEvent
     /// <summary>Local time of the next reminder to show, or null when none is waiting.</summary>
     public DateTime? NextReminder { get; set; }
 
+    /// <summary>From a subscribed calendar link: shown, reminded about, but not editable here.</summary>
+    public bool IsImported { get; set; }
+
+    /// <summary>Name of the subscribed calendar this event came from.</summary>
+    public string? SourceName { get; set; }
+
     /// <summary>The event's start as a local date and time, or null for all-day events.</summary>
     public DateTime? Start => Time is { } time ? Date.ToDateTime(time) : null;
 

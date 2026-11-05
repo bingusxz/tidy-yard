@@ -71,6 +71,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(IsUpdateReady))]
     private void InstallUpdate() => _updates.ApplyAndRestart();
 
+    /// <summary>The Calendar links section.</summary>
+    public CalendarLinksViewModel Links { get; }
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     [ObservableProperty]
@@ -116,12 +119,13 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
-    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates)
+    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links)
     {
         _settings = settings;
         _themes = themes;
         _windows = windows;
         _updates = updates;
+        Links = links;
         _checkForUpdates = settings.Current.CheckForUpdates;
         updates.Changed += (_, _) =>
         {

@@ -11,6 +11,7 @@ Runs on Windows 10 and 11. Windows 11 gets the acrylic glass look.
 - Quick add understands things like `Dentist 3pm` or `Pay rent tomorrow 9:30`
 - Reminders as Windows toast notifications, with snooze
 - Checklists on events
+- Read-only calendar links: show events from Google Calendar, Outlook or iCloud by pasting the calendar's secret iCal link. Repeating events and time zones are handled. The link is stored encrypted for your Windows account, and the PC reads it directly, with no server in between
 - Three themes (Paper, Night Shift, Moss), plus your own accent colour and background tint
 - Resizable, and can be locked in place so it sits behind your windows
 

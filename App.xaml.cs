@@ -58,11 +58,13 @@ public partial class App : Application
         _fences = fences;
         var moves = new FileMoveService(AppPaths.MoveLogFile);
         _updates = new UpdateService(_settings, SaveBeforeRestart);
-        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, Shutdown);
+        var sync = new CalendarSyncService(storage, _settings);
+        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, sync, Shutdown);
 
         _reminders = new ReminderService(storage, new TimeFormatService(_settings), windows.ShowCalendar);
         _reminders.Start();
         _updates.Start();
+        sync.Start();
 
         // Win+Alt+F brings unlocked fences to the front, for when a window covers them.
         _hotkeys = new HotkeyService(windows.BringFencesToFront);

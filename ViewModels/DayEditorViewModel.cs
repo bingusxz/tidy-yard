@@ -209,7 +209,8 @@ public sealed partial class DayEditorViewModel : ObservableObject
     [RelayCommand]
     private void Edit(EventItemViewModel? item)
     {
-        if (item is null)
+        // Events from a subscribed calendar are copies: changes would be lost at the next refresh.
+        if (item is null || item.Model.IsImported)
         {
             return;
         }

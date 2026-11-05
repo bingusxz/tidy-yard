@@ -108,6 +108,8 @@
                                             <StackPanel>
                                             <Button Style="{DynamicResource Button.Bare}"
                                                     Padding="8"
+                                                    IsEnabled="{Binding IsEditable}"
+                                                    ToolTip="{Binding SourceText}"
                                                     Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
                                                     AutomationProperties.Name="{Binding Title}">
@@ -129,6 +131,11 @@
                                                                    Style="{DynamicResource Text.Muted}"
                                                                    Text="{Binding Note}"
                                                                    Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   FontSize="{DynamicResource Size.Small}"
+                                                                   Foreground="{DynamicResource Brush.TextDim}"
+                                                                   Text="{Binding SourceText}"
+                                                                   Visibility="{Binding IsImported, Converter={StaticResource BoolToVisibility}}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>

@@ -349,6 +349,88 @@
                 </StackPanel>
             </Border>
 
+            <!-- Calendar links -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="CALENDAR LINKS" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
+                <StackPanel DataContext="{Binding Links}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock FontWeight="Medium" Text="Show events from another calendar" />
+                            <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                                       Text="Works with Google Calendar, Outlook and iCloud. Events appear here but are edited in the original calendar. Nothing is sent anywhere: this PC reads the link directly." />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                VerticalAlignment="Top"
+                                Style="{DynamicResource Button.Text}"
+                                Content="Refresh now"
+                                Command="{Binding RefreshCommand}" />
+                    </Grid>
+
+                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Sources}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:CalendarLinkItemViewModel}">
+                                <Grid MinHeight="48">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Height="1" VerticalAlignment="Top" Background="{DynamicResource Brush.Rule}" />
+                                    <StackPanel Margin="0,8,12,8" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="Medium" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run Text="{Binding Host, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Status, Mode=OneWay}" />
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Style="{DynamicResource Button.Text}"
+                                            Content="Remove"
+                                            Command="{Binding RemoveCommand}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="Remove calendar" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Height="1" Margin="0,4,0,12" Background="{DynamicResource Brush.Rule}" />
+                    <TextBox Tag="Name, like Work"
+                             Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Calendar name" />
+                    <TextBox Margin="0,8,0,0"
+                             Tag="Secret iCal link, starting with https://"
+                             Text="{Binding NewLink, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Calendar link" />
+                    <TextBlock Margin="2,6,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                               Text="Google: open Calendar on the web, then Settings, your calendar, Integrate calendar, Secret address in iCal format. Anyone with this link can read that calendar, so keep it private." />
+                    <TextBlock Margin="2,8,0,0"
+                               FontWeight="Medium"
+                               Foreground="{DynamicResource Brush.Accent}"
+                               TextWrapping="Wrap"
+                               Text="{Binding Error}"
+                               Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+                    <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                        <Button Style="{DynamicResource Button.Primary}"
+                                Content="Add calendar"
+                                Command="{Binding AddCommand}" />
+                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{DynamicResource Text.Muted}" Text="{Binding BusyText}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Updates -->
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="UPDATES" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">

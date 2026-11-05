@@ -22,12 +22,15 @@ public sealed class WindowService : IWindowService
     private SettingsWindow? _settingsWindow;
 
     private readonly UpdateService _updates;
+    private readonly CalendarSyncService _sync;
+    private CalendarLinksViewModel? _links;
 
     public WindowService(
         SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves,
-        UpdateService updates, Action quit)
+        UpdateService updates, CalendarSyncService sync, Action quit)
     {
         _updates = updates;
+        _sync = sync;
         _settings = settings;
         _storage = storage;
         _themes = themes;
@@ -42,7 +45,7 @@ public sealed class WindowService : IWindowService
     /// <summary>At Windows sign-in the widget appears in place without stealing focus.</summary>
     public void ShowCalendar(bool activate)
     {
-        _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this), _settings);
+        _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this, _sync), _settings);
         if (activate)
         {
             _calendar.ShowAndFocus();
@@ -69,7 +72,7 @@ public sealed class WindowService : IWindowService
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates));
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates, _links ??= new CalendarLinksViewModel(_storage, _sync)));
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
         }

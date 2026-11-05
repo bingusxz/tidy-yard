@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using TidyYard.Models;
 
@@ -10,7 +12,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class StorageService
 {
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private const string DateFormat = "yyyy-MM-dd";
     private const string TimeFormat = "HH:mm";
     private const string DateTimeFormat = "yyyy-MM-dd'T'HH:mm";
@@ -78,7 +80,30 @@ public sealed class StorageService
             """;
         command.Parameters.AddWithValue("$from", FormatDate(from));
         command.Parameters.AddWithValue("$to", FormatDate(to));
-        return ReadEvents(command);
+        var own = ReadEvents(command);
+
+        using var imported = connection.CreateCommand();
+        imported.CommandText =
+            $"""
+            SELECT {ImportedColumns}
+            FROM imported_events e JOIN calendar_sources s ON s.id = e.source_id
+            WHERE e.date BETWEEN $from AND $to
+            """;
+        imported.Parameters.AddWithValue("$from", FormatDate(from));
+        imported.Parameters.AddWithValue("$to", FormatDate(to));
+        var fromLinks = ReadEvents(imported);
+        if (fromLinks.Count == 0)
+        {
+            return own;
+        }
+
+        // All-day first, then by time; the user's own events before subscribed ones at the same time.
+        return [.. own.Concat(fromLinks)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.Time is not null)
+            .ThenBy(e => e.Time)
+            .ThenBy(e => e.IsImported)
+            .ThenBy(e => e.Title, StringComparer.CurrentCultureIgnoreCase)];
     }
 
     /// <summary>Events whose next reminder is at or before <paramref name="now"/>, earliest first.</summary>
@@ -94,17 +119,33 @@ public sealed class StorageService
             ORDER BY next_reminder, id
             """;
         command.Parameters.AddWithValue("$now", FormatDateTime(now));
-        return ReadEvents(command);
+        var own = ReadEvents(command);
+
+        using var imported = connection.CreateCommand();
+        imported.CommandText =
+            $"""
+            SELECT {ImportedColumns}
+            FROM imported_events e JOIN calendar_sources s ON s.id = e.source_id
+            WHERE e.next_reminder IS NOT NULL AND e.next_reminder <= $now
+            ORDER BY e.next_reminder, e.id
+            """;
+        imported.Parameters.AddWithValue("$now", FormatDateTime(now));
+        return [.. own.Concat(ReadEvents(imported))];
     }
 
-    /// <summary>Sets when the next reminder for an event is shown; null clears it.</summary>
+    /// <summary>
+    /// Sets when the next reminder for an event is shown; null clears it. Events from subscribed
+    /// calendars have negative ids, so one id works for both kinds.
+    /// </summary>
     public void SetNextReminder(long id, DateTime? next)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE events SET next_reminder = $next WHERE id = $id";
+        command.CommandText = id < 0
+            ? "UPDATE imported_events SET next_reminder = $next WHERE id = $id"
+            : "UPDATE events SET next_reminder = $next WHERE id = $id";
         command.Parameters.AddWithValue("$next", next is { } value ? FormatDateTime(value) : DBNull.Value);
-        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$id", Math.Abs(id));
         command.ExecuteNonQuery();
     }
 
@@ -113,12 +154,17 @@ public sealed class StorageService
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT {Columns} FROM events WHERE id = $id";
-        command.Parameters.AddWithValue("$id", id);
+        command.CommandText = id < 0
+            ? $"SELECT {ImportedColumns} FROM imported_events e JOIN calendar_sources s ON s.id = e.source_id WHERE e.id = $id"
+            : $"SELECT {Columns} FROM events WHERE id = $id";
+        command.Parameters.AddWithValue("$id", Math.Abs(id));
         return ReadEvents(command).FirstOrDefault();
     }
 
     private const string Columns = "id, date, time, title, note, reminder_minutes, next_reminder";
+
+    /// <summary>Same column order as <see cref="Columns"/>, plus the calendar's name; the id is negated.</summary>
+    private const string ImportedColumns = "-e.id, e.date, e.time, e.title, e.location, NULL, e.next_reminder, s.name";
 
     private static List<CalendarEvent> ReadEvents(SqliteCommand command)
     {
@@ -139,6 +185,8 @@ public sealed class StorageService
                 NextReminder = reader.IsDBNull(6)
                     ? null
                     : DateTime.ParseExact(reader.GetString(6), DateTimeFormat, CultureInfo.InvariantCulture),
+                IsImported = reader.FieldCount > 7,
+                SourceName = reader.FieldCount > 7 ? reader.GetString(7) : null,
             });
         }
 
@@ -284,6 +332,164 @@ public sealed class StorageService
         command.ExecuteNonQuery();
     }
 
+    // ---- Subscribed calendars ----------------------------------------------------------------
+
+    private static readonly byte[] LinkEntropy = "TidyYard.CalendarLink"u8.ToArray();
+
+    /// <summary>The link is a secret, so it is stored encrypted for this Windows user and never as plain text.</summary>
+    private static byte[] Protect(string link) =>
+        ProtectedData.Protect(Encoding.UTF8.GetBytes(link), LinkEntropy, DataProtectionScope.CurrentUser);
+
+    private static string? Unprotect(byte[] data)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(ProtectedData.Unprotect(data, LinkEntropy, DataProtectionScope.CurrentUser));
+        }
+        catch (CryptographicException)
+        {
+            // Another Windows account or a restored backup: the link cannot be read back.
+            return null;
+        }
+    }
+
+    public IReadOnlyList<CalendarSource> GetSources()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, name, url_protected, last_synced, last_error FROM calendar_sources ORDER BY name, id";
+        var result = new List<CalendarSource>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var link = Unprotect((byte[])reader[2]);
+            result.Add(new CalendarSource(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                link ?? string.Empty,
+                reader.IsDBNull(3) ? null : DateTime.ParseExact(reader.GetString(3), DateTimeFormat, CultureInfo.InvariantCulture),
+                link is null ? "This link cannot be read on this account. Remove it and add it again." : reader.IsDBNull(4) ? null : reader.GetString(4)));
+        }
+
+        return result;
+    }
+
+    public long AddSource(string name, string link)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO calendar_sources (name, url_protected) VALUES ($name, $link);
+            SELECT last_insert_rowid();
+            """;
+        command.Parameters.AddWithValue("$name", name);
+        command.Parameters.AddWithValue("$link", Protect(link));
+        return (long)command.ExecuteScalar()!;
+    }
+
+    /// <summary>Forgets a calendar link and every event that came from it. Your own events are not touched.</summary>
+    public void RemoveSource(long sourceId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            DELETE FROM imported_events WHERE source_id = $id;
+            DELETE FROM calendar_sources WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", sourceId);
+        command.ExecuteNonQuery();
+    }
+
+    public void SetSourceError(long sourceId, string error)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE calendar_sources SET last_error = $error WHERE id = $id";
+        command.Parameters.AddWithValue("$error", error);
+        command.Parameters.AddWithValue("$id", sourceId);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Swaps in the freshly downloaded events for one calendar. A reminder that already fired for an
+    /// event stays fired, so a refresh never shows the same toast twice; new events get the default reminder.
+    /// </summary>
+    public void ReplaceImportedEvents(
+        long sourceId, IEnumerable<ImportedOccurrence> events, int? defaultReminderMinutes, DateTime now)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+
+        // Remember where each existing event stood: key = uid + date + time.
+        var known = new Dictionary<string, string?>();
+        using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT uid, date, time, next_reminder FROM imported_events WHERE source_id = $id";
+            read.Parameters.AddWithValue("$id", sourceId);
+            using var reader = read.ExecuteReader();
+            while (reader.Read())
+            {
+                known.TryAdd(
+                    $"{reader.GetString(0)}|{reader.GetString(1)}|{(reader.IsDBNull(2) ? string.Empty : reader.GetString(2))}",
+                    reader.IsDBNull(3) ? null : reader.GetString(3));
+            }
+        }
+
+        using (var delete = connection.CreateCommand())
+        {
+            delete.Transaction = transaction;
+            delete.CommandText = "DELETE FROM imported_events WHERE source_id = $id";
+            delete.Parameters.AddWithValue("$id", sourceId);
+            delete.ExecuteNonQuery();
+        }
+
+        foreach (var item in events)
+        {
+            var date = FormatDate(item.Date);
+            var time = item.Time is { } t ? t.ToString(TimeFormat, CultureInfo.InvariantCulture) : string.Empty;
+            string? next;
+            if (known.TryGetValue($"{item.Uid}|{date}|{time}", out var previous))
+            {
+                next = previous;
+            }
+            else
+            {
+                var due = CalendarEvent.ComputeNextReminder(item.Date, item.Time, defaultReminderMinutes, now);
+                next = due is { } d ? FormatDateTime(d) : null;
+            }
+
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText =
+                """
+                INSERT INTO imported_events (source_id, uid, date, time, title, location, next_reminder)
+                VALUES ($source, $uid, $date, $time, $title, $location, $next)
+                """;
+            insert.Parameters.AddWithValue("$source", sourceId);
+            insert.Parameters.AddWithValue("$uid", item.Uid);
+            insert.Parameters.AddWithValue("$date", date);
+            insert.Parameters.AddWithValue("$time", time.Length == 0 ? DBNull.Value : time);
+            insert.Parameters.AddWithValue("$title", item.Title);
+            insert.Parameters.AddWithValue("$location", (object?)item.Location ?? DBNull.Value);
+            insert.Parameters.AddWithValue("$next", (object?)next ?? DBNull.Value);
+            insert.ExecuteNonQuery();
+        }
+
+        using (var done = connection.CreateCommand())
+        {
+            done.Transaction = transaction;
+            done.CommandText = "UPDATE calendar_sources SET last_synced = $now, last_error = NULL WHERE id = $id";
+            done.Parameters.AddWithValue("$now", FormatDateTime(now));
+            done.Parameters.AddWithValue("$id", sourceId);
+            done.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
     private void EnsureSchema()
     {
         using var connection = Open();
@@ -339,6 +545,33 @@ public sealed class StorageService
                     position  INTEGER NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS ix_checklist_items_event ON checklist_items (event_id, position);
+                """);
+        }
+
+        if (version < 4)
+        {
+            steps.Add(
+                """
+                CREATE TABLE IF NOT EXISTS calendar_sources (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name           TEXT NOT NULL,
+                    url_protected  BLOB NOT NULL,
+                    last_synced    TEXT NULL,
+                    last_error     TEXT NULL
+                );
+                CREATE TABLE IF NOT EXISTS imported_events (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id      INTEGER NOT NULL,
+                    uid            TEXT NOT NULL,
+                    date           TEXT NOT NULL,
+                    time           TEXT NULL,
+                    title          TEXT NOT NULL,
+                    location       TEXT NULL,
+                    next_reminder  TEXT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_imported_events_date ON imported_events (date);
+                CREATE INDEX IF NOT EXISTS ix_imported_events_source ON imported_events (source_id);
+                CREATE INDEX IF NOT EXISTS ix_imported_events_reminder ON imported_events (next_reminder) WHERE next_reminder IS NOT NULL;
                 """);
         }
 

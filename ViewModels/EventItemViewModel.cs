@@ -42,6 +42,14 @@ public sealed class EventItemViewModel : ObservableObject
 
     public bool HasNote => !string.IsNullOrWhiteSpace(Model.Note);
 
+    /// <summary>From a subscribed calendar: shown here, edited in the original calendar.</summary>
+    public bool IsImported => Model.IsImported;
+
+    public bool IsEditable => !Model.IsImported;
+
+    /// <summary>"Work" or "Family": which subscribed calendar the event came from.</summary>
+    public string SourceText => Model.SourceName ?? string.Empty;
+
     public ObservableCollection<ChecklistItemViewModel> Checklist { get; }
 
     public bool HasChecklist => Checklist.Count > 0;
