@@ -144,7 +144,7 @@
                                                         <TextBlock x:Name="DayNumber"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"
-                                                                   FontFamily="{DynamicResource Font.Mono}"
+                                                                   FontFamily="{DynamicResource Font.Numbers}"
                                                                    FontSize="{DynamicResource Size.Body}"
                                                                    Foreground="{DynamicResource Brush.Text}"
                                                                    Text="{Binding DayNumber}" />
@@ -167,7 +167,7 @@
                                                                     <TextBlock FontSize="{DynamicResource Size.Small}"
                                                                                TextTrimming="CharacterEllipsis"
                                                                                Foreground="{DynamicResource Brush.Text}">
-                                                                        <Run FontFamily="{DynamicResource Font.Mono}"
+                                                                        <Run FontFamily="{DynamicResource Font.Numbers}"
                                                                              Foreground="{DynamicResource Brush.TextMuted}"
                                                                              Text="{Binding TimeText, Mode=OneWay}" /><Run Text="{Binding TimeSeparator, Mode=OneWay}" /><Run Text="{Binding Title, Mode=OneWay}" />
                                                                     </TextBlock>
@@ -273,7 +273,7 @@
                                                                 <ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
                                                             <TextBlock Grid.Column="0"
-                                                                       FontFamily="{DynamicResource Font.Mono}"
+                                                                       FontFamily="{DynamicResource Font.Numbers}"
                                                                        FontSize="{DynamicResource Size.Body}"
                                                                        Foreground="{DynamicResource Brush.TextMuted}"
                                                                        Text="{Binding TimeText}" />
@@ -311,7 +311,7 @@
                                     <TextBlock Margin="0,12,0,4" Style="{DynamicResource Text.Label}" Text="Time" />
                                     <TextBox Width="96"
                                              HorizontalAlignment="Left"
-                                             FontFamily="{DynamicResource Font.Mono}"
+                                             FontFamily="{DynamicResource Font.Numbers}"
                                              Text="{Binding TimeText, UpdateSourceTrigger=PropertyChanged}"
                                              AutomationProperties.Name="Time" />
                                     <TextBlock Margin="0,4,0,0"

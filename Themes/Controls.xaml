@@ -29,6 +29,8 @@
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <!-- Inherited by all text: equal-width digits so times and dates align in columns. -->
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
     </Style>
 
     <!-- Text -->
@@ -61,8 +63,8 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
-    <Style x:Key="Text.Mono" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{DynamicResource Font.Mono}" />
+    <Style x:Key="Text.Numbers" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Numbers}" />
         <Setter Property="FontSize" Value="{DynamicResource Size.Small}" />
     </Style>
 

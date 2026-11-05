@@ -87,7 +87,7 @@
                     <TextBlock Grid.Column="2"
                                HorizontalAlignment="Right"
                                VerticalAlignment="Center"
-                               FontFamily="{DynamicResource Font.Mono}"
+                               FontFamily="{DynamicResource Font.Numbers}"
                                Text="{Binding OpacityText}" />
                 </Grid>
             </Border>
@@ -104,7 +104,7 @@
                     <TextBlock Grid.Column="1"
                                Margin="0,0,8,0"
                                VerticalAlignment="Center"
-                               Style="{DynamicResource Text.Mono}"
+                               Style="{DynamicResource Text.Numbers}"
                                Foreground="{DynamicResource Brush.TextMuted}"
                                TextTrimming="CharacterEllipsis"
                                Text="{Binding DataFolder}"

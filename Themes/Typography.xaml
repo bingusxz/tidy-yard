@@ -2,10 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Bundled OFL fonts, compiled in as resources. Shared by every theme. -->
-    <FontFamily x:Key="Font.Heading">pack://application:,,,/Assets/Fonts/#Fraunces 9pt</FontFamily>
+    <!-- Inter (OFL) for everything, compiled in as a resource. Shared by every theme.
+         Numbers use tabular figures (set on Style.Window) so times and dates line up. -->
+    <FontFamily x:Key="Font.Heading">pack://application:,,,/Assets/Fonts/#Inter</FontFamily>
     <FontFamily x:Key="Font.UI">pack://application:,,,/Assets/Fonts/#Inter</FontFamily>
-    <FontFamily x:Key="Font.Mono">pack://application:,,,/Assets/Fonts/#IBM Plex Mono</FontFamily>
+    <FontFamily x:Key="Font.Numbers">pack://application:,,,/Assets/Fonts/#Inter</FontFamily>
     <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
     <!-- The whole type scale. Four sizes, nothing else. -->
