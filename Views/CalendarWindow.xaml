@@ -105,6 +105,7 @@
                                 <ItemsControl ItemsSource="{Binding Events}" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                            <StackPanel>
                                             <Button Style="{DynamicResource Button.Bare}"
                                                     Padding="8"
                                                     Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -121,7 +122,9 @@
                                                                Foreground="{DynamicResource Brush.TextMuted}"
                                                                Text="{Binding AgendaTime}" />
                                                     <StackPanel Grid.Column="1">
-                                                        <TextBlock FontWeight="Medium" Text="{Binding Title}" TextWrapping="Wrap" />
+                                                        <TextBlock FontWeight="Medium" TextWrapping="Wrap">
+                                                            <Run Text="{Binding Title, Mode=OneWay}" /><Run Foreground="{DynamicResource Brush.TextDim}" Text="{Binding ProgressText, Mode=OneWay, StringFormat=' {0}'}" />
+                                                        </TextBlock>
                                                         <TextBlock Margin="0,2,0,0"
                                                                    Style="{DynamicResource Text.Muted}"
                                                                    Text="{Binding Note}"
@@ -129,6 +132,28 @@
                                                     </StackPanel>
                                                 </Grid>
                                             </Button>
+                                            <!-- Checklist: ticking saves straight away. -->
+                                            <ItemsControl Margin="72,0,0,8" ItemsSource="{Binding Checklist}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ChecklistItemViewModel}">
+                                                        <CheckBox Style="{DynamicResource CheckBox.Tick}" IsChecked="{Binding IsDone}">
+                                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                                                <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -174,7 +199,36 @@
                                           IsEnabled="{Binding CanSetReminder}"
                                           AutomationProperties.Name="Reminder" />
 
-                                <TextBox Margin="0,8,0,0"
+                                <TextBlock Margin="2,12,0,4" Style="{DynamicResource Text.Muted}" Text="Checklist" />
+                                <ItemsControl ItemsSource="{Binding FormChecklist}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:ChecklistItemViewModel}">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right"
+                                                        Width="24" Height="24"
+                                                        Style="{DynamicResource Button.Icon}"
+                                                        Content="{DynamicResource Glyph.Close}"
+                                                        Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Remove item"
+                                                        AutomationProperties.Name="Remove item" />
+                                                <CheckBox Style="{DynamicResource CheckBox.Tick}" IsChecked="{Binding IsDone}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                                </CheckBox>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBox Margin="0,4,0,0"
+                                         Tag="Add item"
+                                         Text="{Binding NewItemText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Add checklist item">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding AddItemCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+
+                                <TextBox Margin="0,12,0,0"
                                          MinHeight="64"
                                          Padding="8,6"
                                          VerticalContentAlignment="Top"

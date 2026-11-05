@@ -454,6 +454,51 @@
         </Setter>
     </Style>
 
+    <!-- Checklist tick: a round box that fills with the accent and shows a check when done. -->
+    <Style x:Key="CheckBox.Tick" TargetType="CheckBox">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border Background="Transparent" Padding="0,2,0,2">
+                        <DockPanel>
+                            <Border x:Name="Box"
+                                    DockPanel.Dock="Left"
+                                    Width="16" Height="16"
+                                    VerticalAlignment="Top"
+                                    Margin="0,1,0,0"
+                                    CornerRadius="8"
+                                    BorderThickness="1.5"
+                                    BorderBrush="{DynamicResource Brush.RuleStrong}"
+                                    Background="Transparent">
+                                <TextBlock x:Name="Mark"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="{DynamicResource Font.Icons}"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource Brush.OnAccent}"
+                                           Text="{DynamicResource Glyph.Check}"
+                                           Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Switch: a CheckBox drawn as a sliding toggle. -->
     <Style x:Key="CheckBox.Switch" TargetType="CheckBox">
         <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />

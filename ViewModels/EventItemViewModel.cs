@@ -1,15 +1,27 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using TidyYard.Models;
 using TidyYard.Services;
 
 namespace TidyYard.ViewModels;
 
-/// <summary>Read-only display wrapper for one event line.</summary>
-public sealed class EventItemViewModel
+/// <summary>Display wrapper for one event line, with its checklist when it has one.</summary>
+public sealed class EventItemViewModel : ObservableObject
 {
-    public EventItemViewModel(CalendarEvent model, TimeFormatService clock)
+    public EventItemViewModel(
+        CalendarEvent model,
+        TimeFormatService clock,
+        IEnumerable<ChecklistItem>? checklist = null,
+        Action<ChecklistItem>? persistItem = null)
     {
         Model = model;
         TimeText = model.Time is { } time ? clock.Format(time) : string.Empty;
+        Checklist = new ObservableCollection<ChecklistItemViewModel>(
+            (checklist ?? []).Select(item => new ChecklistItemViewModel(item, toggled =>
+            {
+                persistItem?.Invoke(toggled.Model);
+                OnPropertyChanged(nameof(ProgressText));
+            })));
     }
 
     public CalendarEvent Model { get; }
@@ -29,4 +41,13 @@ public sealed class EventItemViewModel
     public string? Note => Model.Note;
 
     public bool HasNote => !string.IsNullOrWhiteSpace(Model.Note);
+
+    public ObservableCollection<ChecklistItemViewModel> Checklist { get; }
+
+    public bool HasChecklist => Checklist.Count > 0;
+
+    /// <summary>"2 of 5", shown beside the title; empty when there is no checklist.</summary>
+    public string ProgressText => HasChecklist
+        ? $"{Checklist.Count(i => i.IsDone)} of {Checklist.Count}"
+        : string.Empty;
 }

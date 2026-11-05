@@ -134,6 +134,12 @@ public sealed class ReminderService : IDisposable
                     .SetBackgroundActivation())
                 .AddButton(new ToastButtonDismiss("Dismiss"));
 
+            var progress = DescribeChecklist(due.Id);
+            if (progress.Length > 0)
+            {
+                builder.AddText(progress);
+            }
+
             var tag = due.Id.ToString(CultureInfo.InvariantCulture);
             builder.Show(toast =>
             {
@@ -145,6 +151,17 @@ public sealed class ReminderService : IDisposable
         {
             Log("Could not show a reminder", ex);
         }
+    }
+
+    /// <summary>"2 of 5 items done", or an empty line when the event has no checklist.</summary>
+    private string DescribeChecklist(long eventId)
+    {
+        if (!_storage.GetChecklists([eventId]).TryGetValue(eventId, out var items) || items.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return $"{items.Count(i => i.IsDone)} of {items.Count} items done";
     }
 
     private string DescribeStart(CalendarEvent due, DateTime now)

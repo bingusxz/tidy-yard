@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using Microsoft.Data.Sqlite;
 using TidyYard.Models;
 
@@ -9,7 +10,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class StorageService
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
     private const string DateFormat = "yyyy-MM-dd";
     private const string TimeFormat = "HH:mm";
     private const string DateTimeFormat = "yyyy-MM-dd'T'HH:mm";
@@ -24,7 +25,44 @@ public sealed class StorageService
             Mode = SqliteOpenMode.ReadWriteCreate,
         }.ToString();
 
+        BackUpBeforeUpgrade(databasePath);
         EnsureSchema();
+    }
+
+    /// <summary>
+    /// Before an app update changes the database layout, keeps a copy of the old file next to it
+    /// (tidyyard.db.backup-v2). Uses its own unpooled connection so the file is not held open while copying.
+    /// </summary>
+    private static void BackUpBeforeUpgrade(string databasePath)
+    {
+        if (!File.Exists(databasePath))
+        {
+            return;
+        }
+
+        try
+        {
+            int version;
+            var readOnly = new SqliteConnectionStringBuilder { DataSource = databasePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false }
+                .ToString();
+            using (var connection = new SqliteConnection(readOnly))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA user_version";
+                version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            }
+
+            var backup = $"{databasePath}.backup-v{version}";
+            if (version > 0 && version < SchemaVersion && !File.Exists(backup))
+            {
+                File.Copy(databasePath, backup);
+            }
+        }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            // A missing backup must not stop the app from starting; the upgrade itself is transactional.
+        }
     }
 
     public IReadOnlyList<CalendarEvent> GetEvents(DateOnly from, DateOnly to)
@@ -147,8 +185,102 @@ public sealed class StorageService
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM events WHERE id = $id";
+        command.CommandText =
+            """
+            DELETE FROM checklist_items WHERE event_id = $id;
+            DELETE FROM events WHERE id = $id;
+            """;
         command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Checklist items for the given events, in the order the user arranged them.</summary>
+    public IReadOnlyDictionary<long, List<ChecklistItem>> GetChecklists(IReadOnlyCollection<long> eventIds)
+    {
+        var result = new Dictionary<long, List<ChecklistItem>>();
+        if (eventIds.Count == 0)
+        {
+            return result;
+        }
+
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var names = new List<string>();
+        var index = 0;
+        foreach (var id in eventIds)
+        {
+            var name = $"$e{index++}";
+            names.Add(name);
+            command.Parameters.AddWithValue(name, id);
+        }
+
+        command.CommandText =
+            $"""
+            SELECT id, event_id, text, done
+            FROM checklist_items
+            WHERE event_id IN ({string.Join(", ", names)})
+            ORDER BY event_id, position, id
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var item = new ChecklistItem
+            {
+                Id = reader.GetInt64(0),
+                EventId = reader.GetInt64(1),
+                Text = reader.GetString(2),
+                IsDone = reader.GetInt32(3) != 0,
+            };
+            if (!result.TryGetValue(item.EventId, out var list))
+            {
+                result[item.EventId] = list = [];
+            }
+
+            list.Add(item);
+        }
+
+        return result;
+    }
+
+    /// <summary>Replaces an event's whole checklist with <paramref name="items"/>, in that order.</summary>
+    public void SaveChecklist(long eventId, IEnumerable<ChecklistItem> items)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+
+        using (var delete = connection.CreateCommand())
+        {
+            delete.Transaction = transaction;
+            delete.CommandText = "DELETE FROM checklist_items WHERE event_id = $event";
+            delete.Parameters.AddWithValue("$event", eventId);
+            delete.ExecuteNonQuery();
+        }
+
+        var position = 0;
+        foreach (var item in items)
+        {
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText =
+                "INSERT INTO checklist_items (event_id, text, done, position) VALUES ($event, $text, $done, $position)";
+            insert.Parameters.AddWithValue("$event", eventId);
+            insert.Parameters.AddWithValue("$text", item.Text);
+            insert.Parameters.AddWithValue("$done", item.IsDone ? 1 : 0);
+            insert.Parameters.AddWithValue("$position", position++);
+            insert.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>Ticks or unticks one item straight from the agenda.</summary>
+    public void SetItemDone(long itemId, bool done)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE checklist_items SET done = $done WHERE id = $id";
+        command.Parameters.AddWithValue("$done", done ? 1 : 0);
+        command.Parameters.AddWithValue("$id", itemId);
         command.ExecuteNonQuery();
     }
 
@@ -192,6 +324,21 @@ public sealed class StorageService
                 ALTER TABLE events ADD COLUMN reminder_minutes INTEGER NULL;
                 ALTER TABLE events ADD COLUMN next_reminder TEXT NULL;
                 CREATE INDEX IF NOT EXISTS ix_events_next_reminder ON events (next_reminder) WHERE next_reminder IS NOT NULL;
+                """);
+        }
+
+        if (version < 3)
+        {
+            steps.Add(
+                """
+                CREATE TABLE IF NOT EXISTS checklist_items (
+                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id  INTEGER NOT NULL,
+                    text      TEXT NOT NULL,
+                    done      INTEGER NOT NULL DEFAULT 0,
+                    position  INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_checklist_items_event ON checklist_items (event_id, position);
                 """);
         }
 

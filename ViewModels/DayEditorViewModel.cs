@@ -63,6 +63,34 @@ public sealed partial class DayEditorViewModel : ObservableObject
         _settings = settings;
     }
 
+    /// <summary>Checklist being edited in the form. Saved with the event; Cancel discards changes.</summary>
+    public ObservableCollection<ChecklistItemViewModel> FormChecklist { get; } = [];
+
+    [ObservableProperty]
+    private string _newItemText = string.Empty;
+
+    [RelayCommand]
+    private void AddItem()
+    {
+        var text = NewItemText.Trim();
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        FormChecklist.Add(new ChecklistItemViewModel(new ChecklistItem { Text = text }));
+        NewItemText = string.Empty;
+    }
+
+    [RelayCommand]
+    private void RemoveItem(ChecklistItemViewModel? item)
+    {
+        if (item is not null)
+        {
+            FormChecklist.Remove(item);
+        }
+    }
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     /// <summary>Reminders need a time, so the picker is disabled for all-day events.</summary>
@@ -145,9 +173,12 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
         Date = date;
         Events.Clear();
-        foreach (var e in events)
+        var list = events.ToList();
+        var checklists = _storage.GetChecklists(list.Select(e => e.Id).ToList());
+        foreach (var e in list)
         {
-            Events.Add(new EventItemViewModel(e, _clock));
+            checklists.TryGetValue(e.Id, out var items);
+            Events.Add(new EventItemViewModel(e, _clock, items, item => _storage.SetItemDone(item.Id, item.IsDone)));
         }
 
         OnPropertyChanged(nameof(HasEvents));
@@ -168,6 +199,8 @@ public sealed partial class DayEditorViewModel : ObservableObject
         Title = string.Empty;
         TimeText = string.Empty;
         SelectedReminder = ReminderOption.For(_settings.Current.DefaultReminderMinutes);
+        FormChecklist.Clear();
+        NewItemText = string.Empty;
         Note = string.Empty;
         Error = string.Empty;
         IsFormOpen = true;
@@ -187,6 +220,14 @@ public sealed partial class DayEditorViewModel : ObservableObject
         Title = item.Model.Title;
         TimeText = item.TimeText;
         SelectedReminder = ReminderOption.For(item.Model.ReminderMinutes);
+        FormChecklist.Clear();
+        NewItemText = string.Empty;
+        foreach (var line in item.Checklist)
+        {
+            FormChecklist.Add(new ChecklistItemViewModel(
+                new ChecklistItem { Text = line.Text, IsDone = line.IsDone }));
+        }
+
         Note = item.Model.Note ?? string.Empty;
         Error = string.Empty;
         IsFormOpen = true;
@@ -228,6 +269,9 @@ public sealed partial class DayEditorViewModel : ObservableObject
             ReminderMinutes = time is null ? null : SelectedReminder.Minutes,
         };
 
+        // Text typed in the "Add item" box but not yet added still counts.
+        AddItem();
+
         if (_editingId is null)
         {
             _storage.Add(model);
@@ -236,6 +280,8 @@ public sealed partial class DayEditorViewModel : ObservableObject
         {
             _storage.Update(model);
         }
+
+        _storage.SaveChecklist(model.Id, FormChecklist.Select(i => i.Model));
 
         CloseForm();
         EventsChanged?.Invoke(this, Date);
