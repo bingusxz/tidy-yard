@@ -65,6 +65,24 @@
                 </Grid>
             </Border>
 
+            <!-- Time format -->
+            <Border Style="{StaticResource Row}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Margin="0,8,0,0" VerticalAlignment="Top" Style="{DynamicResource Text.Label}" Text="Time format" />
+                    <ListBox Grid.Column="1"
+                             Margin="0,0,0,-4"
+                             Style="{DynamicResource ListBox.Options}"
+                             ItemsSource="{Binding ClockOptions}"
+                             SelectedItem="{Binding SelectedClock}"
+                             DisplayMemberPath="Name"
+                             AutomationProperties.Name="Time format" />
+                </Grid>
+            </Border>
+
             <!-- Calendar opacity -->
             <Border Style="{StaticResource Row}">
                 <Grid>

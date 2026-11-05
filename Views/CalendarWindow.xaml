@@ -269,7 +269,7 @@
                                                     <Border Padding="0,8" BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,0,1">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="48" />
+                                                                <ColumnDefinition Width="64" />
                                                                 <ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
                                                             <TextBlock Grid.Column="0"
@@ -316,7 +316,7 @@
                                              AutomationProperties.Name="Time" />
                                     <TextBlock Margin="0,4,0,0"
                                                Style="{DynamicResource Text.Muted}"
-                                               Text="24-hour, for example 14:30. Leave empty if there is no set time." />
+                                               Text="{Binding TimeHint}" />
 
                                     <TextBlock Margin="0,12,0,4" Style="{DynamicResource Text.Label}" Text="Note" />
                                     <TextBox MinHeight="72"

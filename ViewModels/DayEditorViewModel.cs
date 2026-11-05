@@ -10,14 +10,8 @@ namespace TidyYard.ViewModels;
 /// <summary>Side panel for the selected day: event list plus add/edit form.</summary>
 public sealed partial class DayEditorViewModel : ObservableObject
 {
-    // "%H" not "H": a lone letter is read as a standard format specifier and throws.
-    private static readonly string[] TimeFormats =
-    [
-        "H:mm", "HH:mm", "HHmm", "%H", "HH", "H.mm",
-        "h:mm tt", "h:mmtt", "h tt", "htt",
-    ];
-
     private readonly StorageService _storage;
+    private readonly TimeFormatService _clock;
     private long? _editingId;
 
     [ObservableProperty]
@@ -50,7 +44,11 @@ public sealed partial class DayEditorViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(DeleteCommand))]
     private bool _canDelete;
 
-    public DayEditorViewModel(StorageService storage) => _storage = storage;
+    public DayEditorViewModel(StorageService storage, TimeFormatService clock)
+    {
+        _storage = storage;
+        _clock = clock;
+    }
 
     /// <summary>Raised after an event is saved or deleted.</summary>
     public event EventHandler? EventsChanged;
@@ -63,6 +61,11 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
     public string Heading => Date.ToString("dddd, d MMMM", CultureInfo.CurrentCulture);
 
+    public string TimeHint => _clock.InputHint;
+
+    /// <summary>Call after the 12/24-hour setting changes.</summary>
+    public void OnClockFormatChanged() => OnPropertyChanged(nameof(TimeHint));
+
     public void Show(DateOnly date, IEnumerable<CalendarEvent> events)
     {
         if (date != Date)
@@ -74,7 +77,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         Events.Clear();
         foreach (var e in events)
         {
-            Events.Add(new EventItemViewModel(e));
+            Events.Add(new EventItemViewModel(e, _clock));
         }
 
         OnPropertyChanged(nameof(HasEvents));
@@ -131,10 +134,11 @@ public sealed partial class DayEditorViewModel : ObservableObject
         var timeText = TimeText.Trim();
         if (timeText.Length > 0)
         {
-            if (!TimeOnly.TryParseExact(
-                    timeText, TimeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            if (!TimeFormatService.TryParse(timeText, out var parsed))
             {
-                Error = "Enter the time as HH:MM, for example 14:30.";
+                Error = _clock.Uses24Hour
+                    ? "Enter a time like 14:30."
+                    : "Enter a time like 2:30 PM.";
                 return;
             }
 

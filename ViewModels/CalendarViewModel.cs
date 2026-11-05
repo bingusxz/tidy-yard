@@ -16,8 +16,10 @@ public sealed partial class CalendarViewModel : ObservableObject
     private readonly IWindowService _windows;
     private readonly DayOfWeek _firstDayOfWeek;
     private readonly DispatcherTimer _dayRollover;
+    private readonly TimeFormatService _clock;
 
     private DateOnly _today;
+    private bool _uses24Hour;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MonthTitle))]
@@ -30,11 +32,14 @@ public sealed partial class CalendarViewModel : ObservableObject
     [ObservableProperty]
     private double _windowOpacity;
 
-    public CalendarViewModel(StorageService storage, SettingsService settings, IWindowService windows)
+    public CalendarViewModel(
+        StorageService storage, SettingsService settings, TimeFormatService clock, IWindowService windows)
     {
         _storage = storage;
         _settings = settings;
+        _clock = clock;
         _windows = windows;
+        _uses24Hour = clock.Uses24Hour;
 
         var format = CultureInfo.CurrentCulture.DateTimeFormat;
         _firstDayOfWeek = format.FirstDayOfWeek;
@@ -47,11 +52,11 @@ public sealed partial class CalendarViewModel : ObservableObject
             Days.Add(new DayCellViewModel(SelectDay));
         }
 
-        Editor = new DayEditorViewModel(storage);
+        Editor = new DayEditorViewModel(storage, clock);
         Editor.EventsChanged += (_, _) => Refresh();
 
         WindowOpacity = settings.Current.OpacityPercent / 100.0;
-        settings.Changed += (_, _) => WindowOpacity = _settings.Current.OpacityPercent / 100.0;
+        settings.Changed += OnSettingsChanged;
 
         _today = DateOnly.FromDateTime(DateTime.Today);
         _month = new DateOnly(_today.Year, _today.Month, 1);
@@ -112,6 +117,19 @@ public sealed partial class CalendarViewModel : ObservableObject
         SelectedDate = null;
     }
 
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        WindowOpacity = _settings.Current.OpacityPercent / 100.0;
+
+        // Redraw times only when the clock style actually changed, not on every opacity tick.
+        if (_clock.Uses24Hour != _uses24Hour)
+        {
+            _uses24Hour = _clock.Uses24Hour;
+            Editor.OnClockFormatChanged();
+            Refresh();
+        }
+    }
+
     private void SelectDay(DayCellViewModel cell)
     {
         // Capture first: changing Month reassigns every cell's date.
@@ -146,7 +164,7 @@ public sealed partial class CalendarViewModel : ObservableObject
             cell.IsInMonth = date.Month == Month.Month && date.Year == Month.Year;
             cell.IsToday = date == _today;
             cell.IsSelected = date == SelectedDate;
-            cell.SetEvents(byDate.TryGetValue(date, out var events) ? events : []);
+            cell.SetEvents(byDate.TryGetValue(date, out var events) ? events : [], _clock);
         }
 
         if (SelectedDate is { } selected)

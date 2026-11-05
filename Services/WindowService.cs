@@ -9,6 +9,7 @@ public sealed class WindowService : IWindowService
     private readonly SettingsService _settings;
     private readonly StorageService _storage;
     private readonly ThemeService _themes;
+    private readonly TimeFormatService _clock;
     private readonly Action _quit;
 
     private CalendarWindow? _calendar;
@@ -19,12 +20,13 @@ public sealed class WindowService : IWindowService
         _settings = settings;
         _storage = storage;
         _themes = themes;
+        _clock = new TimeFormatService(settings);
         _quit = quit;
     }
 
     public void ShowCalendar()
     {
-        _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, this), _settings);
+        _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this), _settings);
         _calendar.ShowAndFocus();
     }
 

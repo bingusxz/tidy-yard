@@ -2,6 +2,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TidyYard.Models;
+using TidyYard.Services;
 
 namespace TidyYard.ViewModels;
 
@@ -57,9 +58,9 @@ public sealed partial class DayCellViewModel : ObservableObject
         }
     }
 
-    public void SetEvents(IReadOnlyList<CalendarEvent> events)
+    public void SetEvents(IReadOnlyList<CalendarEvent> events, TimeFormatService clock)
     {
-        VisibleEvents = events.Take(MaxVisibleEvents).Select(e => new EventItemViewModel(e)).ToList();
+        VisibleEvents = events.Take(MaxVisibleEvents).Select(e => new EventItemViewModel(e, clock)).ToList();
         var extra = events.Count - MaxVisibleEvents;
         MoreText = extra > 0 ? $"{extra} more" : string.Empty;
         EventCount = events.Count;
