@@ -231,6 +231,69 @@ public sealed partial class CalendarViewModel : ObservableObject
 
     private void SelectDay(DayCellViewModel cell) => SelectedDate = cell.Date;
 
+    // ---- Search and jump to date ---------------------------------------------------------
+
+    [ObservableProperty]
+    private bool _isSearchOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoResults))]
+    private string _searchText = string.Empty;
+
+    public ObservableCollection<SearchResultItemViewModel> SearchResults { get; } = [];
+
+    /// <summary>"Nothing found" once something has been typed and nothing matches.</summary>
+    public bool ShowNoResults => SearchText.Trim().Length > 0 && SearchResults.Count == 0;
+
+    partial void OnSearchTextChanged(string value) => RunSearch();
+
+    private void RunSearch()
+    {
+        SearchResults.Clear();
+        var text = SearchText.Trim();
+        if (text.Length > 0)
+        {
+            // A typed date comes first, so "12 mar 2027" or "12/03/2027" jumps straight there.
+            if (DateInput.TryParse(text, out var date))
+            {
+                SearchResults.Add(SearchResultItemViewModel.ForDate(date));
+            }
+
+            foreach (var hit in _storage.Search(text, DateOnly.FromDateTime(DateTime.Today)))
+            {
+                SearchResults.Add(SearchResultItemViewModel.FromEvent(hit, _clock));
+            }
+        }
+
+        OnPropertyChanged(nameof(ShowNoResults));
+    }
+
+    [RelayCommand]
+    private void OpenSearch() => IsSearchOpen = true;
+
+    [RelayCommand]
+    private void CloseSearch()
+    {
+        IsSearchOpen = false;
+        SearchText = string.Empty;
+    }
+
+    [RelayCommand]
+    private void GoToResult(SearchResultItemViewModel? result)
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        SelectedDate = result.Day;
+        CloseSearch();
+    }
+
+    /// <summary>Enter in the search box opens the first result.</summary>
+    [RelayCommand]
+    private void GoToFirstResult() => GoToResult(SearchResults.FirstOrDefault());
+
     /// <summary>
     /// Drag and drop: moves an event to another day. An event that does not repeat moves whole, keeping its
     /// time and length. For a repeating one only the dragged occurrence moves: that day is skipped and a

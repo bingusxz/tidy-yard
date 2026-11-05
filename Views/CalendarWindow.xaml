@@ -27,6 +27,7 @@
         <KeyBinding Modifiers="Control" Key="Left" Command="{Binding PreviousCommand}" />
         <KeyBinding Modifiers="Control" Key="Right" Command="{Binding NextCommand}" />
         <KeyBinding Modifiers="Control" Key="T" Command="{Binding GoToTodayCommand}" />
+        <KeyBinding Modifiers="Control" Key="F" Command="{Binding OpenSearchCommand}" />
         <KeyBinding Modifiers="Control" Key="D1" Command="{Binding ShowViewCommand}" CommandParameter="Month" />
         <KeyBinding Modifiers="Control" Key="D2" Command="{Binding ShowViewCommand}" CommandParameter="Week" />
         <KeyBinding Modifiers="Control" Key="D3" Command="{Binding ShowViewCommand}" CommandParameter="Day" />
@@ -348,6 +349,52 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+                    <!-- Search: type to find events, or type a date to jump to it. Opens with Ctrl+F. -->
+                    <Popup IsOpen="{Binding IsSearchOpen, Mode=TwoWay}"
+                           PlacementTarget="{Binding ElementName=SearchButton}"
+                           Placement="Bottom"
+                           HorizontalOffset="-300"
+                           StaysOpen="False"
+                           AllowsTransparency="True">
+                        <Border Margin="0,8,0,0" Width="332" Padding="12" CornerRadius="12"
+                                Background="{DynamicResource Brush.Window}"
+                                BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
+                                TextElement.Foreground="{DynamicResource Brush.Text}"
+                                TextElement.FontFamily="{DynamicResource Font.UI}"
+                                TextElement.FontSize="{DynamicResource Size.Body}">
+                            <StackPanel>
+                                <TextBox Tag="Search events, or type a date"
+                                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         IsVisibleChanged="OnTitleBoxVisibleChanged"
+                                         AutomationProperties.Name="Search">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding GoToFirstResultCommand}" />
+                                        <KeyBinding Key="Escape" Command="{Binding CloseSearchCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                                <TextBlock Margin="4,10,0,0" Style="{DynamicResource Text.Muted}" Text="Nothing found"
+                                           Visibility="{Binding ShowNoResults, Converter={StaticResource BoolToVisibility}}" />
+                                <ScrollViewer Margin="-4,8,-4,0" MaxHeight="320" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <ItemsControl ItemsSource="{Binding SearchResults}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:SearchResultItemViewModel}">
+                                                <Button Padding="8,6"
+                                                        Style="{DynamicResource Button.Bare}"
+                                                        Command="{Binding DataContext.GoToResultCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        AutomationProperties.Name="{Binding Title}">
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="Medium" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                                                        <TextBlock Style="{DynamicResource Text.Muted}" TextTrimming="CharacterEllipsis" Text="{Binding Detail}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
 
                     <TextBlock Grid.Column="0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                         <Run FontSize="{DynamicResource Size.Title}" FontWeight="SemiBold" Text="{Binding Title, Mode=OneWay}" />
@@ -386,6 +433,13 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="SearchButton"
+                                Style="{DynamicResource Button.Icon}"
+                                Content="{DynamicResource Glyph.Search}"
+                                Command="{Binding OpenSearchCommand}"
+                                ToolTip="Search (Ctrl+F)"
+                                AutomationProperties.Name="Search"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
                         <Button Command="{Binding ToggleLockCommand}"
                                 ToolTip="{Binding LockToolTip}"
                                 AutomationProperties.Name="{Binding LockToolTip}"

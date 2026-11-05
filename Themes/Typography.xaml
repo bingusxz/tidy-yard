@@ -31,5 +31,6 @@
     <sys:String x:Key="Glyph.ChevronDown">&#xE70D;</sys:String>
     <sys:String x:Key="Glyph.More">&#xE712;</sys:String>
     <sys:String x:Key="Glyph.Check">&#xE73E;</sys:String>
+    <sys:String x:Key="Glyph.Search">&#xE721;</sys:String>
 
 </ResourceDictionary>

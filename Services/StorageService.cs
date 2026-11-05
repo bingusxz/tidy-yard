@@ -417,6 +417,82 @@ public sealed class StorageService
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Finds events whose title or note contains <paramref name="text"/> (case ignored), in the user's own
+    /// events and in subscribed calendars. A repeating event is listed once, at its next day (or its last, if it
+    /// has ended). Upcoming results come first, soonest first, then past ones, most recent first.
+    /// </summary>
+    public IReadOnlyList<SearchResult> Search(string text, DateOnly today, int limit = 40)
+    {
+        var term = text.Trim();
+        if (term.Length == 0)
+        {
+            return [];
+        }
+
+        // LIKE treats % and _ as wildcards; searching for them literally needs escaping.
+        var pattern = "%" + term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+        var results = new List<SearchResult>();
+
+        using var connection = Open();
+        using (var own = connection.CreateCommand())
+        {
+            own.CommandText =
+                $"""
+                SELECT {Columns}
+                FROM events
+                WHERE deleted_at IS NULL AND (title LIKE $p ESCAPE '\' OR note LIKE $p ESCAPE '\')
+                LIMIT 500
+                """;
+            own.Parameters.AddWithValue("$p", pattern);
+            var found = ReadEvents(own);
+            var skipped = LoadSkippedDays(connection, found.Where(e => e.Repeat != RepeatRule.None).Select(e => e.Id));
+            foreach (var e in found)
+            {
+                var day = e.Date;
+                if (e.Repeat != RepeatRule.None)
+                {
+                    skipped.TryGetValue(e.Id, out var skipSet);
+                    var upcoming = Recurrence.Occurrences(e.Date, e.Repeat, today, today.AddYears(5), skipSet, e.RepeatUntil).FirstOrDefault();
+                    day = upcoming != default
+                        ? upcoming
+                        : Recurrence.Occurrences(e.Date, e.Repeat, e.Date, today.AddDays(-1), skipSet, e.RepeatUntil).LastOrDefault();
+                    if (day == default)
+                    {
+                        continue;
+                    }
+                }
+
+                results.Add(new SearchResult(e.Id, e.Title, day, e.Time, null, e.Repeat != RepeatRule.None));
+            }
+        }
+
+        using (var linked = connection.CreateCommand())
+        {
+            linked.CommandText =
+                $"""
+                SELECT {ImportedColumns}, e.uid
+                FROM imported_events e JOIN calendar_sources s ON s.id = e.source_id
+                WHERE e.title LIKE $p ESCAPE '\' OR e.location LIKE $p ESCAPE '\'
+                LIMIT 1000
+                """;
+            linked.Parameters.AddWithValue("$p", pattern);
+            var found = ReadEvents(linked);
+            // The same repeating event arrives as many rows; keep the nearest one to today.
+            foreach (var group in found.GroupBy(e => (e.SourceName, e.Title, e.Time)))
+            {
+                var best = group.OrderBy(e => e.Date < today ? 1 : 0).ThenBy(e => Math.Abs(e.Date.DayNumber - today.DayNumber)).First();
+                results.Add(new SearchResult(best.Id, best.Title, best.Date, best.Time, best.SourceName, group.Count() > 1));
+            }
+        }
+
+        return [.. results
+            .OrderBy(r => r.Day < today ? 1 : 0)
+            .ThenBy(r => r.Day < today ? -r.Day.DayNumber : r.Day.DayNumber)
+            .ThenBy(r => r.Title, StringComparer.CurrentCultureIgnoreCase)
+            .Take(limit)];
+    }
+
     /// <summary>Moves an event that does not repeat to start on another day, keeping its time and length.</summary>
     public void MoveEvent(long id, DateOnly newStart)
     {
@@ -939,3 +1015,9 @@ public sealed class StorageService
 
     private static string FormatDate(DateOnly date) => date.ToString(DateFormat, CultureInfo.InvariantCulture);
 }
+
+/// <summary>One match from searching the calendar.</summary>
+/// <param name="Day">The day to jump to when the result is picked.</param>
+/// <param name="Source">The subscribed calendar it came from, or null for the user's own events.</param>
+/// <param name="Repeats">True for an event that repeats (it is listed once, at its next day).</param>
+public sealed record SearchResult(long Id, string Title, DateOnly Day, TimeOnly? Time, string? Source, bool Repeats);

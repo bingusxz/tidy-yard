@@ -122,9 +122,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
     private static string FormatDate(DateOnly date) => date.ToString("d", CultureInfo.CurrentCulture);
 
-    private static bool TryParseDate(string text, out DateOnly date) =>
-        DateOnly.TryParse(text.Trim(), CultureInfo.CurrentCulture, DateTimeStyles.None, out date)
-        || DateOnly.TryParse(text.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    private static bool TryParseDate(string text, out DateOnly date) => DateInput.TryParse(text, out date);
 
     /// <summary>The event being edited already repeats, so "Delete" removes every day and "Skip this day" removes one.</summary>
     [ObservableProperty]
