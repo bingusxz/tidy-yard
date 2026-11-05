@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:TidyYard.ViewModels"
+        xmlns:views="clr-namespace:TidyYard.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
         Title="Tidy Yard Settings"
@@ -29,6 +30,45 @@
         <Style x:Key="Row" TargetType="Grid">
             <Setter Property="Margin" Value="0,0,0,4" />
             <Setter Property="MinHeight" Value="48" />
+        </Style>
+
+        <views:InverseBooleanConverter x:Key="Inverse" />
+
+        <!-- Round colour swatch that opens the picker. Background = the colour shown. -->
+        <Style x:Key="Swatch" TargetType="ToggleButton">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Ring" CornerRadius="16" BorderThickness="2" BorderBrush="Transparent" Padding="2">
+                            <Border CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.RuleStrong}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.Text}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PickerCard" TargetType="Border">
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Window}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.RuleStrong}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Text}" />
+            <Setter Property="TextElement.FontFamily" Value="{DynamicResource Font.UI}" />
+            <Setter Property="TextElement.FontSize" Value="{DynamicResource Size.Body}" />
         </Style>
     </Window.Resources>
 
@@ -61,6 +101,93 @@
                                  SelectedItem="{Binding SelectedTheme}"
                                  DisplayMemberPath="Name"
                                  AutomationProperties.Name="Theme" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <!-- Accent colour -->
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Accent colour" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Today, buttons and highlights." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Button Margin="0,0,8,0"
+                                    Style="{DynamicResource Button.Text}"
+                                    Content="Reset"
+                                    Command="{Binding ResetAccentCommand}"
+                                    AutomationProperties.Name="Reset accent colour"
+                                    Visibility="{Binding HasCustomAccent, Converter={StaticResource BoolToVisibility}}" />
+                            <ToggleButton x:Name="AccentSwatch"
+                                          Style="{StaticResource Swatch}"
+                                          IsHitTestVisible="{Binding IsOpen, ElementName=AccentPopup, Converter={StaticResource Inverse}}"
+                                          ToolTip="Choose accent colour"
+                                          AutomationProperties.Name="Choose accent colour">
+                                <ToggleButton.Background>
+                                    <SolidColorBrush Color="{Binding AccentColor}" />
+                                </ToggleButton.Background>
+                            </ToggleButton>
+                            <Popup x:Name="AccentPopup"
+                                   IsOpen="{Binding IsChecked, ElementName=AccentSwatch, Mode=TwoWay}"
+                                   PlacementTarget="{Binding ElementName=AccentSwatch}"
+                                   Placement="Bottom"
+                                   HorizontalOffset="-232"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True">
+                                <Border Style="{StaticResource PickerCard}">
+                                    <views:ColorPicker SelectedColor="{Binding AccentColor}" Presets="{Binding AccentPresets}" />
+                                </Border>
+                            </Popup>
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <!-- Background tint -->
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Background tint" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="The colour of the glass." />
+                            <TextBlock Margin="0,2,0,0"
+                                       Style="{DynamicResource Text.Muted}"
+                                       Foreground="{DynamicResource Brush.Accent}"
+                                       Text="{Binding TintWarning}"
+                                       Visibility="{Binding HasTintWarning, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Button Margin="0,0,8,0"
+                                    Style="{DynamicResource Button.Text}"
+                                    Content="Reset"
+                                    Command="{Binding ResetTintCommand}"
+                                    AutomationProperties.Name="Reset background tint"
+                                    Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
+                            <ToggleButton x:Name="TintSwatch"
+                                          Style="{StaticResource Swatch}"
+                                          IsHitTestVisible="{Binding IsOpen, ElementName=TintPopup, Converter={StaticResource Inverse}}"
+                                          ToolTip="Choose background tint"
+                                          AutomationProperties.Name="Choose background tint">
+                                <ToggleButton.Background>
+                                    <SolidColorBrush Color="{Binding TintColor}" />
+                                </ToggleButton.Background>
+                            </ToggleButton>
+                            <Popup x:Name="TintPopup"
+                                   IsOpen="{Binding IsChecked, ElementName=TintSwatch, Mode=TwoWay}"
+                                   PlacementTarget="{Binding ElementName=TintSwatch}"
+                                   Placement="Bottom"
+                                   HorizontalOffset="-232"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True">
+                                <Border Style="{StaticResource PickerCard}">
+                                    <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding TintPresets}" />
+                                </Border>
+                            </Popup>
+                        </StackPanel>
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Brush.Rule}" />
                     <Grid Style="{StaticResource Row}">

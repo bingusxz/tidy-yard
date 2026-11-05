@@ -1,0 +1,88 @@
+<UserControl x:Class="TidyYard.Views.ColorPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root"
+             Width="232">
+    <!-- Colour wheel (angle = hue, distance from centre = saturation), brightness slider,
+         hex field and presets. Bind SelectedColor two-way. -->
+    <StackPanel>
+        <Grid x:Name="WheelHost"
+              Width="184" Height="184"
+              HorizontalAlignment="Center"
+              Background="Transparent"
+              Cursor="Cross"
+              MouseLeftButtonDown="OnWheelMouseDown"
+              MouseMove="OnWheelMouseMove"
+              MouseLeftButtonUp="OnWheelMouseUp">
+            <Image x:Name="Wheel" Stretch="Fill" />
+            <!-- Darkens the wheel to preview the brightness setting. -->
+            <Ellipse x:Name="Shade" Fill="Black" IsHitTestVisible="False" />
+            <Canvas IsHitTestVisible="False">
+                <Grid x:Name="Thumb" Width="18" Height="18">
+                    <Ellipse Stroke="#80000000" StrokeThickness="4" />
+                    <Ellipse Margin="1" Stroke="White" StrokeThickness="2" />
+                </Grid>
+            </Canvas>
+        </Grid>
+
+        <TextBlock Margin="0,12,0,0" Style="{DynamicResource Text.Label}" Text="Brightness" />
+        <Slider x:Name="Brightness"
+                Margin="0,4,0,0"
+                Minimum="0" Maximum="100"
+                SmallChange="1" LargeChange="10"
+                ValueChanged="OnBrightnessChanged"
+                AutomationProperties.Name="Brightness" />
+
+        <Grid Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="Preview" Width="32" Height="32" CornerRadius="16" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1" />
+            <TextBox x:Name="HexBox"
+                     Grid.Column="1"
+                     Margin="8,0,0,0"
+                     Tag="#RRGGBB"
+                     MaxLength="7"
+                     LostKeyboardFocus="OnHexCommit"
+                     KeyDown="OnHexKeyDown"
+                     AutomationProperties.Name="Hex colour" />
+        </Grid>
+
+        <ItemsControl x:Name="PresetList" Margin="0,12,0,0" Focusable="False">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Width="24" Height="24"
+                            Cursor="Hand"
+                            Click="OnPresetClick"
+                            Tag="{Binding}"
+                            AutomationProperties.Name="{Binding}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Swatch"
+                                        CornerRadius="12"
+                                        BorderBrush="{DynamicResource Brush.RuleStrong}"
+                                        BorderThickness="1">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{Binding}" />
+                                    </Border.Background>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Swatch" Property="BorderBrush" Value="{DynamicResource Brush.Text}" />
+                                        <Setter TargetName="Swatch" Property="BorderThickness" Value="2" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

@@ -47,7 +47,7 @@ public partial class App : Application
         }
 
         var themes = new ThemeService();
-        themes.Apply(_settings.Current.Theme);
+        themes.Apply(_settings.Current.Theme, _settings.Current.AccentColor, _settings.Current.TintColor);
 
         var windows = new WindowService(_settings, storage, themes, Shutdown);
 

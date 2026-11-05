@@ -106,5 +106,7 @@ public sealed class SettingsService
         settings.OpacityPercent = Math.Clamp(
             settings.OpacityPercent, AppSettings.MinOpacityPercent, AppSettings.MaxOpacityPercent);
         settings.Theme = ThemeService.Resolve(settings.Theme).Key;
+        settings.AccentColor = ThemeService.TryParseHex(settings.AccentColor, out var accent) ? ThemeService.ToHex(accent) : null;
+        settings.TintColor = ThemeService.TryParseHex(settings.TintColor, out var tint) ? ThemeService.ToHex(tint) : null;
     }
 }

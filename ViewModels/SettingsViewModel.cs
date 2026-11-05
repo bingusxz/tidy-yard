@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TidyYard.Models;
@@ -38,6 +39,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasStartupError))]
     private string _startupError = string.Empty;
 
+    /// <summary>Effective accent (custom, or the theme's own). Picking a colour makes it custom.</summary>
+    [ObservableProperty]
+    private Color _accentColor;
+
+    /// <summary>Effective background tint (custom, or the theme's own).</summary>
+    [ObservableProperty]
+    private Color _tintColor;
+
+    private bool _syncingColors;
+
     public SettingsViewModel(SettingsService settings, ThemeService themes)
     {
         _settings = settings;
@@ -58,6 +69,11 @@ public sealed partial class SettingsViewModel : ObservableObject
             new(ClockFormat.TwentyFourHour, "24-hour"),
         ];
         _selectedClock = ClockOptions.FirstOrDefault(o => o.Format == settings.Current.ClockFormat) ?? ClockOptions[0];
+
+        _syncingColors = true;
+        _accentColor = ThemeService.TryParseHex(settings.Current.AccentColor, out var accent) ? accent : themes.ThemeColor("Brush.Accent");
+        _tintColor = ThemeService.TryParseHex(settings.Current.TintColor, out var tint) ? tint : themes.ThemeColor("Brush.Glass");
+        _syncingColors = false;
     }
 
     public IReadOnlyList<ThemeOption> Themes => ThemeService.Themes;
@@ -72,11 +88,96 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string DataFolder => AppPaths.DataDirectory;
 
+    public IReadOnlyList<Color> AccentPresets { get; } = Presets(
+        "#3E6A4B", "#2F6F8F", "#4A5BC4", "#7A4FB0", "#B5476B", "#C2593A", "#D9A04A", "#5C6670");
+
+    public IReadOnlyList<Color> TintPresets { get; } = Presets(
+        "#F3EFE6", "#FFFFFF", "#E6ECF2", "#EFE7F3", "#141413", "#1C3025", "#1A2233", "#2A1E2C");
+
+    public bool HasCustomAccent => _settings.Current.AccentColor is not null;
+
+    public bool HasCustomTint => _settings.Current.TintColor is not null;
+
+    /// <summary>Shown under Background tint when the theme's text would be hard to read on it.</summary>
+    public string TintWarning
+    {
+        get
+        {
+            var text = _themes.ThemeColor("Brush.Text");
+            if (ThemeService.ContrastRatio(text, TintColor) >= 4.5)
+            {
+                return string.Empty;
+            }
+
+            return ThemeService.CurrentIsDark
+                ? "Text may be hard to read on this tint. Pick a darker tint or switch to Paper."
+                : "Text may be hard to read on this tint. Pick a lighter tint or switch to a dark theme.";
+        }
+    }
+
+    public bool HasTintWarning => TintWarning.Length > 0;
+
     partial void OnSelectedThemeChanged(ThemeOption value)
     {
-        _themes.Apply(value.Key);
         _settings.Update(s => s.Theme = value.Key);
+        ApplyTheme();
     }
+
+    partial void OnAccentColorChanged(Color value)
+    {
+        if (_syncingColors)
+        {
+            return;
+        }
+
+        _settings.Update(s => s.AccentColor = ThemeService.ToHex(value));
+        ApplyTheme();
+    }
+
+    partial void OnTintColorChanged(Color value)
+    {
+        if (_syncingColors)
+        {
+            return;
+        }
+
+        _settings.Update(s => s.TintColor = ThemeService.ToHex(value));
+        ApplyTheme();
+    }
+
+    [RelayCommand]
+    private void ResetAccent()
+    {
+        _settings.Update(s => s.AccentColor = null);
+        ApplyTheme();
+    }
+
+    [RelayCommand]
+    private void ResetTint()
+    {
+        _settings.Update(s => s.TintColor = null);
+        ApplyTheme();
+    }
+
+    /// <summary>Applies theme + custom colours, then shows the effective colours in the swatches.</summary>
+    private void ApplyTheme()
+    {
+        var current = _settings.Current;
+        _themes.Apply(current.Theme, current.AccentColor, current.TintColor);
+
+        _syncingColors = true;
+        AccentColor = ThemeService.TryParseHex(current.AccentColor, out var accent) ? accent : _themes.ThemeColor("Brush.Accent");
+        TintColor = ThemeService.TryParseHex(current.TintColor, out var tint) ? tint : _themes.ThemeColor("Brush.Glass");
+        _syncingColors = false;
+
+        OnPropertyChanged(nameof(HasCustomAccent));
+        OnPropertyChanged(nameof(HasCustomTint));
+        OnPropertyChanged(nameof(TintWarning));
+        OnPropertyChanged(nameof(HasTintWarning));
+    }
+
+    private static IReadOnlyList<Color> Presets(params string[] hex) =>
+        hex.Select(h => ThemeService.TryParseHex(h, out var c) ? c : Colors.Gray).ToList();
 
     partial void OnOpacityPercentChanged(int value) => _settings.Update(s => s.OpacityPercent = value);
 
