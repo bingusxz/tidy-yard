@@ -349,6 +349,103 @@
                 </StackPanel>
             </Border>
 
+            <!-- Auto-sort -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="AUTO-SORT" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
+                <StackPanel DataContext="{Binding AutoSort}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Sort new desktop files" />
+                            <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                                       Text="Moves each new file that matches a rule into a fence. Files already on the desktop are left alone. Every move is logged, and the notification has an Undo button." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding IsEnabled}"
+                                  AutomationProperties.Name="Sort new desktop files" />
+                    </Grid>
+
+                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Rules}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SortRuleItemViewModel}">
+                                <Grid MinHeight="40">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Height="1" VerticalAlignment="Top" Background="{DynamicResource Brush.Rule}" />
+                                    <TextBlock Margin="0,8,12,8" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Summary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <Button Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Style="{DynamicResource Button.Text}"
+                                            Content="Remove"
+                                            Command="{Binding RemoveCommand}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="Remove rule" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Height="1" Margin="0,4,0,12" Background="{DynamicResource Brush.Rule}" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="Create a fence first, then add a rule."
+                               Margin="0,0,0,4">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDestinations}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Visibility="{Binding HasDestinations, Converter={StaticResource BoolToVisibility}}">
+                        <TextBox Tag="File types, like pdf, docx"
+                                 Text="{Binding NewTypes, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="File types" />
+                        <TextBox Margin="0,8,0,0"
+                                 Tag="Name contains (optional), like invoice"
+                                 Text="{Binding NewWord, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Name contains" />
+                        <TextBlock Margin="2,8,0,4" Style="{DynamicResource Text.Muted}" Text="Move them to" />
+                        <ComboBox Style="{DynamicResource ComboBox.Flat}"
+                                  ItemsSource="{Binding Destinations}"
+                                  SelectedItem="{Binding SelectedDestination}"
+                                  DisplayMemberPath="Name"
+                                  AutomationProperties.Name="Destination fence" />
+                        <TextBlock Margin="2,8,0,0"
+                                   FontWeight="Medium"
+                                   Foreground="{DynamicResource Brush.Accent}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding Error}"
+                                   Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Margin="0,12,0,0"
+                                HorizontalAlignment="Left"
+                                Style="{DynamicResource Button.Primary}"
+                                Content="Add rule"
+                                Command="{Binding AddCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Calendar links -->
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="CALENDAR LINKS" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">

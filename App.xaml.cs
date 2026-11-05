@@ -16,6 +16,7 @@ public partial class App : Application
     private ReminderService? _reminders;
     private UpdateService? _updates;
     private HotkeyService? _hotkeys;
+    private AutoSortService? _autoSort;
     private TaskbarIcon? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -66,6 +67,10 @@ public partial class App : Application
         _updates.Start();
         sync.Start();
 
+        // Moves new desktop files into fences, only once the user has switched it on and added a rule.
+        _autoSort = new AutoSortService(_settings, fences, moves);
+        _autoSort.Start();
+
         // Win+Alt+F brings unlocked fences to the front, for when a window covers them.
         _hotkeys = new HotkeyService(windows.BringFencesToFront);
         _hotkeys.Register(virtualKey: 0x46);
@@ -99,6 +104,7 @@ public partial class App : Application
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _hotkeys?.Dispose();
+        _autoSort?.Dispose();
         _reminders?.Dispose();
         _settings?.Flush();
         _fences?.Flush();

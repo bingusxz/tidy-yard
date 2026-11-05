@@ -72,7 +72,7 @@ public sealed class WindowService : IWindowService
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates, _links ??= new CalendarLinksViewModel(_storage, _sync)));
+            _settingsWindow = new SettingsWindow(new SettingsViewModel(_settings, _themes, this, _updates, _links ??= new CalendarLinksViewModel(_storage, _sync), new AutoSortViewModel(_settings, _fences)));
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
         }

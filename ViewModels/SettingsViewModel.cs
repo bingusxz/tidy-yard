@@ -74,6 +74,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>The Calendar links section.</summary>
     public CalendarLinksViewModel Links { get; }
 
+    /// <summary>The Auto-sort section.</summary>
+    public AutoSortViewModel AutoSort { get; }
+
     public IReadOnlyList<ReminderOption> ReminderOptions => ReminderOption.All;
 
     [ObservableProperty]
@@ -119,13 +122,14 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
-    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links)
+    public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links, AutoSortViewModel autoSort)
     {
         _settings = settings;
         _themes = themes;
         _windows = windows;
         _updates = updates;
         Links = links;
+        AutoSort = autoSort;
         _checkForUpdates = settings.Current.CheckForUpdates;
         updates.Changed += (_, _) =>
         {

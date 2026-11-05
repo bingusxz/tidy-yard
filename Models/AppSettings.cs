@@ -20,6 +20,12 @@ public sealed class AppSettings
 
     public ClockFormat ClockFormat { get; set; } = ClockFormat.Windows;
 
+    /// <summary>Off by default. When on, new desktop files that match a rule move into a fence.</summary>
+    public bool AutoSortEnabled { get; set; }
+
+    /// <summary>Checked in order; the first rule that matches a file decides where it goes.</summary>
+    public List<SortRule> SortRules { get; set; } = [];
+
     /// <summary>Look for a newer version in the background (installed copies only).</summary>
     public bool CheckForUpdates { get; set; } = true;
 

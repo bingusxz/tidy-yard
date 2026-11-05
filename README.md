@@ -21,6 +21,7 @@ Runs on Windows 10 and 11. Windows 11 gets the acrylic glass look.
 - Drag files in and out
 - Tabs: one fence can hold several folders, switched with a tab bar that appears once there is more than one tab
 - Folders open inside the fence with a back button, and you can drop files onto a folder icon or a tab to move them in
+- Auto-sort rules (off by default): new desktop files that match a rule, by file type or a word in the name, move into a fence or tab. Existing files are left alone, every move is logged, and the notification has an Undo button
 - Tidy Desktop sorts loose files into fences by type. It shows you the plan first, logs every move, and can undo the last one
 - Files are only ever moved, never deleted or overwritten
 

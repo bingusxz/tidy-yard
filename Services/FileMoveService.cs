@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace TidyYard.Services;
 
-public sealed record MoveResult(int Moved, IReadOnlyList<string> Problems);
+public sealed record MoveResult(int Moved, IReadOnlyList<string> Problems, IReadOnlyList<(string From, string To)>? Moves = null);
 
 /// <summary>
 /// The only place Tidy Yard moves user files. Rules:
@@ -30,7 +30,7 @@ public sealed class FileMoveService
         MoveInto(paths.Select(p => (p, destinationFolder)), label);
 
     /// <summary>Moves each item into its own destination folder, as one undoable batch.</summary>
-    public MoveResult MoveInto(IEnumerable<(string Path, string Folder)> items, string label)
+    public MoveResult MoveInto(IEnumerable<(string Path, string Folder)> items, string label, bool undoable = true)
     {
         var problems = new List<string>();
         var batch = new List<(string From, string To)>();
@@ -92,14 +92,14 @@ public sealed class FileMoveService
             }
         }
 
-        if (batch.Count > 0)
+        if (batch.Count > 0 && undoable)
         {
             _lastBatch = batch;
             UndoLabel = $"Undo {label}";
             UndoChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        return new MoveResult(batch.Count, problems);
+        return new MoveResult(batch.Count, problems, batch);
     }
 
     /// <summary>Moves the last batch back. Items whose original spot is taken get a "(2)" name.</summary>
@@ -142,6 +142,48 @@ public sealed class FileMoveService
         UndoLabel = string.Empty;
         UndoChanged?.Invoke(this, EventArgs.Empty);
         return new MoveResult(moved, problems);
+    }
+
+    /// <summary>
+    /// Puts specific earlier moves back (for automatic sorting, which keeps its own undo so it never replaces the
+    /// user's "undo last move"). Same rules as <see cref="Undo"/>: nothing is overwritten, a taken name gets "(2)".
+    /// </summary>
+    public MoveResult UndoMoves(IEnumerable<(string From, string To)> moves)
+    {
+        var problems = new List<string>();
+        var restored = new List<(string From, string To)>();
+        foreach (var (from, to) in moves.Reverse())
+        {
+            var isFolder = Directory.Exists(to);
+            if (!isFolder && !File.Exists(to))
+            {
+                problems.Add($"{Path.GetFileName(to)} is no longer in the fence.");
+                continue;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(from)!);
+                var back = UniquePath(from);
+                if (isFolder)
+                {
+                    Directory.Move(to, back);
+                }
+                else
+                {
+                    File.Move(to, back, overwrite: false);
+                }
+
+                Log("undo", to, back);
+                restored.Add((to, back));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problems.Add($"{Path.GetFileName(to)}: {ex.Message}");
+            }
+        }
+
+        return new MoveResult(restored.Count, problems, restored);
     }
 
     /// <summary>"Report.pdf" -> "Report (2).pdf" -> "Report (3).pdf" ... until the name is free.</summary>
