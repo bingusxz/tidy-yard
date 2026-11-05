@@ -9,100 +9,278 @@
         Title="Tidy Yard"
         Style="{DynamicResource Style.Window}"
         WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="CanResize"
-        Width="880" Height="640"
-        MinWidth="560" MinHeight="420"
-        Opacity="{Binding WindowOpacity}">
+        Width="800" Height="500"
+        MinWidth="660" MinHeight="440">
 
-    <!-- Borderless: the header row is the drag area, edges resize. -->
+    <!-- Drag by the top strip, resize from the edges. Swapped in code when the widget is locked. -->
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="48"
-                      ResizeBorderThickness="4"
-                      GlassFrameThickness="0"
+        <WindowChrome CaptionHeight="56"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="-1"
                       CornerRadius="0"
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
-    <Border BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="48" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="Left" Command="{Binding PreviousCommand}" />
+        <KeyBinding Modifiers="Control" Key="Right" Command="{Binding NextCommand}" />
+        <KeyBinding Modifiers="Control" Key="T" Command="{Binding GoToTodayCommand}" />
+        <KeyBinding Modifiers="Control" Key="D1" Command="{Binding ShowViewCommand}" CommandParameter="Month" />
+        <KeyBinding Modifiers="Control" Key="D2" Command="{Binding ShowViewCommand}" CommandParameter="Week" />
+        <KeyBinding Modifiers="Control" Key="D3" Command="{Binding ShowViewCommand}" CommandParameter="Day" />
+    </Window.InputBindings>
 
-            <!-- Header -->
-            <Border Grid.Row="0" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="0,0,0,1">
-                <Grid Margin="8,0">
+    <Grid>
+        <!-- Theme tint over the acrylic blur. Its opacity is the Background opacity setting. -->
+        <Border Background="{DynamicResource Brush.Glass}" Opacity="{Binding GlassOpacity}" />
+
+        <Grid Margin="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="264" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ============ Day card: big date, quick add, agenda / editor ============ -->
+            <Border Grid.Column="0" Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="20,16">
+                <DockPanel DataContext="{Binding Editor}">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                        <TextBlock Style="{DynamicResource Text.Label}" Text="{Binding WeekdayText}" />
+                        <TextBlock Margin="8,0,0,0"
+                                   Style="{DynamicResource Text.Label}"
+                                   Foreground="{DynamicResource Brush.Accent}"
+                                   Text="{Binding RelativeText}"
+                                   Visibility="{Binding HasRelativeText, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="0,4,0,0" Style="{DynamicResource Text.Display}" Text="{Binding DayNumberText}" />
+                    <TextBlock DockPanel.Dock="Top" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding MonthYearText}" />
+
+                    <TextBox DockPanel.Dock="Top"
+                             Margin="0,16,0,0"
+                             Tag="{Binding QuickAddHint}"
+                             Text="{Binding QuickAddText, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Quick add">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding QuickAddCommand}" />
+                        </TextBox.InputBindings>
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource TextBox.QuickAdd}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <Grid Margin="0,12,0,0">
+                        <!-- Agenda for the selected day -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <TextBlock Margin="4,4,0,0" Text="Nothing scheduled">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasEvents}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ScrollViewer Margin="-8,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ItemsControl ItemsSource="{Binding Events}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                            <Button Style="{DynamicResource Button.Bare}"
+                                                    Padding="8"
+                                                    Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding Title}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="64" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Margin="0,1,0,0"
+                                                               FontSize="{DynamicResource Size.Small}"
+                                                               FontWeight="Medium"
+                                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                                               Text="{Binding AgendaTime}" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock FontWeight="Medium" Text="{Binding Title}" TextWrapping="Wrap" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   Style="{DynamicResource Text.Muted}"
+                                                                   Text="{Binding Note}"
+                                                                   Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Add / edit form -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Focusable="False"
+                                      Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource Text.Label}" Text="{Binding FormHeading}" />
+
+                                <TextBox Margin="0,8,0,0"
+                                         Tag="Title"
+                                         Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Title"
+                                         IsVisibleChanged="OnTitleBoxVisibleChanged" />
+
+                                <TextBox Margin="0,8,0,0"
+                                         Tag="Time"
+                                         Text="{Binding TimeText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Time" />
+                                <TextBlock Margin="2,4,0,0" Style="{DynamicResource Text.Muted}" Text="{Binding TimeHint}" />
+
+                                <TextBox Margin="0,8,0,0"
+                                         MinHeight="64"
+                                         Padding="8,6"
+                                         VerticalContentAlignment="Top"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Tag="Note"
+                                         Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Note" />
+
+                                <TextBlock Margin="2,8,0,0"
+                                           FontWeight="Medium"
+                                           Foreground="{DynamicResource Brush.Accent}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding Error}"
+                                           Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+
+                                <DockPanel Margin="0,12,0,0" LastChildFill="False">
+                                    <Button DockPanel.Dock="Left"
+                                            Style="{DynamicResource Button.Primary}"
+                                            Content="Save"
+                                            IsDefault="{Binding IsFormOpen}"
+                                            Command="{Binding SaveCommand}" />
+                                    <Button DockPanel.Dock="Left"
+                                            Margin="4,0,0,0"
+                                            Style="{DynamicResource Button.Text}"
+                                            Content="Cancel"
+                                            IsCancel="{Binding IsFormOpen}"
+                                            Command="{Binding CancelCommand}" />
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{DynamicResource Button.Text}"
+                                            Content="Delete"
+                                            Command="{Binding DeleteCommand}"
+                                            Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}" />
+                                </DockPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <!-- ============ Calendar side ============ -->
+            <DockPanel Grid.Column="1" Margin="20,0,0,0">
+
+                <!-- Header -->
+                <Grid DockPanel.Dock="Top" Height="40">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Button Grid.Column="0"
-                            Style="{DynamicResource Button.Icon}"
-                            Content="{DynamicResource Glyph.ChevronLeft}"
-                            Command="{Binding PreviousMonthCommand}"
-                            ToolTip="Previous month"
-                            AutomationProperties.Name="Previous month"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
-                    <Button Grid.Column="1"
-                            Style="{DynamicResource Button.Icon}"
-                            Content="{DynamicResource Glyph.ChevronRight}"
-                            Command="{Binding NextMonthCommand}"
-                            ToolTip="Next month"
-                            AutomationProperties.Name="Next month"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                        <Run FontSize="{DynamicResource Size.Title}" FontWeight="SemiBold" Text="{Binding Title, Mode=OneWay}" />
+                        <Run FontSize="{DynamicResource Size.Title}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding TitleYear, Mode=OneWay}" />
+                    </TextBlock>
 
-                    <TextBlock Grid.Column="2"
-                               Margin="12,0,0,0"
-                               VerticalAlignment="Center"
-                               Style="{DynamicResource Text.Display}"
-                               Text="{Binding MonthTitle}" />
+                    <ListBox Grid.Column="1"
+                             Margin="12,0,0,0"
+                             VerticalAlignment="Center"
+                             Style="{DynamicResource ListBox.Segmented}"
+                             ItemsSource="{Binding ViewOptions}"
+                             SelectedItem="{Binding SelectedView}"
+                             DisplayMemberPath="Name"
+                             AutomationProperties.Name="Calendar view"
+                             WindowChrome.IsHitTestVisibleInChrome="True" />
 
-                    <Button Grid.Column="3"
-                            Style="{DynamicResource Button.Text}"
-                            Content="Today"
-                            Command="{Binding GoToTodayCommand}"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
-                    <Button Grid.Column="4"
-                            Margin="4,0,0,0"
-                            Style="{DynamicResource Button.Icon}"
-                            Content="{DynamicResource Glyph.Settings}"
-                            Command="{Binding OpenSettingsCommand}"
-                            ToolTip="Settings"
-                            AutomationProperties.Name="Settings"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
-                    <Button Grid.Column="5"
-                            Style="{DynamicResource Button.Icon}"
-                            Content="{DynamicResource Glyph.Close}"
-                            Click="OnHideClick"
-                            ToolTip="Hide to tray"
-                            AutomationProperties.Name="Hide to tray"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <StackPanel Grid.Column="2" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{DynamicResource Button.Icon}"
+                                Content="{DynamicResource Glyph.ChevronLeft}"
+                                Command="{Binding PreviousCommand}"
+                                ToolTip="Previous (Ctrl+Left)"
+                                AutomationProperties.Name="Previous"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                        <Button Style="{DynamicResource Button.Text}"
+                                Padding="8,0"
+                                Content="Today"
+                                Command="{Binding GoToTodayCommand}"
+                                ToolTip="Ctrl+T"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                        <Button Style="{DynamicResource Button.Icon}"
+                                Content="{DynamicResource Glyph.ChevronRight}"
+                                Command="{Binding NextCommand}"
+                                ToolTip="Next (Ctrl+Right)"
+                                AutomationProperties.Name="Next"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Command="{Binding ToggleLockCommand}"
+                                ToolTip="{Binding LockToolTip}"
+                                AutomationProperties.Name="{Binding LockToolTip}"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                    <Setter Property="Content" Value="{DynamicResource Glyph.Unlock}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                            <Setter Property="Content" Value="{DynamicResource Glyph.Lock}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Style="{DynamicResource Button.Icon}"
+                                Content="{DynamicResource Glyph.Settings}"
+                                Command="{Binding OpenSettingsCommand}"
+                                ToolTip="Settings"
+                                AutomationProperties.Name="Settings"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                        <Button Style="{DynamicResource Button.Icon}"
+                                Content="{DynamicResource Glyph.Close}"
+                                Click="OnHideClick"
+                                ToolTip="Hide to tray"
+                                AutomationProperties.Name="Hide to tray"
+                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                    </StackPanel>
                 </Grid>
-            </Border>
 
-            <!-- Body: month grid, plus the day panel when a day is selected -->
-            <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <Grid Margin="0,12,0,0">
 
-                <Grid Grid.Column="0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="24" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Weekday names -->
-                    <Border Grid.Row="0" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="0,0,0,1">
-                        <ItemsControl ItemsSource="{Binding WeekdayNames}" Focusable="False">
+                    <!-- Month view -->
+                    <DockPanel Visibility="{Binding IsMonthView, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl DockPanel.Dock="Top" Height="24" ItemsSource="{Binding WeekdayNames}" Focusable="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Rows="1" Columns="7" />
@@ -110,16 +288,12 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Margin="8,0" VerticalAlignment="Center" Style="{DynamicResource Text.Label}" Text="{Binding}" />
+                                    <TextBlock Margin="10,0,0,0" HorizontalAlignment="Left" Style="{DynamicResource Text.Label}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </Border>
 
-                    <!-- Ruled month grid. Each cell draws its right and bottom rule; the outer
-                         1px overhang is clipped so edges meet the window border cleanly. -->
-                    <Border Grid.Row="1" ClipToBounds="True">
-                        <ItemsControl ItemsSource="{Binding Days}" Margin="0,0,-1,-1" Focusable="False">
+                        <ItemsControl ItemsSource="{Binding Days}" Focusable="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Rows="6" Columns="7" />
@@ -127,236 +301,185 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:DayCellViewModel}">
-                                    <Button x:Name="Cell"
+                                    <Button Margin="2"
                                             Style="{DynamicResource Button.Bare}"
                                             Command="{Binding SelectCommand}"
                                             AutomationProperties.Name="{Binding AccessibleName}">
-                                        <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,1,1" ClipToBounds="True">
-                                            <Grid>
-                                                <DockPanel Margin="4" LastChildFill="True">
-                                                    <!-- Day number, top-left. Today: filled square behind it. -->
-                                                    <Border x:Name="DayMark"
-                                                            DockPanel.Dock="Top"
-                                                            HorizontalAlignment="Left"
-                                                            MinWidth="24" Height="20"
-                                                            Padding="4,0"
-                                                            CornerRadius="2">
-                                                        <TextBlock x:Name="DayNumber"
-                                                                   HorizontalAlignment="Center"
-                                                                   VerticalAlignment="Center"
-                                                                   FontFamily="{DynamicResource Font.Numbers}"
-                                                                   FontSize="{DynamicResource Size.Body}"
-                                                                   Foreground="{DynamicResource Brush.Text}"
-                                                                   Text="{Binding DayNumber}" />
-                                                    </Border>
-
-                                                    <TextBlock DockPanel.Dock="Bottom"
-                                                               Margin="4,0,0,0"
-                                                               Style="{DynamicResource Text.Label}"
-                                                               Text="{Binding MoreText}"
-                                                               Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}" />
-
-                                                    <!-- Event lines: plain text with a 2px accent rule on the left. -->
-                                                    <ItemsControl x:Name="EventLines" Margin="0,4,0,0" ItemsSource="{Binding VisibleEvents}" Focusable="False">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
-                                                                <Border Margin="0,0,0,4"
-                                                                        Padding="4,0,0,0"
-                                                                        BorderBrush="{DynamicResource Brush.Accent}"
-                                                                        BorderThickness="2,0,0,0">
-                                                                    <TextBlock FontSize="{DynamicResource Size.Small}"
-                                                                               TextTrimming="CharacterEllipsis"
-                                                                               Foreground="{DynamicResource Brush.Text}">
-                                                                        <Run FontFamily="{DynamicResource Font.Numbers}"
-                                                                             Foreground="{DynamicResource Brush.TextMuted}"
-                                                                             Text="{Binding TimeText, Mode=OneWay}" /><Run Text="{Binding TimeSeparator, Mode=OneWay}" /><Run Text="{Binding Title, Mode=OneWay}" />
-                                                                    </TextBlock>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </DockPanel>
-
-                                                <!-- Selected day: 2px accent rule inside the cell. -->
-                                                <Border BorderBrush="{DynamicResource Brush.Accent}"
-                                                        BorderThickness="2"
-                                                        IsHitTestVisible="False"
-                                                        Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibility}}" />
-                                            </Grid>
-                                        </Border>
+                                        <!-- Day number top-left, then up to two event titles as plain text. -->
+                                        <DockPanel Margin="6" LastChildFill="False">
+                                            <Border x:Name="Mark"
+                                                    DockPanel.Dock="Top"
+                                                    HorizontalAlignment="Left"
+                                                    MinWidth="26" Height="26"
+                                                    Padding="6,0"
+                                                    CornerRadius="13">
+                                                <TextBlock x:Name="Number"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="Medium"
+                                                           Foreground="{DynamicResource Brush.Text}"
+                                                           Text="{Binding DayNumber}" />
+                                            </Border>
+                                            <ItemsControl x:Name="Lines" DockPanel.Dock="Top" Margin="2,4,0,0" ItemsSource="{Binding CellEvents}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                                        <DockPanel Margin="0,0,0,2">
+                                                            <Ellipse DockPanel.Dock="Left" Width="5" Height="5" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource Brush.Accent}" />
+                                                            <TextBlock FontSize="{DynamicResource Size.Small}" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock DockPanel.Dock="Top"
+                                                       Margin="13,0,0,0"
+                                                       FontSize="{DynamicResource Size.Small}"
+                                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                                       Text="{Binding MoreText}"
+                                                       Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}" />
+                                        </DockPanel>
                                     </Button>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsInMonth}" Value="False">
-                                            <Setter TargetName="DayNumber" Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
-                                            <Setter TargetName="EventLines" Property="Opacity" Value="0.7" />
-                                            <Setter TargetName="Cell" Property="Background" Value="{DynamicResource Brush.Surface}" />
+                                            <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
+                                            <Setter TargetName="Number" Property="FontWeight" Value="Normal" />
+                                            <Setter TargetName="Lines" Property="Opacity" Value="0.6" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                            <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.Text}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsToday}" Value="True">
-                                            <Setter TargetName="DayMark" Property="Background" Value="{DynamicResource Brush.Accent}" />
-                                            <Setter TargetName="DayNumber" Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
-                                            <Setter TargetName="DayNumber" Property="FontWeight" Value="Medium" />
+                                            <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
+                                            <Setter TargetName="Number" Property="FontWeight" Value="SemiBold" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </Border>
-                </Grid>
-
-                <!-- Day panel -->
-                <Border Grid.Column="1"
-                        Width="288"
-                        Background="{DynamicResource Brush.Surface}"
-                        BorderBrush="{DynamicResource Brush.RuleStrong}"
-                        BorderThickness="1,0,0,0"
-                        Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}">
-                    <DockPanel Margin="16,12,8,16" DataContext="{Binding Editor}">
-                        <Grid DockPanel.Dock="Top">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Title}" Text="{Binding Heading}" TextTrimming="CharacterEllipsis" />
-                            <Button Grid.Column="1"
-                                    Style="{DynamicResource Button.Icon}"
-                                    Content="{DynamicResource Glyph.Close}"
-                                    Command="{Binding DataContext.CloseEditorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    ToolTip="Close day"
-                                    AutomationProperties.Name="Close day" />
-                        </Grid>
-
-
-                        <Grid Margin="0,12,0,0">
-                            <!-- Event list for the day -->
-                            <DockPanel Margin="0,0,8,0">
-                                <DockPanel.Style>
-                                    <Style TargetType="DockPanel">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </DockPanel.Style>
-
-                                <Button DockPanel.Dock="Top"
-                                        HorizontalAlignment="Left"
-                                        Style="{DynamicResource Button.Plain}"
-                                        Content="Add event"
-                                        Command="{Binding NewEventCommand}" />
-
-                                <TextBlock DockPanel.Dock="Top" Margin="0,16,0,0" Text="Nothing scheduled">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasEvents}" Value="False">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-
-                                <ScrollViewer Margin="0,12,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <ItemsControl ItemsSource="{Binding Events}" Focusable="False">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
-                                                <Button Style="{DynamicResource Button.Bare}"
-                                                        Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        AutomationProperties.Name="{Binding Title}">
-                                                    <Border Padding="0,8" BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,0,0,1">
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="64" />
-                                                                <ColumnDefinition Width="*" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0"
-                                                                       FontFamily="{DynamicResource Font.Numbers}"
-                                                                       FontSize="{DynamicResource Size.Body}"
-                                                                       Foreground="{DynamicResource Brush.TextMuted}"
-                                                                       Text="{Binding TimeText}" />
-                                                            <Border Grid.Column="1" Padding="8,0,0,0" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2,0,0,0">
-                                                                <StackPanel>
-                                                                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
-                                                                    <TextBlock Margin="0,4,0,0"
-                                                                               Style="{DynamicResource Text.Muted}"
-                                                                               Text="{Binding Note}"
-                                                                               Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
-                                                                </StackPanel>
-                                                            </Border>
-                                                        </Grid>
-                                                    </Border>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </DockPanel>
-
-                            <!-- Add / edit form -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          Focusable="False"
-                                          Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Style="{DynamicResource Text.Label}" Text="{Binding FormHeading}" />
-
-                                    <TextBlock Margin="0,12,0,4" Style="{DynamicResource Text.Label}" Text="Title" />
-                                    <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
-                                             AutomationProperties.Name="Title"
-                                             IsVisibleChanged="OnTitleBoxVisibleChanged" />
-
-                                    <TextBlock Margin="0,12,0,4" Style="{DynamicResource Text.Label}" Text="Time" />
-                                    <TextBox Width="96"
-                                             HorizontalAlignment="Left"
-                                             FontFamily="{DynamicResource Font.Numbers}"
-                                             Text="{Binding TimeText, UpdateSourceTrigger=PropertyChanged}"
-                                             AutomationProperties.Name="Time" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               Style="{DynamicResource Text.Muted}"
-                                               Text="{Binding TimeHint}" />
-
-                                    <TextBlock Margin="0,12,0,4" Style="{DynamicResource Text.Label}" Text="Note" />
-                                    <TextBox MinHeight="72"
-                                             VerticalContentAlignment="Top"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto"
-                                             Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
-                                             AutomationProperties.Name="Note" />
-
-                                    <TextBlock Margin="0,12,0,0"
-                                               FontWeight="Medium"
-                                               TextWrapping="Wrap"
-                                               Text="{Binding Error}"
-                                               Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
-
-                                    <DockPanel Margin="0,16,0,0" LastChildFill="False">
-                                        <Button DockPanel.Dock="Left"
-                                                Style="{DynamicResource Button.Primary}"
-                                                Content="Save"
-                                                IsDefault="{Binding IsFormOpen}"
-                                                Command="{Binding SaveCommand}" />
-                                        <Button DockPanel.Dock="Left"
-                                                Margin="8,0,0,0"
-                                                Style="{DynamicResource Button.Plain}"
-                                                Content="Cancel"
-                                                IsCancel="{Binding IsFormOpen}"
-                                                Command="{Binding CancelCommand}" />
-                                        <Button DockPanel.Dock="Right"
-                                                Style="{DynamicResource Button.Plain}"
-                                                Content="Delete"
-                                                Command="{Binding DeleteCommand}"
-                                                Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}" />
-                                    </DockPanel>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Grid>
                     </DockPanel>
-                </Border>
-            </Grid>
+
+                    <!-- Week view: seven columns, each day's events listed -->
+                    <ItemsControl ItemsSource="{Binding WeekDays}"
+                                  Focusable="False"
+                                  Visibility="{Binding IsWeekView, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" Columns="7" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:DayCellViewModel}">
+                                <Border x:Name="Column" Margin="2" CornerRadius="10" Background="{DynamicResource Brush.Surface}">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Top"
+                                                Padding="8"
+                                                Style="{DynamicResource Button.Bare}"
+                                                Command="{Binding SelectCommand}"
+                                                AutomationProperties.Name="{Binding AccessibleName}">
+                                            <!-- Weekday and number side by side, top-left. -->
+                                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                                <Border x:Name="Mark" MinWidth="26" Height="26" Padding="6,0" CornerRadius="13">
+                                                    <TextBlock x:Name="Number"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding DayNumber}" />
+                                                </Border>
+                                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Style="{DynamicResource Text.Label}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding WeekdayShort}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                            <ItemsControl Margin="4,0,4,4" ItemsSource="{Binding Events}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                                        <Button Margin="0,0,0,4"
+                                                                Padding="6"
+                                                                Style="{DynamicResource Button.Bare}"
+                                                                Background="{DynamicResource Brush.AccentSoft}"
+                                                                Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                AutomationProperties.Name="{Binding Title}">
+                                                            <StackPanel>
+                                                                <TextBlock FontSize="{DynamicResource Size.Small}" FontWeight="Medium" Text="{Binding Title}" TextWrapping="Wrap" />
+                                                                <TextBlock FontSize="{DynamicResource Size.Small}"
+                                                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                                                           Text="{Binding TimeText}"
+                                                                           Visibility="{Binding HasTime, Converter={StaticResource BoolToVisibility}}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter TargetName="Column" Property="Background" Value="{DynamicResource Brush.Card}" />
+                                        <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                        <Setter TargetName="Mark" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                                        <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Day view: hour timeline for the selected day -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Focusable="False"
+                                  Visibility="{Binding IsDayView, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Hours}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:HourRowViewModel}">
+                                    <Grid MinHeight="44">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="64" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="Label"
+                                                   Margin="0,4,0,0"
+                                                   Style="{DynamicResource Text.Label}"
+                                                   Foreground="{DynamicResource Brush.TextDim}"
+                                                   Text="{Binding Label}" />
+                                        <Border x:Name="Rule" Grid.Column="1" BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,1,0,0" Padding="0,4,4,0">
+                                            <ItemsControl ItemsSource="{Binding Events}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                                        <Button Margin="0,0,0,4"
+                                                                Padding="10,6"
+                                                                Style="{DynamicResource Button.Bare}"
+                                                                Background="{DynamicResource Brush.AccentSoft}"
+                                                                Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                AutomationProperties.Name="{Binding Title}">
+                                                            <TextBlock TextTrimming="CharacterEllipsis">
+                                                                <Run FontWeight="Medium" Text="{Binding Title, Mode=OneWay}" />
+                                                                <Run Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding TimeText, Mode=OneWay}" />
+                                                            </TextBlock>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsNow}" Value="True">
+                                            <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter TargetName="Rule" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter TargetName="Rule" Property="BorderThickness" Value="0,2,0,0" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
         </Grid>
-    </Border>
+    </Grid>
 </Window>

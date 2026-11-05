@@ -18,6 +18,9 @@ public sealed class EventItemViewModel
 
     public bool HasTime => Model.Time is not null;
 
+    /// <summary>Left column of the agenda list: the time, or "All day".</summary>
+    public string AgendaTime => HasTime ? TimeText : "All day";
+
     /// <summary>Space between time and title in a one-line chip; empty when there is no time.</summary>
     public string TimeSeparator => HasTime ? " " : string.Empty;
 

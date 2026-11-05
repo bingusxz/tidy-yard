@@ -6,15 +6,17 @@ using TidyYard.Services;
 
 namespace TidyYard.ViewModels;
 
-/// <summary>One cell of the 6 x 7 month grid.</summary>
+/// <summary>One day: a cell in the month grid or a column in the week view.</summary>
 public sealed partial class DayCellViewModel : ObservableObject
 {
-    public const int MaxVisibleEvents = 3;
+    public const int MaxDots = 3;
+    public const int MaxCellTitles = 2;
 
     private readonly Action<DayCellViewModel> _select;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DayNumber))]
+    [NotifyPropertyChangedFor(nameof(WeekdayShort))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private DateOnly _date;
 
@@ -27,8 +29,16 @@ public sealed partial class DayCellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>One entry per dot under the day number (max 3).</summary>
     [ObservableProperty]
-    private IReadOnlyList<EventItemViewModel> _visibleEvents = [];
+    private IReadOnlyList<int> _dots = [];
+
+    [ObservableProperty]
+    private IReadOnlyList<EventItemViewModel> _events = [];
+
+    /// <summary>First few events, shown as text lines in a month cell.</summary>
+    [ObservableProperty]
+    private IReadOnlyList<EventItemViewModel> _cellEvents = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMore))]
@@ -36,11 +46,17 @@ public sealed partial class DayCellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    [NotifyPropertyChangedFor(nameof(HasEvents))]
     private int _eventCount;
 
     public DayCellViewModel(Action<DayCellViewModel> select) => _select = select;
 
     public string DayNumber => Date.Day.ToString(CultureInfo.CurrentCulture);
+
+    public string WeekdayShort =>
+        CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(Date.DayOfWeek).ToUpperInvariant();
+
+    public bool HasEvents => EventCount > 0;
 
     public bool HasMore => MoreText.Length > 0;
 
@@ -60,9 +76,10 @@ public sealed partial class DayCellViewModel : ObservableObject
 
     public void SetEvents(IReadOnlyList<CalendarEvent> events, TimeFormatService clock)
     {
-        VisibleEvents = events.Take(MaxVisibleEvents).Select(e => new EventItemViewModel(e, clock)).ToList();
-        var extra = events.Count - MaxVisibleEvents;
-        MoreText = extra > 0 ? $"{extra} more" : string.Empty;
+        Events = events.Select(e => new EventItemViewModel(e, clock)).ToList();
+        Dots = Enumerable.Range(0, Math.Min(events.Count, MaxDots)).ToList();
+        CellEvents = Events.Take(MaxCellTitles).ToList();
+        MoreText = events.Count > MaxCellTitles ? $"{events.Count - MaxCellTitles} more" : string.Empty;
         EventCount = events.Count;
     }
 

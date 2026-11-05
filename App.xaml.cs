@@ -58,7 +58,8 @@ public partial class App : Application
 
         _singleInstance.ListenForActivation(() => Dispatcher.BeginInvoke(windows.ShowCalendar));
 
-        windows.ShowCalendar();
+        var launchedAtSignIn = e.Args.Contains(StartupService.StartupArgument, StringComparer.OrdinalIgnoreCase);
+        windows.ShowCalendar(activate: !launchedAtSignIn);
     }
 
     protected override void OnExit(ExitEventArgs e)

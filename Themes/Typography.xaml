@@ -12,8 +12,8 @@
     <!-- The whole type scale. Four sizes, nothing else. -->
     <sys:Double x:Key="Size.Small">11</sys:Double>
     <sys:Double x:Key="Size.Body">13</sys:Double>
-    <sys:Double x:Key="Size.Title">16</sys:Double>
-    <sys:Double x:Key="Size.Display">24</sys:Double>
+    <sys:Double x:Key="Size.Title">18</sys:Double>
+    <sys:Double x:Key="Size.Display">56</sys:Double>
 
     <!-- Icon glyph size (Segoe Fluent Icons), not part of the type scale. -->
     <sys:Double x:Key="Size.Icon">12</sys:Double>
@@ -24,5 +24,8 @@
     <sys:String x:Key="Glyph.Settings">&#xE713;</sys:String>
     <sys:String x:Key="Glyph.Close">&#xE711;</sys:String>
     <sys:String x:Key="Glyph.Add">&#xE710;</sys:String>
+    <sys:String x:Key="Glyph.Lock">&#xE72E;</sys:String>
+    <sys:String x:Key="Glyph.Unlock">&#xE785;</sys:String>
+    <sys:String x:Key="Glyph.Hide">&#xE921;</sys:String>
 
 </ResourceDictionary>

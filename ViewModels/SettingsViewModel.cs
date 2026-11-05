@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TidyYard.Models;
@@ -27,17 +28,32 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private ClockOption _selectedClock;
 
+    [ObservableProperty]
+    private bool _isLocked;
+
+    [ObservableProperty]
+    private bool _startWithWindows;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStartupError))]
+    private string _startupError = string.Empty;
+
     public SettingsViewModel(SettingsService settings, ThemeService themes)
     {
         _settings = settings;
         _themes = themes;
         _selectedTheme = ThemeService.Resolve(settings.Current.Theme);
         _opacityPercent = settings.Current.OpacityPercent;
+        _isLocked = settings.Current.IsLocked;
+        _startWithWindows = StartupService.IsEnabled;
+
+        // The lock can also be toggled from the calendar header while this window is open.
+        settings.Changed += (_, _) => IsLocked = settings.Current.IsLocked;
 
         var windowsStyle = TimeFormatService.WindowsUses24Hour ? "24-hour" : "12-hour";
         ClockOptions =
         [
-            new(ClockFormat.Windows, $"Same as Windows ({windowsStyle})"),
+            new(ClockFormat.Windows, $"Auto ({windowsStyle})"),
             new(ClockFormat.TwelveHour, "12-hour"),
             new(ClockFormat.TwentyFourHour, "24-hour"),
         ];
@@ -65,6 +81,29 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnOpacityPercentChanged(int value) => _settings.Update(s => s.OpacityPercent = value);
 
     partial void OnSelectedClockChanged(ClockOption value) => _settings.Update(s => s.ClockFormat = value.Format);
+
+    partial void OnIsLockedChanged(bool value)
+    {
+        if (_settings.Current.IsLocked != value)
+        {
+            _settings.Update(s => s.IsLocked = value);
+        }
+    }
+
+    partial void OnStartWithWindowsChanged(bool value)
+    {
+        try
+        {
+            StartupService.SetEnabled(value);
+            StartupError = string.Empty;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            StartupError = $"Windows did not allow this change: {ex.Message}";
+        }
+    }
+
+    public bool HasStartupError => StartupError.Length > 0;
 
     [RelayCommand]
     private void OpenDataFolder() =>

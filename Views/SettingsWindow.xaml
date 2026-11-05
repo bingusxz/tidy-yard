@@ -9,130 +9,154 @@
         Title="Tidy Yard Settings"
         Style="{DynamicResource Style.Window}"
         WindowStyle="None"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         SizeToContent="Height"
-        Width="440"
+        Width="520"
         WindowStartupLocation="CenterScreen">
 
+    <!-- CanResize keeps the system frame Windows needs for the acrylic backdrop;
+         ResizeBorderThickness 0 means the edges do not actually resize. -->
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="48"
+        <WindowChrome CaptionHeight="56"
                       ResizeBorderThickness="0"
-                      GlassFrameThickness="0"
+                      GlassFrameThickness="-1"
                       CornerRadius="0"
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <!-- One ruled row: label column on the left, control on the right. -->
-        <Style x:Key="Row" TargetType="Border">
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Rule}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Padding" Value="16,12" />
+        <!-- One settings row: label and hint on the left, control on the right. -->
+        <Style x:Key="Row" TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="MinHeight" Value="48" />
         </Style>
     </Window.Resources>
 
-    <Border BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1">
-        <StackPanel>
+    <Grid>
+        <Border Background="{DynamicResource Brush.Glass}" Opacity="0.92" />
+
+        <StackPanel Margin="24,12,16,24">
             <!-- Header -->
-            <Border Height="48" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="0,0,0,1">
-                <Grid Margin="16,0,8,0">
-                    <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Title}" Text="Settings" />
-                    <Button HorizontalAlignment="Right"
-                            Style="{DynamicResource Button.Icon}"
-                            Content="{DynamicResource Glyph.Close}"
-                            Click="OnCloseClick"
-                            ToolTip="Close"
-                            AutomationProperties.Name="Close"
-                            WindowChrome.IsHitTestVisibleInChrome="True" />
-                </Grid>
+            <Grid Height="44">
+                <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Title}" Text="Settings" />
+                <Button HorizontalAlignment="Right"
+                        Style="{DynamicResource Button.Icon}"
+                        Content="{DynamicResource Glyph.Close}"
+                        Click="OnCloseClick"
+                        ToolTip="Close"
+                        AutomationProperties.Name="Close"
+                        WindowChrome.IsHitTestVisibleInChrome="True" />
+            </Grid>
+
+            <!-- Appearance -->
+            <TextBlock Margin="0,16,0,8" Style="{DynamicResource Text.Label}" Text="APPEARANCE" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <StackPanel>
+                    <Grid Style="{StaticResource Row}">
+                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Theme" />
+                        <ListBox HorizontalAlignment="Right"
+                                 VerticalAlignment="Center"
+                                 Style="{DynamicResource ListBox.Segmented}"
+                                 ItemsSource="{Binding Themes}"
+                                 SelectedItem="{Binding SelectedTheme}"
+                                 DisplayMemberPath="Name"
+                                 AutomationProperties.Name="Theme" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Background opacity" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lower shows more of your wallpaper through the glass." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Slider Width="140"
+                                    VerticalAlignment="Center"
+                                    Minimum="{Binding MinOpacity}"
+                                    Maximum="{Binding MaxOpacity}"
+                                    SmallChange="1"
+                                    LargeChange="5"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding OpacityPercent}"
+                                    AutomationProperties.Name="Background opacity" />
+                            <TextBlock Width="44" VerticalAlignment="Center" TextAlignment="Right" FontWeight="Medium" Text="{Binding OpacityText}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Time format" />
+                        <ListBox HorizontalAlignment="Right"
+                                 VerticalAlignment="Center"
+                                 Style="{DynamicResource ListBox.Segmented}"
+                                 ItemsSource="{Binding ClockOptions}"
+                                 SelectedItem="{Binding SelectedClock}"
+                                 DisplayMemberPath="Name"
+                                 AutomationProperties.Name="Time format" />
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <!-- Theme -->
-            <Border Style="{StaticResource Row}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Margin="0,8,0,0" VerticalAlignment="Top" Style="{DynamicResource Text.Label}" Text="Theme" />
-                    <ListBox Grid.Column="1"
-                             Margin="0,0,0,-4"
-                             Style="{DynamicResource ListBox.Options}"
-                             ItemsSource="{Binding Themes}"
-                             SelectedItem="{Binding SelectedTheme}"
-                             DisplayMemberPath="Name"
-                             AutomationProperties.Name="Theme" />
-                </Grid>
+            <!-- Widget -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="WIDGET" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <StackPanel>
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Lock position" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Keeps the calendar where it is and hides it from the taskbar." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding IsLocked}"
+                                  AutomationProperties.Name="Lock position" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Start with Windows" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Opens the calendar in its saved spot when you sign in." />
+                            <TextBlock Style="{DynamicResource Text.Muted}"
+                                       Foreground="{DynamicResource Brush.Accent}"
+                                       Text="{Binding StartupError}"
+                                       Visibility="{Binding HasStartupError, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding StartWithWindows}"
+                                  AutomationProperties.Name="Start with Windows" />
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <!-- Time format -->
-            <Border Style="{StaticResource Row}">
-                <Grid>
+            <!-- Data -->
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="DATA" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <Grid Style="{StaticResource Row}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Margin="0,8,0,0" VerticalAlignment="Top" Style="{DynamicResource Text.Label}" Text="Time format" />
-                    <ListBox Grid.Column="1"
-                             Margin="0,0,0,-4"
-                             Style="{DynamicResource ListBox.Options}"
-                             ItemsSource="{Binding ClockOptions}"
-                             SelectedItem="{Binding SelectedClock}"
-                             DisplayMemberPath="Name"
-                             AutomationProperties.Name="Time format" />
-                </Grid>
-            </Border>
-
-            <!-- Calendar opacity -->
-            <Border Style="{StaticResource Row}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="48" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Label}" Text="Calendar opacity" />
-                    <Slider Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Minimum="{Binding MinOpacity}"
-                            Maximum="{Binding MaxOpacity}"
-                            SmallChange="1"
-                            LargeChange="5"
-                            TickFrequency="1"
-                            IsSnapToTickEnabled="True"
-                            Value="{Binding OpacityPercent}"
-                            AutomationProperties.Name="Calendar opacity" />
-                    <TextBlock Grid.Column="2"
-                               HorizontalAlignment="Right"
-                               VerticalAlignment="Center"
-                               FontFamily="{DynamicResource Font.Numbers}"
-                               Text="{Binding OpacityText}" />
-                </Grid>
-            </Border>
-
-            <!-- Data folder -->
-            <Border Style="{StaticResource Row}" BorderThickness="0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" Style="{DynamicResource Text.Label}" Text="Data folder" />
-                    <TextBlock Grid.Column="1"
-                               Margin="0,0,8,0"
-                               VerticalAlignment="Center"
-                               Style="{DynamicResource Text.Numbers}"
-                               Foreground="{DynamicResource Brush.TextMuted}"
-                               TextTrimming="CharacterEllipsis"
-                               Text="{Binding DataFolder}"
-                               ToolTip="{Binding DataFolder}" />
-                    <Button Grid.Column="2"
-                            Style="{DynamicResource Button.Plain}"
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontWeight="Medium" Text="Data folder" />
+                        <TextBlock Style="{DynamicResource Text.Muted}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="{Binding DataFolder}"
+                                   ToolTip="{Binding DataFolder}" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Button.Text}"
                             Content="Open"
                             Command="{Binding OpenDataFolderCommand}" />
                 </Grid>
             </Border>
         </StackPanel>
-    </Border>
+    </Grid>
 </Window>

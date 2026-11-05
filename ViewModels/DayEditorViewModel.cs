@@ -15,8 +15,15 @@ public sealed partial class DayEditorViewModel : ObservableObject
     private long? _editingId;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Heading))]
+    [NotifyPropertyChangedFor(nameof(WeekdayText))]
+    [NotifyPropertyChangedFor(nameof(DayNumberText))]
+    [NotifyPropertyChangedFor(nameof(MonthYearText))]
+    [NotifyPropertyChangedFor(nameof(RelativeText))]
+    [NotifyPropertyChangedFor(nameof(HasRelativeText))]
     private DateOnly _date;
+
+    [ObservableProperty]
+    private string _quickAddText = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -51,7 +58,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
     }
 
     /// <summary>Raised after an event is saved or deleted.</summary>
-    public event EventHandler? EventsChanged;
+    public event EventHandler<DateOnly>? EventsChanged;
 
     public ObservableCollection<EventItemViewModel> Events { get; } = [];
 
@@ -59,12 +66,58 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
     public bool HasError => Error.Length > 0;
 
-    public string Heading => Date.ToString("dddd, d MMMM", CultureInfo.CurrentCulture);
+    public string WeekdayText => Date.ToString("dddd", CultureInfo.CurrentCulture).ToUpper(CultureInfo.CurrentCulture);
+
+    public string DayNumberText => Date.Day.ToString(CultureInfo.CurrentCulture);
+
+    public string MonthYearText => Date.ToString("MMMM yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>"Today", "Tomorrow" or "Yesterday" next to the weekday; empty otherwise.</summary>
+    public string RelativeText
+    {
+        get
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            return (Date.DayNumber - today.DayNumber) switch
+            {
+                0 => "TODAY",
+                1 => "TOMORROW",
+                -1 => "YESTERDAY",
+                _ => string.Empty,
+            };
+        }
+    }
+
+    public bool HasRelativeText => RelativeText.Length > 0;
+
+    public string QuickAddHint => _clock.Uses24Hour
+        ? "Add event, like Dentist 15:00"
+        : "Add event, like Dentist 3pm";
 
     public string TimeHint => _clock.InputHint;
 
     /// <summary>Call after the 12/24-hour setting changes.</summary>
-    public void OnClockFormatChanged() => OnPropertyChanged(nameof(TimeHint));
+    public void OnClockFormatChanged()
+    {
+        OnPropertyChanged(nameof(TimeHint));
+        OnPropertyChanged(nameof(QuickAddHint));
+    }
+
+    /// <summary>Creates an event straight from the quick-add box: "Dentist 3pm", "Pay rent tomorrow 9:30".</summary>
+    [RelayCommand]
+    private void QuickAdd()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var parsed = TimeFormatService.ParseQuickAdd(QuickAddText, Date, today);
+        if (parsed.Title.Length == 0)
+        {
+            return;
+        }
+
+        _storage.Add(new CalendarEvent { Date = parsed.Date, Time = parsed.Time, Title = parsed.Title });
+        QuickAddText = string.Empty;
+        EventsChanged?.Invoke(this, parsed.Date);
+    }
 
     public void Show(DateOnly date, IEnumerable<CalendarEvent> events)
     {
@@ -165,7 +218,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         }
 
         CloseForm();
-        EventsChanged?.Invoke(this, EventArgs.Empty);
+        EventsChanged?.Invoke(this, Date);
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteNow))]
@@ -178,7 +231,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
         _storage.Delete(id);
         CloseForm();
-        EventsChanged?.Invoke(this, EventArgs.Empty);
+        EventsChanged?.Invoke(this, Date);
     }
 
     [RelayCommand(CanExecute = nameof(IsFormOpen))]

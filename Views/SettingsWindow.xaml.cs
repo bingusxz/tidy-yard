@@ -10,6 +10,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        GlassWindow.Attach(this);
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

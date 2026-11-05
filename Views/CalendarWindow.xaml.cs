@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using TidyYard.Interop;
@@ -11,22 +12,31 @@ using TidyYard.ViewModels;
 namespace TidyYard.Views;
 
 /// <summary>
-/// Window plumbing only: placement, hide-to-tray, focus. All behaviour is in CalendarViewModel.
+/// Window plumbing only: glass, placement, lock, hide-to-tray, focus.
+/// All behaviour is in CalendarViewModel.
 /// </summary>
 public partial class CalendarWindow : Window
 {
+    private const double CaptionHeight = 56;
+    private const double ResizeBorder = 6;
+
     private readonly SettingsService _settings;
+    private readonly CalendarViewModel _viewModel;
     private bool _closingForExit;
 
     public CalendarWindow(CalendarViewModel viewModel, SettingsService settings)
     {
         InitializeComponent();
-        DataContext = viewModel;
+        DataContext = _viewModel = viewModel;
         _settings = settings;
+
+        GlassWindow.Attach(this);
 
         WindowStartupLocation = WindowStartupLocation.Manual;
         ApplyBounds(settings.Current.CalendarBounds);
+        ApplyLock(viewModel.IsLocked);
 
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
         LocationChanged += (_, _) => RememberBounds();
         SizeChanged += (_, _) => RememberBounds();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
@@ -34,13 +44,7 @@ public partial class CalendarWindow : Window
 
     public void ShowAndFocus()
     {
-        if (!IsVisible)
-        {
-            // A monitor may have been unplugged while the window was hidden.
-            ApplyBounds(_settings.Current.CalendarBounds);
-            Show();
-        }
-
+        ShowInPlace();
         if (WindowState == WindowState.Minimized)
         {
             WindowState = WindowState.Normal;
@@ -48,6 +52,22 @@ public partial class CalendarWindow : Window
 
         Activate();
         NativeMethods.BringToForeground(new WindowInteropHelper(this).Handle);
+    }
+
+    /// <summary>Shows the widget at its saved spot without taking focus (used at sign-in).</summary>
+    public void ShowInPlace()
+    {
+        if (IsVisible)
+        {
+            return;
+        }
+
+        // A monitor may have been unplugged while the window was hidden.
+        ApplyBounds(_settings.Current.CalendarBounds);
+        var activated = ShowActivated;
+        ShowActivated = false;
+        Show();
+        ShowActivated = activated;
     }
 
     public void CloseForExit()
@@ -71,7 +91,30 @@ public partial class CalendarWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         base.OnClosed(e);
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CalendarViewModel.IsLocked))
+        {
+            ApplyLock(_viewModel.IsLocked);
+        }
+    }
+
+    /// <summary>Locked: no drag strip, no resize edges, and out of the taskbar like a desktop widget.</summary>
+    private void ApplyLock(bool locked)
+    {
+        WindowChrome.SetWindowChrome(this, new WindowChrome
+        {
+            CaptionHeight = locked ? 0 : CaptionHeight,
+            ResizeBorderThickness = new Thickness(locked ? 0 : ResizeBorder),
+            GlassFrameThickness = new Thickness(-1),
+            CornerRadius = new CornerRadius(0),
+            UseAeroCaptionButtons = false,
+        });
+        ShowInTaskbar = !locked;
     }
 
     private void ApplyBounds(WindowBounds? saved)

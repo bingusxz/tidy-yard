@@ -24,10 +24,20 @@ public sealed class WindowService : IWindowService
         _quit = quit;
     }
 
-    public void ShowCalendar()
+    public void ShowCalendar() => ShowCalendar(activate: true);
+
+    /// <summary>At Windows sign-in the widget appears in place without stealing focus.</summary>
+    public void ShowCalendar(bool activate)
     {
         _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this), _settings);
-        _calendar.ShowAndFocus();
+        if (activate)
+        {
+            _calendar.ShowAndFocus();
+        }
+        else
+        {
+            _calendar.ShowInPlace();
+        }
     }
 
     public void ShowSettings()

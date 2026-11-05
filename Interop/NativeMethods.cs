@@ -52,6 +52,64 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    // DWM window attributes (Windows 11).
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMWCP_ROUND = 2;
+    private const int DWMSBT_TRANSIENTWINDOW = 3; // acrylic blur
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS
+    {
+        public int Left;
+        public int Right;
+        public int Top;
+        public int Bottom;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
+    /// <summary>System acrylic backdrops need Windows 11 22H2 (build 22621) or later.</summary>
+    public static bool SupportsAcrylicBackdrop => Environment.OSVersion.Version.Build >= 22621;
+
+    /// <summary>
+    /// Gives a borderless window the Windows 11 acrylic backdrop with rounded corners.
+    /// Returns false when the system refuses, so the caller can fall back to a solid fill.
+    /// </summary>
+    public static bool TryApplyAcrylic(IntPtr hwnd)
+    {
+        if (!SupportsAcrylicBackdrop || hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
+        var corner = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+
+        var backdrop = DWMSBT_TRANSIENTWINDOW;
+        return DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) == 0;
+    }
+
+    /// <summary>Switches the acrylic base between light and dark to match the theme.</summary>
+    public static void SetDarkFrame(IntPtr hwnd, bool dark)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var value = dark ? 1 : 0;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+    }
+
     public static IReadOnlyList<MonitorWorkArea> GetMonitorWorkAreas()
     {
         var areas = new List<MonitorWorkArea>();

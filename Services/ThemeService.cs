@@ -2,7 +2,7 @@ using System.Windows;
 
 namespace TidyYard.Services;
 
-public sealed record ThemeOption(string Key, string Name)
+public sealed record ThemeOption(string Key, string Name, bool IsDark)
 {
     /// <summary>Screen readers and list items read this.</summary>
     public override string ToString() => Name;
@@ -15,12 +15,17 @@ public sealed class ThemeService
 {
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("Paper", "Paper"),
-        new("NightShift", "Night Shift"),
-        new("Moss", "Moss"),
+        new("Paper", "Paper", IsDark: false),
+        new("NightShift", "Night Shift", IsDark: true),
+        new("Moss", "Moss", IsDark: true),
     ];
 
     private ResourceDictionary? _current;
+
+    /// <summary>Raised after a theme is applied, so windows can match their frame.</summary>
+    public static event EventHandler? Applied;
+
+    public static bool CurrentIsDark { get; private set; }
 
     public static ThemeOption Resolve(string? key) =>
         Themes.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase)) ?? Themes[0];
@@ -42,5 +47,7 @@ public sealed class ThemeService
         // Index 0 so control styles merged after it can resolve theme keys.
         merged.Insert(0, dictionary);
         _current = dictionary;
+        CurrentIsDark = theme.IsDark;
+        Applied?.Invoke(this, EventArgs.Empty);
     }
 }
