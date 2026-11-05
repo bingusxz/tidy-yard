@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace TidyYard.Interop;
@@ -140,17 +141,225 @@ internal static class NativeMethods
         }
     }
 
-    /// <summary>Rewrites a pending WM_WINDOWPOSCHANGING so the window keeps its position and size.</summary>
-    public static void KeepPositionAndSize(IntPtr windowPosPtr)
+    /// <summary>
+    /// Rewrites a pending WM_WINDOWPOSCHANGING: optionally keep position and size (locked), and
+    /// optionally keep the window at the bottom of the z-order (pinned to the desktop).
+    /// </summary>
+    public static void AdjustWindowPos(IntPtr windowPosPtr, bool keepPositionAndSize, bool keepAtBottom)
     {
-        if (windowPosPtr == IntPtr.Zero)
+        if (windowPosPtr == IntPtr.Zero || (!keepPositionAndSize && !keepAtBottom))
         {
             return;
         }
 
         var pos = Marshal.PtrToStructure<WINDOWPOS>(windowPosPtr);
-        pos.flags |= SWP_NOMOVE | SWP_NOSIZE;
+        if (keepPositionAndSize)
+        {
+            pos.flags |= SWP_NOMOVE | SWP_NOSIZE;
+        }
+
+        if (keepAtBottom)
+        {
+            pos.hwndInsertAfter = HWND_BOTTOM;
+            pos.flags &= ~SWP_NOZORDER;
+        }
+
         Marshal.StructureToPtr(pos, windowPosPtr, fDeleteOld: false);
+    }
+
+    // ---- Desktop layer -------------------------------------------------------------------
+
+    private static readonly IntPtr HWND_BOTTOM = new(1);
+    private const int GWLP_HWNDPARENT = -8;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowW(string lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int RegisterWindowMessageW(string lpString);
+
+    /// <summary>Sent to top-level windows when Explorer (and so the desktop) restarts.</summary>
+    public static readonly int WM_TASKBARCREATED = RegisterWindowMessageW("TaskbarCreated");
+
+    /// <summary>The shell's desktop window (Progman), or zero if Explorer is not running.</summary>
+    public static IntPtr DesktopShellWindow => FindWindowW("Progman", null);
+
+    public static IntPtr GetOwner(IntPtr hwnd) => GetWindowLongPtr(hwnd, GWLP_HWNDPARENT);
+
+    /// <summary>Sets a window's owner. Windows owned by the desktop stay visible on Show desktop (Win+D).</summary>
+    public static void SetOwner(IntPtr hwnd, IntPtr owner)
+    {
+        if (hwnd != IntPtr.Zero)
+        {
+            SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, owner);
+        }
+    }
+
+    public static void SendToBottom(IntPtr hwnd)
+    {
+        if (hwnd != IntPtr.Zero)
+        {
+            SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+
+    // ---- Shell icons and thumbnails ------------------------------------------------------
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SIZE
+    {
+        public int cx;
+        public int cy;
+    }
+
+    [ComImport]
+    [Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellItemImageFactory
+    {
+        [PreserveSig]
+        int GetImage(SIZE size, int flags, out IntPtr phbm);
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+    private static extern void SHCreateItemFromParsingName(
+        string pszPath,
+        IntPtr pbc,
+        [MarshalAs(UnmanagedType.LPStruct)] Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory ppv);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BITMAPINFOHEADER
+    {
+        public int biSize;
+        public int biWidth;
+        public int biHeight;
+        public short biPlanes;
+        public short biBitCount;
+        public int biCompression;
+        public int biSizeImage;
+        public int biXPelsPerMeter;
+        public int biYPelsPerMeter;
+        public int biClrUsed;
+        public int biClrImportant;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BITMAP
+    {
+        public int bmType;
+        public int bmWidth;
+        public int bmHeight;
+        public int bmWidthBytes;
+        public short bmPlanes;
+        public short bmBitsPixel;
+        public IntPtr bmBits;
+    }
+
+    [DllImport("gdi32.dll")]
+    private static extern int GetObjectW(IntPtr h, int c, out BITMAP pv);
+
+    [DllImport("gdi32.dll")]
+    private static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint lines, byte[] bits, ref BITMAPINFOHEADER bmi, uint usage);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr ho);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    /// <summary>
+    /// The Explorer image for a file or folder (thumbnail for pictures, icon otherwise), as
+    /// premultiplied BGRA pixels, top row first. Null when the shell cannot provide one.
+    /// Call on an STA thread (the UI thread).
+    /// </summary>
+    public static (int Width, int Height, byte[] Pixels)? GetShellImage(string path, int size)
+    {
+        IntPtr hbitmap = IntPtr.Zero;
+        try
+        {
+            SHCreateItemFromParsingName(path, IntPtr.Zero, typeof(IShellItemImageFactory).GUID, out var factory);
+            try
+            {
+                if (factory.GetImage(new SIZE { cx = size, cy = size }, 0, out hbitmap) != 0 || hbitmap == IntPtr.Zero)
+                {
+                    return null;
+                }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(factory);
+            }
+
+            if (GetObjectW(hbitmap, Marshal.SizeOf<BITMAP>(), out var bm) == 0 || bm.bmWidth <= 0 || bm.bmHeight <= 0)
+            {
+                return null;
+            }
+
+            var header = new BITMAPINFOHEADER
+            {
+                biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
+                biWidth = bm.bmWidth,
+                biHeight = -bm.bmHeight, // negative = top-down rows
+                biPlanes = 1,
+                biBitCount = 32,
+            };
+            var pixels = new byte[bm.bmWidth * bm.bmHeight * 4];
+            var dc = GetDC(IntPtr.Zero);
+            try
+            {
+                if (GetDIBits(dc, hbitmap, 0, (uint)bm.bmHeight, pixels, ref header, 0) == 0)
+                {
+                    return null;
+                }
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, dc);
+            }
+
+            // Photo thumbnails come back without alpha: treat them as fully opaque.
+            var hasAlpha = false;
+            for (var i = 3; i < pixels.Length; i += 4)
+            {
+                if (pixels[i] != 0)
+                {
+                    hasAlpha = true;
+                    break;
+                }
+            }
+
+            if (!hasAlpha)
+            {
+                for (var i = 3; i < pixels.Length; i += 4)
+                {
+                    pixels[i] = 255;
+                }
+            }
+
+            return (bm.bmWidth, bm.bmHeight, pixels);
+        }
+        catch (Exception ex) when (ex is COMException or FileNotFoundException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+        finally
+        {
+            if (hbitmap != IntPtr.Zero)
+            {
+                DeleteObject(hbitmap);
+            }
+        }
     }
 
     private const int DWMSBT_TRANSIENTWINDOW = 3; // acrylic

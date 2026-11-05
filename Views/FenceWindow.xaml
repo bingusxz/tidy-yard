@@ -1,0 +1,179 @@
+<Window x:Class="TidyYard.Views.FenceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:TidyYard.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:FenceViewModel}"
+        Title="{Binding Title}"
+        Style="{DynamicResource Style.Window}"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Width="360" Height="280"
+        MinWidth="200" MinHeight="44">
+
+    <!-- Drag by the title bar, resize from the edges. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="44"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="-1"
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Grid>
+        <Border Background="{DynamicResource Brush.Glass}" Opacity="{Binding GlassOpacity}" />
+
+        <DockPanel>
+            <!-- Title bar -->
+            <Grid DockPanel.Dock="Top" Height="44" Margin="14,0,6,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding Title}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBox x:Name="RenameBox"
+                         VerticalAlignment="Center"
+                         Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"
+                         Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
+                         IsVisibleChanged="OnRenameBoxVisibleChanged"
+                         LostKeyboardFocus="OnRenameBoxLostFocus"
+                         AutomationProperties.Name="Fence name"
+                         WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding CommitRenameCommand}" />
+                        <KeyBinding Key="Escape" Command="{Binding CancelRenameCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <TextBlock Grid.Column="1"
+                           Margin="8,0,4,0"
+                           VerticalAlignment="Center"
+                           FontSize="{DynamicResource Size.Small}"
+                           Foreground="{DynamicResource Brush.TextMuted}"
+                           Text="{Binding CountText}" />
+
+                <Button Grid.Column="2"
+                        Command="{Binding ToggleRollUpCommand}"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                            <Setter Property="Content" Value="{DynamicResource Glyph.ChevronUp}" />
+                            <Setter Property="ToolTip" Value="Roll up" />
+                            <Setter Property="AutomationProperties.Name" Value="Roll up" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRolledUp}" Value="True">
+                                    <Setter Property="Content" Value="{DynamicResource Glyph.ChevronDown}" />
+                                    <Setter Property="ToolTip" Value="Roll down" />
+                                    <Setter Property="AutomationProperties.Name" Value="Roll down" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Button x:Name="MenuButton"
+                        Grid.Column="3"
+                        Style="{DynamicResource Button.Icon}"
+                        Content="{DynamicResource Glyph.More}"
+                        Click="OnMenuClick"
+                        ToolTip="Fence options"
+                        AutomationProperties.Name="Fence options"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
+                            <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
+                            <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
+                            <Separator />
+                            <MenuItem Header="{Binding LockMenuText}" Command="{Binding ToggleLockCommand}" />
+                            <Separator />
+                            <MenuItem Header="Remove fence (keeps the folder)" Command="{Binding RemoveCommand}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+            </Grid>
+
+            <Border DockPanel.Dock="Top" Height="1" Margin="14,0" Background="{DynamicResource Brush.Rule}" />
+
+            <!-- Contents -->
+            <Grid>
+                <TextBlock Margin="16"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"
+                           Style="{DynamicResource Text.Muted}"
+                           Text="{Binding Message}"
+                           Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />
+
+                <ScrollViewer Padding="6" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:FenceItemViewModel}">
+                                <Button Width="84"
+                                        Padding="4,8,4,4"
+                                        Style="{DynamicResource Button.Bare}"
+                                        VerticalContentAlignment="Top"
+                                        ToolTip="{Binding Path}"
+                                        AutomationProperties.Name="{Binding Name}">
+                                    <Button.InputBindings>
+                                        <MouseBinding MouseAction="LeftDoubleClick"
+                                                      Command="{Binding DataContext.OpenItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="{Binding}" />
+                                    </Button.InputBindings>
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Open"
+                                                      Command="{Binding PlacementTarget.Tag.OpenItemCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Show in folder"
+                                                      Command="{Binding PlacementTarget.Tag.ShowItemInFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                    <Button.Tag>
+                                        <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                    </Button.Tag>
+                                    <StackPanel>
+                                        <Image Width="48" Height="48" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <TextBlock Margin="0,6,0,0"
+                                                   MaxHeight="32"
+                                                   FontSize="{DynamicResource Size.Small}"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding Name}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</Window>

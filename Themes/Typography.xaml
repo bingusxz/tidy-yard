@@ -27,5 +27,8 @@
     <sys:String x:Key="Glyph.Lock">&#xE72E;</sys:String>
     <sys:String x:Key="Glyph.Unlock">&#xE785;</sys:String>
     <sys:String x:Key="Glyph.Hide">&#xE921;</sys:String>
+    <sys:String x:Key="Glyph.ChevronUp">&#xE70E;</sys:String>
+    <sys:String x:Key="Glyph.ChevronDown">&#xE70D;</sys:String>
+    <sys:String x:Key="Glyph.More">&#xE712;</sys:String>
 
 </ResourceDictionary>

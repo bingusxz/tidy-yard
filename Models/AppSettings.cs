@@ -25,6 +25,9 @@ public sealed class AppSettings
     /// <summary>Locked widgets cannot be moved or resized and stay out of the taskbar.</summary>
     public bool IsLocked { get; set; }
 
+    /// <summary>Locked fences cannot be moved or resized.</summary>
+    public bool FencesLocked { get; set; }
+
     public WindowBounds? CalendarBounds { get; set; }
 }
 

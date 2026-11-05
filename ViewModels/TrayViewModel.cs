@@ -16,5 +16,11 @@ public sealed partial class TrayViewModel
     private void OpenSettings() => _windows.ShowSettings();
 
     [RelayCommand]
+    private void NewFence() => _windows.NewFence();
+
+    [RelayCommand]
+    private void NewFenceFromFolder() => _windows.NewFenceFromFolder();
+
+    [RelayCommand]
     private void Quit() => _windows.Quit();
 }

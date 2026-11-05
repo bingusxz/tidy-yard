@@ -12,6 +12,7 @@ public partial class App : Application
 {
     private SingleInstanceService? _singleInstance;
     private SettingsService? _settings;
+    private FenceStore? _fences;
     private TaskbarIcon? _tray;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -29,11 +30,13 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
         StorageService storage;
+        FenceStore fences;
         try
         {
             AppPaths.EnsureDataDirectory();
             _settings = new SettingsService(AppPaths.SettingsFile);
             storage = new StorageService(AppPaths.DatabaseFile);
+            fences = new FenceStore(AppPaths.FencesFile);
         }
         catch (Exception ex)
         {
@@ -49,7 +52,8 @@ public partial class App : Application
         var themes = new ThemeService();
         themes.Apply(_settings.Current.Theme, _settings.Current.AccentColor, _settings.Current.TintColor);
 
-        var windows = new WindowService(_settings, storage, themes, Shutdown);
+        _fences = fences;
+        var windows = new WindowService(_settings, storage, themes, fences, Shutdown);
 
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows);
@@ -59,6 +63,7 @@ public partial class App : Application
         _singleInstance.ListenForActivation(() => Dispatcher.BeginInvoke(windows.ShowCalendar));
 
         var launchedAtSignIn = e.Args.Contains(StartupService.StartupArgument, StringComparer.OrdinalIgnoreCase);
+        windows.ShowFences();
         windows.ShowCalendar(activate: !launchedAtSignIn);
     }
 
@@ -66,6 +71,7 @@ public partial class App : Application
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _settings?.Flush();
+        _fences?.Flush();
         _tray?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);

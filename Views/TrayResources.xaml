@@ -12,6 +12,10 @@
         <tb:TaskbarIcon.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
+                <Separator />
+                <MenuItem Header="New fence" Command="{Binding NewFenceCommand}" />
+                <MenuItem Header="Fence from folder…" Command="{Binding NewFenceFromFolderCommand}" />
+                <Separator />
                 <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
                 <Separator />
                 <MenuItem Header="Quit" Command="{Binding QuitCommand}" />

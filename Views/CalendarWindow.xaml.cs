@@ -1,61 +1,44 @@
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using TidyYard.Interop;
-using TidyYard.Models;
 using TidyYard.Services;
 using TidyYard.ViewModels;
 
 namespace TidyYard.Views;
 
 /// <summary>
-/// Window plumbing only: glass, placement, lock, hide-to-tray, focus.
+/// Window plumbing only: glass, placement, lock/pin, hide-to-tray, focus.
 /// All behaviour is in CalendarViewModel.
 /// </summary>
 public partial class CalendarWindow : Window
 {
-    private readonly SettingsService _settings;
-    private readonly CalendarViewModel _viewModel;
-    private bool _closingForExit;
-    private bool _locked;
-    private bool _applyingBounds;
-
     private const double DefaultWidth = 900;
     private const double DefaultHeight = 540;
     private const double CompactWidth = 820;
+
+    private readonly CalendarViewModel _viewModel;
+    private readonly DesktopWidget _widget;
+    private bool _closingForExit;
 
     public CalendarWindow(CalendarViewModel viewModel, SettingsService settings)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
-        _settings = settings;
 
         GlassWindow.Attach(this);
-
-        // Create the window handle now so it can be placed in physical pixels before it is shown.
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        new WindowInteropHelper(this).EnsureHandle();
-        ApplyBounds(settings.Current.CalendarBounds);
+        _widget = new DesktopWidget(
+            this,
+            DefaultWidth,
+            DefaultHeight,
+            () => settings.Current.CalendarBounds,
+            bounds => settings.Update(s => s.CalendarBounds = bounds, notify: false)); // debounced write
         ApplyLock(viewModel.IsLocked);
 
-        // Added on Loaded, after WindowChrome's own hook, so this hook sees messages first.
-        Loaded += (_, _) => HwndSource.FromHwnd(Handle)?.AddHook(LockHook);
-
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        LocationChanged += (_, _) => RememberBounds();
 
-        // Moving to a monitor with different scaling resizes the window after it moved; save the final size.
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Background, RememberBounds);
-        SizeChanged += (_, _) =>
-        {
-            RememberBounds();
-
-            // Smaller screens: a narrower day card leaves room for the calendar.
-            CardColumn.Width = new GridLength(ActualWidth < CompactWidth ? 220 : 264);
-        };
-        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        // Smaller screens: a narrower day card leaves room for the calendar.
+        SizeChanged += (_, _) => CardColumn.Width = new GridLength(ActualWidth < CompactWidth ? 220 : 264);
     }
 
     public void ShowAndFocus()
@@ -67,7 +50,8 @@ public partial class CalendarWindow : Window
         }
 
         Activate();
-        NativeMethods.BringToForeground(new WindowInteropHelper(this).Handle);
+        NativeMethods.BringToForeground(_widget.Handle);
+        _widget.SettleAtBottom();
     }
 
     /// <summary>Shows the widget at its saved spot without taking focus (used at sign-in).</summary>
@@ -79,11 +63,12 @@ public partial class CalendarWindow : Window
         }
 
         // A monitor may have been unplugged while the window was hidden.
-        ApplyBounds(_settings.Current.CalendarBounds);
+        _widget.ApplySavedBounds();
         var activated = ShowActivated;
         ShowActivated = false;
         Show();
         ShowActivated = activated;
+        _widget.SettleAtBottom();
     }
 
     public void CloseForExit()
@@ -106,7 +91,6 @@ public partial class CalendarWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         base.OnClosed(e);
     }
@@ -120,81 +104,15 @@ public partial class CalendarWindow : Window
     }
 
     /// <summary>
-    /// Locked: dragging, edge-resizing and snapping are ignored. Nothing about the window itself
-    /// changes (no chrome swap, no taskbar toggle), because WPF re-creates or re-shows the frame
-    /// for those, which moved the widget and dropped the glass on mixed-scaling setups.
+    /// Locked = a desktop widget: cannot be dragged or resized, sits behind app windows and
+    /// stays visible on Show desktop (Win+D). Nothing about the window frame changes, which
+    /// matters: swapping chrome or toggling the taskbar button made WPF rebuild or re-show it.
     /// </summary>
-    private void ApplyLock(bool locked) => _locked = locked;
-
-    /// <summary>While locked, the whole window is plain client area and position changes are refused.</summary>
-    private IntPtr LockHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    private void ApplyLock(bool locked)
     {
-        if (!_locked)
-        {
-            return IntPtr.Zero;
-        }
-
-        switch (msg)
-        {
-            case NativeMethods.WM_NCHITTEST:
-                handled = true;
-                return new IntPtr(NativeMethods.HTCLIENT);
-            case NativeMethods.WM_WINDOWPOSCHANGING when !_applyingBounds:
-                NativeMethods.KeepPositionAndSize(lParam);
-                break;
-        }
-
-        return IntPtr.Zero;
+        _widget.IsLocked = locked;
+        _widget.IsPinned = locked;
     }
-
-    private IntPtr Handle => new WindowInteropHelper(this).Handle;
-
-    /// <summary>Places the window in physical pixels, pulled onto a connected monitor.</summary>
-    private void ApplyBounds(WindowBounds? saved)
-    {
-        var bounds = ScreenService.FitToScreen(saved, DefaultWidth, DefaultHeight);
-        _applyingBounds = true;
-        try
-        {
-            var (x, y, w, h) = ((int)Math.Round(bounds.Left), (int)Math.Round(bounds.Top),
-                (int)Math.Round(bounds.Width), (int)Math.Round(bounds.Height));
-
-            // If this lands on a monitor with different scaling, Windows rescales the window on
-            // arrival. Placing it a second time, now on the right monitor, sets the exact size.
-            NativeMethods.SetWindowBounds(Handle, x, y, w, h);
-            NativeMethods.SetWindowBounds(Handle, x, y, w, h);
-        }
-        finally
-        {
-            _applyingBounds = false;
-        }
-    }
-
-    private WindowBounds? CurrentBounds() =>
-        NativeMethods.GetWindowBounds(Handle) is { } r
-            ? new WindowBounds(r.X, r.Y, r.Width, r.Height, Physical: true)
-            : null;
-
-    private void RememberBounds()
-    {
-        if (!IsLoaded || WindowState != WindowState.Normal || CurrentBounds() is not { } bounds)
-        {
-            return;
-        }
-
-        // SettingsService debounces the write.
-        _settings.Update(s => s.CalendarBounds = bounds, notify: false);
-    }
-
-    /// <summary>Monitor plugged/unplugged, resolution or scaling changed: pull the widget back on screen.</summary>
-    private void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-        {
-            if (IsVisible && WindowState == WindowState.Normal)
-            {
-                ApplyBounds(CurrentBounds());
-            }
-        });
 
     private void OnHideClick(object sender, RoutedEventArgs e) => Hide();
 

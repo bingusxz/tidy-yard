@@ -18,7 +18,14 @@ internal static class GlassWindow
 
         // Added on Loaded so it runs before WindowChrome's own handler for the same message.
         window.Loaded += (_, _) =>
-            HwndSource.FromHwnd(new WindowInteropHelper(window).Handle)?.AddHook(KeepActiveHook);
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+            HwndSource.FromHwnd(hwnd)?.AddHook(KeepActiveHook);
+
+            // Windows shown without focus (fences, the calendar at sign-in) start with an inactive
+            // frame, which shows the flat fallback instead of acrylic. Mark the frame active once.
+            NativeMethods.KeepFrameActive(hwnd);
+        };
 
         void OnThemeApplied(object? sender, EventArgs e) =>
             NativeMethods.SetDarkFrame(new WindowInteropHelper(window).Handle, ThemeService.CurrentIsDark);

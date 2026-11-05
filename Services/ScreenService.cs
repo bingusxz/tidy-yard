@@ -61,6 +61,27 @@ public static class ScreenService
         return new WindowBounds(left, top, width, height, Physical: true);
     }
 
+    /// <summary>
+    /// Physical bounds for the n-th new window, cascading from the top-left of the primary
+    /// monitor's work area so new fences do not stack exactly on top of each other.
+    /// </summary>
+    public static WindowBounds Cascade(int index, double width, double height)
+    {
+        var monitors = NativeMethods.GetMonitorWorkAreas();
+        var primary = monitors.FirstOrDefault(m => m.IsPrimary);
+        if (primary == default)
+        {
+            return FitToScreen(null, width, height);
+        }
+
+        var scale = primary.DpiScale;
+        var step = 32 * scale * (index % 8);
+        return FitToScreen(
+            new WindowBounds(primary.Left + 40 * scale + step, primary.Top + 40 * scale + step, width * scale, height * scale, Physical: true),
+            width,
+            height);
+    }
+
     private static Rect ToRect(NativeMethods.MonitorWorkArea m) =>
         new(m.Left, m.Top, m.Right - m.Left, m.Bottom - m.Top);
 
