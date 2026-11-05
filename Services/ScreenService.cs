@@ -4,81 +4,79 @@ using TidyYard.Models;
 
 namespace TidyYard.Services;
 
+/// <summary>
+/// Keeps windows on a connected monitor. Works in physical screen pixels so it behaves the
+/// same on every monitor, whatever its size or scaling (100%, 150%, ...).
+/// </summary>
 public static class ScreenService
 {
+    private const int MinVisibleStrip = 48;
+
     /// <summary>
-    /// Returns bounds that sit fully inside a connected monitor's work area. Saved bounds keep
-    /// their monitor when it is still connected; otherwise the window moves to the primary monitor.
+    /// Returns physical-pixel bounds fully inside a connected monitor's work area. Saved bounds
+    /// keep their monitor when it is still connected; otherwise the window is centred on the
+    /// primary monitor. Default size is in WPF units and is scaled for the primary monitor.
     /// </summary>
-    public static WindowBounds FitToScreen(
-        WindowBounds? saved, double defaultWidth, double defaultHeight, double minWidth, double minHeight)
+    public static WindowBounds FitToScreen(WindowBounds? saved, double defaultWidth, double defaultHeight)
     {
-        var areas = GetWorkAreas();
-        var primary = areas.FirstOrDefault(a => a.IsPrimary).Area;
-        if (primary.IsEmpty)
+        var monitors = NativeMethods.GetMonitorWorkAreas();
+        var primary = monitors.FirstOrDefault(m => m.IsPrimary);
+        if (monitors.Count == 0)
         {
-            primary = areas[0].Area;
+            var area = SystemParameters.WorkArea;
+            return new WindowBounds(area.Left, area.Top, defaultWidth, defaultHeight, Physical: true);
         }
 
-        if (saved is null || double.IsNaN(saved.Left) || double.IsNaN(saved.Top))
+        if (primary == default)
         {
-            return Center(primary, defaultWidth, defaultHeight, minWidth, minHeight);
+            primary = monitors[0];
         }
 
-        var rect = new Rect(saved.Left, saved.Top, Math.Max(minWidth, saved.Width), Math.Max(minHeight, saved.Height));
+        if (saved is not { Physical: true } || saved.Width <= 0 || saved.Height <= 0)
+        {
+            return Center(primary, defaultWidth * primary.DpiScale, defaultHeight * primary.DpiScale);
+        }
 
-        // Pick the work area holding most of the window. Require the top strip to be reachable.
-        var best = areas
-            .Select(a => (a.Area, Overlap: Overlap(rect, a.Area)))
+        var rect = new Rect(saved.Left, saved.Top, saved.Width, saved.Height);
+
+        // The window's own top strip (its drag area) must be on a monitor, or it could not be grabbed.
+        var strip = new Rect(rect.Left, rect.Top, rect.Width, MinVisibleStrip);
+        var best = monitors
+            .Select(m => (Monitor: m, Overlap: Overlap(rect, ToRect(m))))
             .OrderByDescending(x => x.Overlap)
             .First();
+        var stripVisible = monitors.Any(m => Overlap(strip, ToRect(m)) >= MinVisibleStrip * MinVisibleStrip);
 
-        var headerStrip = new Rect(rect.Left, rect.Top, rect.Width, 48);
-        var headerVisible = areas.Any(a => Overlap(headerStrip, a.Area) >= 48 * 48);
-        if (best.Overlap <= 0 || !headerVisible)
+        if (best.Overlap <= 0 || !stripVisible)
         {
-            return Center(primary, rect.Width, rect.Height, minWidth, minHeight);
+            return Center(primary, rect.Width, rect.Height);
         }
 
-        var target = best.Area;
+        // Pull the window fully onto the monitor it mostly sits on, shrinking it if that monitor is smaller.
+        var target = ToRect(best.Monitor);
         var width = Math.Min(rect.Width, target.Width);
         var height = Math.Min(rect.Height, target.Height);
         var left = Math.Clamp(rect.Left, target.Left, target.Right - width);
         var top = Math.Clamp(rect.Top, target.Top, target.Bottom - height);
-        return new WindowBounds(left, top, width, height);
+        return new WindowBounds(left, top, width, height, Physical: true);
     }
 
-    private static List<(Rect Area, bool IsPrimary)> GetWorkAreas()
+    private static Rect ToRect(NativeMethods.MonitorWorkArea m) =>
+        new(m.Left, m.Top, m.Right - m.Left, m.Bottom - m.Top);
+
+    private static WindowBounds Center(NativeMethods.MonitorWorkArea monitor, double width, double height)
     {
-        var scale = NativeMethods.GetSystemDpiScale();
-        var areas = NativeMethods.GetMonitorWorkAreas()
-            .Select(m => (
-                Area: new Rect(
-                    m.Left / scale,
-                    m.Top / scale,
-                    (m.Right - m.Left) / scale,
-                    (m.Bottom - m.Top) / scale),
-                m.IsPrimary))
-            .Where(a => a.Area.Width > 0 && a.Area.Height > 0)
-            .ToList();
+        var area = ToRect(monitor);
 
-        if (areas.Count == 0)
-        {
-            areas.Add((SystemParameters.WorkArea, true));
-        }
-
-        return areas;
-    }
-
-    private static WindowBounds Center(Rect area, double width, double height, double minWidth, double minHeight)
-    {
-        var w = Math.Min(Math.Max(width, minWidth), area.Width);
-        var h = Math.Min(Math.Max(height, minHeight), area.Height);
+        // On a small screen, never start larger than 90% of it.
+        var w = Math.Min(width, area.Width * 0.9);
+        var h = Math.Min(height, area.Height * 0.9);
         return new WindowBounds(
             Math.Round(area.Left + (area.Width - w) / 2),
             Math.Round(area.Top + (area.Height - h) / 2),
-            w,
-            h);
+            Math.Round(w),
+            Math.Round(h),
+            Physical: true);
     }
 
     private static double Overlap(Rect a, Rect b)

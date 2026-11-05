@@ -11,7 +11,8 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         Width="900" Height="540"
-        MinWidth="760" MinHeight="460">
+        ShowInTaskbar="False"
+        MinWidth="640" MinHeight="420">
 
     <!-- Drag by the top strip, resize from the edges. Swapped in code when the widget is locked. -->
     <WindowChrome.WindowChrome>
@@ -37,7 +38,7 @@
 
         <Grid Margin="12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="264" />
+                <ColumnDefinition x:Name="CardColumn" Width="264" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 

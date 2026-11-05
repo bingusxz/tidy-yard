@@ -10,6 +10,9 @@
     <RootNamespace>TidyYard</RootNamespace>
     <Product>Tidy Yard</Product>
     <AssemblyTitle>Tidy Yard</AssemblyTitle>
+    <!-- Exe, taskbar, Alt-Tab and window icon. -->
+    <ApplicationIcon>Assets\Logo\TidyYard.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

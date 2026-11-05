@@ -36,27 +36,38 @@ public static class TrayIconRenderer
         return key?.GetValue("SystemUsesLightTheme") is int value && value == 1;
     }
 
-    /// <summary>Glyph in a 16-unit box: posts 2 wide at x = 2, 7, 12 with pointed tops; rails at y = 6 and 10.</summary>
+    /// <summary>
+    /// The fence from Assets/Logo/TidyYard_AppIcon.svg (same posts, tips and rails, in its
+    /// 500-unit space: x 84-416, y 90-426), scaled to fill a 16-unit box.
+    /// </summary>
     private static Geometry BuildGlyph()
     {
         var group = new GeometryGroup { FillRule = FillRule.Nonzero };
-        foreach (var x in new[] { 2.0, 7.0, 12.0 })
+        foreach (var left in new[] { 88.0, 214.0, 340.0 })
         {
             var post = new StreamGeometry();
             using (var ctx = post.Open())
             {
-                ctx.BeginFigure(new Point(x, 3), isFilled: true, isClosed: true);
-                ctx.LineTo(new Point(x + 1, 1.5), true, false);
-                ctx.LineTo(new Point(x + 2, 3), true, false);
-                ctx.LineTo(new Point(x + 2, 14.5), true, false);
-                ctx.LineTo(new Point(x, 14.5), true, false);
+                ctx.BeginFigure(new Point(left, 154), isFilled: true, isClosed: true);
+                ctx.LineTo(new Point(left + 36, 90), true, false);
+                ctx.LineTo(new Point(left + 72, 154), true, false);
+                ctx.LineTo(new Point(left + 72, 426), true, false);
+                ctx.LineTo(new Point(left, 426), true, false);
             }
 
             group.Children.Add(post);
         }
 
-        group.Children.Add(new RectangleGeometry(new Rect(0.5, 5.5, 15, 1.5)));
-        group.Children.Add(new RectangleGeometry(new Rect(0.5, 9.5, 15, 1.5)));
+        group.Children.Add(new RectangleGeometry(new Rect(84, 228, 332, 44)));
+        group.Children.Add(new RectangleGeometry(new Rect(84, 340, 332, 44)));
+
+        // Fit the 332 x 336 artwork into 16 x 16 with half a unit of margin, centred.
+        const double scale = 15.0 / 336;
+        var transform = new TransformGroup();
+        transform.Children.Add(new TranslateTransform(-84, -90));
+        transform.Children.Add(new ScaleTransform(scale, scale));
+        transform.Children.Add(new TranslateTransform((16 - 332 * scale) / 2, 0.5));
+        group.Transform = transform;
         return group;
     }
 

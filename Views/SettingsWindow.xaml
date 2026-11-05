@@ -232,7 +232,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Lock position" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Keeps the calendar where it is and hides it from the taskbar." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Keeps the calendar where it is: no dragging or resizing." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"

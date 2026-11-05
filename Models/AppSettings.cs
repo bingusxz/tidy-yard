@@ -28,7 +28,11 @@ public sealed class AppSettings
     public WindowBounds? CalendarBounds { get; set; }
 }
 
-public sealed record WindowBounds(double Left, double Top, double Width, double Height);
+/// <summary>
+/// Window position and size. Physical = true means physical screen pixels (current format);
+/// older settings files stored WPF units, which are ignored and the window is re-centred.
+/// </summary>
+public sealed record WindowBounds(double Left, double Top, double Width, double Height, bool Physical = false);
 
 /// <summary>How times are shown. Typing a time accepts either style.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ClockFormat>))]
