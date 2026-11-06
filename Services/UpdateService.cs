@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Threading;
 using Velopack;
+using Microsoft.Toolkit.Uwp.Notifications;
 using Velopack.Locators;
 using Velopack.Sources;
 
@@ -45,6 +46,81 @@ public sealed class UpdateService
             }
         };
         Status = IsInstalled ? "Not checked yet" : "Running from a build folder. Updates apply to the installed copy.";
+
+        // Pressing "Restart and update" on the "ready" notification.
+        try
+        {
+            ToastNotificationManagerCompat.OnActivated += OnToastActivated;
+        }
+        catch (Exception)
+        {
+            // Notifications are a convenience; updating still works from Settings.
+        }
+    }
+
+    private const string InstallKey = "tidyyard.update";
+    private bool _applying;
+
+    /// <summary>"Tidy Yard 1.0.6 is ready", with a button that installs it now.</summary>
+    private static void ShowReadyToast(string version)
+    {
+        try
+        {
+            new ToastContentBuilder()
+                .AddText($"Tidy Yard {version} is ready")
+                .AddText("Restart to update. It also installs when you close Tidy Yard.")
+                .AddButton(new ToastButton()
+                    .SetContent("Restart and update")
+                    .AddArgument(InstallKey, "now")
+                    .SetBackgroundActivation())
+                .Show(toast =>
+                {
+                    toast.Group = "update";
+                    toast.Tag = version;
+                });
+        }
+        catch (Exception)
+        {
+            // No notification is not a failure: the update is still downloaded and shown in Settings.
+        }
+    }
+
+    /// <summary>Runs on a background thread when the user presses a button on a notification.</summary>
+    private void OnToastActivated(ToastNotificationActivatedEventArgsCompat e)
+    {
+        try
+        {
+            if (ToastArguments.Parse(e.Argument).Contains(InstallKey))
+            {
+                _dispatcher.BeginInvoke(ApplyAndRestart);
+            }
+        }
+        catch (Exception)
+        {
+            // Not our notification.
+        }
+    }
+
+    /// <summary>
+    /// Called as Tidy Yard closes: if an update has been downloaded, it is installed once the app has exited, so the
+    /// next time it starts it is already the new version. Nothing restarts and nothing is shown.
+    /// </summary>
+    public void ApplyWhenClosed()
+    {
+        if (_applying || _pending is null || Manager is not { } manager)
+        {
+            return;
+        }
+
+        try
+        {
+            _applying = true;
+            manager.WaitExitThenApplyUpdates(_pending.TargetFullRelease, silent: true, restart: false);
+        }
+        catch (Exception)
+        {
+            _applying = false; // it stays downloaded; Settings can still install it
+        }
     }
 
     /// <summary>Raised when <see cref="Status"/>, <see cref="IsReady"/> or <see cref="IsBusy"/> changes.</summary>
@@ -109,7 +185,8 @@ public sealed class UpdateService
 
     public async Task CheckAsync(bool manual)
     {
-        if (_busy)
+        // An update that is already downloaded and waiting is not fetched (or announced) again every few hours.
+        if (_busy || (!manual && _pending is not null))
         {
             return;
         }
@@ -148,7 +225,8 @@ public sealed class UpdateService
                 return;
             }
 
-            SetBusy(false, $"Version {version} is ready. Restart to update.");
+            SetBusy(false, $"Version {version} is ready. Restart to update, or it installs when you close Tidy Yard.");
+            ShowReadyToast(version.ToString());
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -165,6 +243,7 @@ public sealed class UpdateService
             return;
         }
 
+        _applying = true;
         _beforeRestart();
         manager.ApplyUpdatesAndRestart(_pending.TargetFullRelease);
     }

@@ -145,6 +145,9 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+
+        // A downloaded update installs once this process has exited.
+        _updates?.ApplyWhenClosed();
         _hotkeys?.Dispose();
         _autoSort?.Dispose();
         _reminders?.Dispose();
