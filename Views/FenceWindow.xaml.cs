@@ -46,6 +46,51 @@ public partial class FenceWindow : Window
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _hoverTimer.Tick += OnHoverTick;
         _hoverTimer.Start();
+
+        // Added on Loaded, after WindowChrome's own hook, so this one sees the message first.
+        Loaded += (_, _) => System.Windows.Interop.HwndSource.FromHwnd(_widget.Handle)?.AddHook(OnWindowMessage);
+    }
+
+    // ---- Right-click shows the fence's own menu, not the Windows window menu ---------------
+
+    /// <summary>An unlocked fence's title bar is a drag area, so a right-click there arrives as a non-client message.</summary>
+    private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == Interop.NativeMethods.WM_NCRBUTTONUP && wParam.ToInt64() == Interop.NativeMethods.HTCAPTION)
+        {
+            handled = true;
+            Dispatcher.BeginInvoke(ShowFenceMenu);
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void ShowFenceMenu()
+    {
+        if (MenuButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = this;
+            menu.Placement = PlacementMode.MousePoint;
+            menu.IsOpen = true;
+        }
+    }
+
+    /// <summary>A right-click anywhere that has no menu of its own (items, tabs and text boxes keep theirs).</summary>
+    private void OnWindowRightClick(object sender, MouseButtonEventArgs e)
+    {
+        for (var node = e.OriginalSource as DependencyObject; node is not null;
+             node = node is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                 ? System.Windows.Media.VisualTreeHelper.GetParent(node)
+                 : LogicalTreeHelper.GetParent(node))
+        {
+            if (node is System.Windows.Controls.Primitives.ButtonBase or ListBoxItem or System.Windows.Controls.Primitives.TextBoxBase)
+            {
+                return;
+            }
+        }
+
+        e.Handled = true;
+        ShowFenceMenu();
     }
 
     public FenceViewModel ViewModel => _viewModel;
@@ -222,6 +267,15 @@ public partial class FenceWindow : Window
         Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 24 + _viewModel.LabelMaxHeight + 10
             + (_viewModel.HasTabBar ? 34 : 0) + (_viewModel.CanGoBack ? 32 : 0);
         _widget.IsLocked = wasLocked;
+    }
+
+    /// <summary>Scrolls the font list to the font in use, so it is not lost among hundreds.</summary>
+    private void OnTextPopupOpened(object? sender, EventArgs e)
+    {
+        if (FontList.SelectedItem is { } selected)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => FontList.ScrollIntoView(selected));
+        }
     }
 
     private void OnMenuClick(object sender, RoutedEventArgs e)

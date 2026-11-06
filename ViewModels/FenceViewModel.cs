@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,7 +31,14 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private string _title;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowControls))]
+    [NotifyPropertyChangedFor(nameof(RollUpMenuText))]
     private bool _isRolledUp;
+
+    /// <summary>A rolled-up fence is a bare title strip. Its buttons are in the right-click menu instead.</summary>
+    public bool ShowControls => !IsRolledUp;
+
+    public string RollUpMenuText => IsRolledUp ? "Roll down" : "Roll up";
 
     [ObservableProperty]
     private bool _isRenaming;
@@ -42,7 +51,10 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private string _message = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCount))]
     private string _countText = string.Empty;
+
+    public bool HasCount => CountText.Length > 0;
 
     /// <summary>Short-lived note, e.g. files that could not be moved into the fence.</summary>
     [ObservableProperty]
@@ -438,6 +450,29 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private Color _textColor;
 
     public IReadOnlyList<string> AvailableFonts => InstalledFonts.Value;
+
+    /// <summary>What was typed in the font search box; the font list narrows to names containing it.</summary>
+    [ObservableProperty]
+    private string _fontSearch = string.Empty;
+
+    private ICollectionView? _fontView;
+
+    /// <summary>The installed fonts, filtered by <see cref="FontSearch"/>. Each fence has its own view and search.</summary>
+    public ICollectionView FontView => _fontView ??= CreateFontView();
+
+    private ICollectionView CreateFontView()
+    {
+        var view = new CollectionViewSource { Source = AvailableFonts }.View;
+        view.Filter = item =>
+        {
+            var search = FontSearch.Trim();
+            return search.Length == 0
+                || (item is string name && name.Contains(search, StringComparison.CurrentCultureIgnoreCase));
+        };
+        return view;
+    }
+
+    partial void OnFontSearchChanged(string value) => _fontView?.Refresh();
 
     public IReadOnlyList<Color> TextPresets { get; } =
     [

@@ -100,6 +100,10 @@ internal static class NativeMethods
     public const int WM_NCHITTEST = 0x0084;
     public const int WM_WINDOWPOSCHANGING = 0x0046;
     public const int HTCLIENT = 1;
+    public const int HTCAPTION = 2;
+
+    /// <summary>Right button released over a non-client area, such as a draggable title bar.</summary>
+    public const int WM_NCRBUTTONUP = 0x00A5;
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOMOVE = 0x0002;
 

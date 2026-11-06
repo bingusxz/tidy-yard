@@ -16,6 +16,7 @@
         Width="360" Height="280"
         MinWidth="200" MinHeight="44"
         AllowDrop="True"
+        MouseRightButtonUp="OnWindowRightClick"
         ContextMenuOpening="OnContextMenuOpening"
         ContextMenuClosing="OnContextMenuClosing"
         DragEnter="OnDragOver"
@@ -71,6 +72,11 @@
                                 <DataTrigger Binding="{Binding IsRenaming}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
+                                <!-- Rolled up: just the name, centred. -->
+                                <DataTrigger Binding="{Binding ShowControls}" Value="False">
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="Margin" Value="0,0,8,0" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding HasCustomTextColor}" Value="True">
                                     <Setter Property="Foreground" Value="{Binding TextBrush}" />
                                 </DataTrigger>
@@ -103,6 +109,7 @@
                            VerticalAlignment="Center"
                            FontSize="{DynamicResource Size.Small}"
                            Foreground="{DynamicResource Brush.TextMuted}"
+                           Visibility="{Binding ShowControls, Converter={StaticResource BoolToVisibility}}"
                            Text="{Binding CountText}" />
 
                 <!-- Lock state at a glance; one click to change it. -->
@@ -110,6 +117,7 @@
                         Command="{Binding ToggleLockCommand}"
                         ToolTip="{Binding LockToolTip}"
                         AutomationProperties.Name="{Binding LockToolTip}"
+                        Visibility="{Binding ShowControls, Converter={StaticResource BoolToVisibility}}"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
@@ -126,6 +134,7 @@
 
                 <Button Grid.Column="3"
                         Command="{Binding ToggleRollUpCommand}"
+                        Visibility="{Binding ShowControls, Converter={StaticResource BoolToVisibility}}"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
@@ -143,16 +152,29 @@
                     </Button.Style>
                 </Button>
 
+                <!-- Rolled up: hidden and zero-width, but still the anchor the colour and text panels open from. -->
                 <Button x:Name="MenuButton"
                         Grid.Column="4"
-                        Style="{DynamicResource Button.Icon}"
                         Content="{DynamicResource Glyph.More}"
                         Click="OnMenuClick"
                         ToolTip="Fence options"
                         AutomationProperties.Name="Fence options"
                         WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowControls}" Value="False">
+                                    <Setter Property="Visibility" Value="Hidden" />
+                                    <Setter Property="Width" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
                     <Button.ContextMenu>
                         <ContextMenu>
+                            <MenuItem Header="{Binding CountText}" IsEnabled="False" Visibility="{Binding HasCount, Converter={StaticResource BoolToVisibility}}" />
+                            <MenuItem Header="{Binding RollUpMenuText}" Command="{Binding ToggleRollUpCommand}" />
+                            <Separator />
                             <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
                             <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
                             <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
@@ -199,6 +221,7 @@
 
                 <!-- Text: font, size and colour of the title and item names. -->
                 <Popup Grid.Column="4"
+                       Opened="OnTextPopupOpened"
                        IsOpen="{Binding IsTextPopupOpen, Mode=TwoWay}"
                        PlacementTarget="{Binding ElementName=MenuButton}"
                        Placement="Bottom"
@@ -210,12 +233,18 @@
                             TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
                         <StackPanel Width="232">
                             <TextBlock Style="{DynamicResource Text.Label}" Text="Font" />
-                            <ListBox Height="112"
+                            <TextBox Margin="0,4,0,0"
+                                     Tag="Search fonts"
+                                     Text="{Binding FontSearch, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Search fonts" />
+                            <ListBox x:Name="FontList"
+                                     Height="148"
                                      Margin="0,4,0,0"
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Padding="0"
-                                     ItemsSource="{Binding AvailableFonts}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ItemsSource="{Binding FontView}"
                                      SelectedItem="{Binding SelectedFont}"
                                      AutomationProperties.Name="Font">
                                 <ListBox.ItemContainerStyle>
