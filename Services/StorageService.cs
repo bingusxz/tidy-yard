@@ -12,7 +12,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class StorageService
 {
-    private const int SchemaVersion = 6;
+    private const int SchemaVersion = 7;
 
     /// <summary>The database layout this version of the app uses. A backup from a higher number was made by a newer version.</summary>
     public const int CurrentSchemaVersion = SchemaVersion;
@@ -854,6 +854,109 @@ public sealed class StorageService
         transaction.Commit();
     }
 
+    // ---- Standalone checklists ----------------------------------------------------------------
+
+    public IReadOnlyList<TodoList> GetTodoLists()
+    {
+        using var connection = Open();
+        var lists = new List<TodoList>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT id, title FROM todo_lists ORDER BY position, id";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                lists.Add(new TodoList { Id = reader.GetInt64(0), Title = reader.GetString(1) });
+            }
+        }
+
+        var byId = lists.ToDictionary(l => l.Id);
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT id, list_id, text, done FROM todo_items ORDER BY position, id";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                if (byId.TryGetValue(reader.GetInt64(1), out var list))
+                {
+                    list.Items.Add(new TodoItem { Id = reader.GetInt64(0), Text = reader.GetString(2), Done = reader.GetInt32(3) != 0 });
+                }
+            }
+        }
+
+        return lists;
+    }
+
+    public long AddTodoList(string title)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO todo_lists (title, position)
+            VALUES ($title, COALESCE((SELECT MAX(position) FROM todo_lists), 0) + 1);
+            SELECT last_insert_rowid();
+            """;
+        command.Parameters.AddWithValue("$title", title);
+        return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
+
+    public void RenameTodoList(long id, string title)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE todo_lists SET title = $title WHERE id = $id";
+        command.Parameters.AddWithValue("$title", title);
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+    }
+
+    public void DeleteTodoList(long id)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "DELETE FROM todo_items WHERE list_id = $id; DELETE FROM todo_lists WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public long AddTodoItem(long listId, string text)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO todo_items (list_id, text, done, position)
+            VALUES ($list, $text, 0, COALESCE((SELECT MAX(position) FROM todo_items WHERE list_id = $list), 0) + 1);
+            SELECT last_insert_rowid();
+            """;
+        command.Parameters.AddWithValue("$list", listId);
+        command.Parameters.AddWithValue("$text", text);
+        return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
+
+    public void SetTodoItemDone(long itemId, bool done)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE todo_items SET done = $done WHERE id = $id";
+        command.Parameters.AddWithValue("$done", done ? 1 : 0);
+        command.Parameters.AddWithValue("$id", itemId);
+        command.ExecuteNonQuery();
+    }
+
+    public void DeleteTodoItem(long itemId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM todo_items WHERE id = $id";
+        command.Parameters.AddWithValue("$id", itemId);
+        command.ExecuteNonQuery();
+    }
+
     private void EnsureSchema()
     {
         using var connection = Open();
@@ -966,6 +1069,27 @@ public sealed class StorageService
                 ALTER TABLE events ADD COLUMN repeat_until TEXT NULL;
                 -- Deleting an event only marks it, so it can be brought back with Undo.
                 ALTER TABLE events ADD COLUMN deleted_at TEXT NULL;
+                """);
+        }
+
+        if (version < 7)
+        {
+            // Standalone checklists ("Groceries"), separate from the checklists inside events.
+            steps.Add(
+                """
+                CREATE TABLE IF NOT EXISTS todo_lists (
+                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title     TEXT NOT NULL,
+                    position  INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS todo_items (
+                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    list_id   INTEGER NOT NULL,
+                    text      TEXT NOT NULL,
+                    done      INTEGER NOT NULL DEFAULT 0,
+                    position  INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_todo_items_list ON todo_items (list_id, position);
                 """);
         }
 

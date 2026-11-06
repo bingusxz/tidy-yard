@@ -94,6 +94,34 @@
                         </DockPanel>
                     </Border>
 
+                    <!-- Pages of the card: the day's agenda, every upcoming reminder, standalone lists. Hidden while the form is open. -->
+                    <ListBox DockPanel.Dock="Top"
+                             Margin="0,12,0,0"
+                             HorizontalAlignment="Stretch"
+                             ItemsSource="{Binding DataContext.CardTabs, RelativeSource={RelativeSource AncestorType=Window}}"
+                             SelectedItem="{Binding DataContext.SelectedCardTab, RelativeSource={RelativeSource AncestorType=Window}}"
+                             AutomationProperties.Name="Day card page">
+                        <ListBox.Style>
+                            <Style TargetType="ListBox" BasedOn="{StaticResource ListBox.Segmented}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.Style>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="-6,0" HorizontalAlignment="Center" FontSize="{DynamicResource Size.Small}" Text="{Binding}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
                     <Grid Margin="0,12,0,0">
                         <!-- Agenda for the selected day -->
                         <Grid>
@@ -101,6 +129,9 @@
                                 <Style TargetType="Grid">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding DataContext.IsDayTab, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -198,6 +229,153 @@
                                 </ItemsControl>
                             </ScrollViewer>
                         </Grid>
+
+                        <!-- Reminders: everything coming up, across all days. -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding DataContext.IsRemindersTab, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                <Condition Binding="{Binding IsFormOpen}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <TextBlock Margin="4,4,0,0" Text="Nothing scheduled">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.Reminders.HasLines, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ScrollViewer Margin="-8,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ItemsControl ItemsSource="{Binding DataContext.Reminders.Lines, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:ReminderLineViewModel}">
+                                            <Button Style="{DynamicResource Button.Bare}"
+                                                    Padding="8"
+                                                    Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding Item}"
+                                                    AutomationProperties.Name="{Binding Title}">
+                                                <StackPanel>
+                                                    <TextBlock FontWeight="Medium" TextWrapping="Wrap" Text="{Binding Title}" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Size.Small}" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding WhenText}" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Size.Small}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding LeadText}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Lists: standalone checklists. Ticking saves straight away; the name edits in place. -->
+                        <DockPanel>
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding DataContext.IsListsTab, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                                <Condition Binding="{Binding IsFormOpen}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+
+                            <TextBox DockPanel.Dock="Top"
+                                     Tag="New list, like Groceries"
+                                     Text="{Binding DataContext.Lists.NewListTitle, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="New list">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding DataContext.Lists.AddListCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+
+                            <ScrollViewer Margin="-8,4,-8,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ItemsControl ItemsSource="{Binding DataContext.Lists.Lists, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:TodoListViewModel}">
+                                            <StackPanel Margin="8,12,8,0">
+                                                <DockPanel>
+                                                    <Button DockPanel.Dock="Right"
+                                                            Style="{DynamicResource Button.Text}"
+                                                            Content="{Binding DeleteLabel}"
+                                                            Command="{Binding DeleteCommand}" />
+                                                    <TextBlock DockPanel.Dock="Right"
+                                                               Margin="8,0"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="{DynamicResource Size.Small}"
+                                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                                               Text="{Binding ProgressText}" />
+                                                    <TextBox Style="{DynamicResource TextBox.Inline}"
+                                                             VerticalAlignment="Center"
+                                                             FontWeight="SemiBold"
+                                                             Text="{Binding Title, UpdateSourceTrigger=LostFocus}"
+                                                             AutomationProperties.Name="List name" />
+                                                </DockPanel>
+
+                                                <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Items}" Focusable="False">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type vm:TodoItemViewModel}">
+                                                            <DockPanel Margin="0,0,0,2">
+                                                                <Button DockPanel.Dock="Right"
+                                                                        Width="24" Height="24"
+                                                                        Style="{DynamicResource Button.Icon}"
+                                                                        Content="{DynamicResource Glyph.Close}"
+                                                                        Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip="Remove"
+                                                                        AutomationProperties.Name="Remove item" />
+                                                                <CheckBox Style="{DynamicResource CheckBox.Tick}" IsChecked="{Binding IsDone}">
+                                                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </CheckBox>
+                                                            </DockPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <TextBox Margin="0,6,0,0"
+                                                         Tag="Add an item"
+                                                         Text="{Binding NewItemText, UpdateSourceTrigger=PropertyChanged}"
+                                                         AutomationProperties.Name="Add an item">
+                                                    <TextBox.InputBindings>
+                                                        <KeyBinding Key="Enter" Command="{Binding AddItemCommand}" />
+                                                    </TextBox.InputBindings>
+                                                </TextBox>
+                                                <Border Height="1" Margin="0,12,0,0" Background="{DynamicResource Brush.Rule}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
 
                         <!-- Add / edit form -->
                         <ScrollViewer VerticalScrollBarVisibility="Auto"

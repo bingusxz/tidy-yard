@@ -82,6 +82,8 @@ public sealed partial class CalendarViewModel : ObservableObject
         ];
         _selectedView = ViewOptions.First(v => v.View == settings.Current.CalendarView);
 
+        Lists = new ListsViewModel(storage);
+        Reminders = new UpcomingRemindersViewModel(storage, clock);
         Editor = new DayEditorViewModel(storage, clock, settings);
         Editor.EventsChanged += (_, date) =>
         {
@@ -127,6 +129,36 @@ public sealed partial class CalendarViewModel : ObservableObject
     public IReadOnlyList<ViewOption> ViewOptions { get; }
 
     public DayEditorViewModel Editor { get; }
+
+    /// <summary>The standalone checklists on the day card's Lists page.</summary>
+    public ListsViewModel Lists { get; }
+
+    /// <summary>The day card's Reminders page: every upcoming reminder, not only the selected day's.</summary>
+    public UpcomingRemindersViewModel Reminders { get; }
+
+    // ---- The day card's pages: the day's agenda, all reminders, standalone lists ----------------
+
+    public IReadOnlyList<string> CardTabs { get; } = ["Day", "Reminders", "Lists"];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDayTab))]
+    [NotifyPropertyChangedFor(nameof(IsRemindersTab))]
+    [NotifyPropertyChangedFor(nameof(IsListsTab))]
+    private string _selectedCardTab = "Day";
+
+    public bool IsDayTab => SelectedCardTab == "Day";
+
+    public bool IsRemindersTab => SelectedCardTab == "Reminders";
+
+    public bool IsListsTab => SelectedCardTab == "Lists";
+
+    partial void OnSelectedCardTabChanged(string value)
+    {
+        if (value == "Reminders")
+        {
+            Reminders.Refresh();
+        }
+    }
 
     public bool IsMonthView => SelectedView.View == CalendarView.Month;
 
@@ -201,6 +233,7 @@ public sealed partial class CalendarViewModel : ObservableObject
             return;
         }
 
+        SelectedCardTab = "Day"; // the editor lives on the Day page
         SelectedDate = item.Model.Date;
         Editor.EditCommand.Execute(Editor.Events.FirstOrDefault(e => e.Model.Id == item.Model.Id) ?? item);
     }
@@ -249,6 +282,7 @@ public sealed partial class CalendarViewModel : ObservableObject
             return;
         }
 
+        SelectedCardTab = "Day";
         SelectedDate = cell.Date;
         Editor.NewEventCommand.Execute(null);
     }
@@ -407,6 +441,11 @@ public sealed partial class CalendarViewModel : ObservableObject
         var selectedEvents = EventsOn(SelectedDate);
         Hours = BuildHours(selectedEvents);
         Editor.Show(SelectedDate, selectedEvents);
+
+        if (IsRemindersTab)
+        {
+            Reminders.Refresh();
+        }
 
         void Fill(DayCellViewModel cell, DateOnly date, DateOnly shownMonth)
         {
