@@ -71,6 +71,15 @@
                                 <DataTrigger Binding="{Binding IsRenaming}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding HasCustomTextColor}" Value="True">
+                                    <Setter Property="Foreground" Value="{Binding TextBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding HasCustomFont}" Value="True">
+                                    <Setter Property="FontFamily" Value="{Binding TextFontFamily}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding HasCustomTextSize}" Value="True">
+                                    <Setter Property="FontSize" Value="{Binding TitleSize}" />
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
@@ -160,6 +169,7 @@
                                       Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
                             <MenuItem Header="Open when rolled up and hovered" Command="{Binding TogglePeekOnHoverCommand}" IsChecked="{Binding PeekOnHover, Mode=OneWay}" />
                             <MenuItem Header="Colour…" Command="{Binding PickColorCommand}" />
+                            <MenuItem Header="Text…" Command="{Binding PickTextCommand}" />
                             <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
                             <Separator />
                             <MenuItem Header="Grid layout" Command="{Binding SetLayoutCommand}" CommandParameter="Grid" IsChecked="{Binding IsGridLayout, Mode=OneWay}" />
@@ -184,6 +194,78 @@
                             Background="{DynamicResource Brush.Window}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
                             TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
                         <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    </Border>
+                </Popup>
+
+                <!-- Text: font, size and colour of the title and item names. -->
+                <Popup Grid.Column="4"
+                       IsOpen="{Binding IsTextPopupOpen, Mode=TwoWay}"
+                       PlacementTarget="{Binding ElementName=MenuButton}"
+                       Placement="Bottom"
+                       HorizontalOffset="-232"
+                       StaysOpen="False"
+                       AllowsTransparency="True">
+                    <Border Margin="0,8,0,0" Padding="16" CornerRadius="12"
+                            Background="{DynamicResource Brush.Window}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
+                            TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
+                        <StackPanel Width="232">
+                            <TextBlock Style="{DynamicResource Text.Label}" Text="Font" />
+                            <ListBox Height="112"
+                                     Margin="0,4,0,0"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     ItemsSource="{Binding AvailableFonts}"
+                                     SelectedItem="{Binding SelectedFont}"
+                                     AutomationProperties.Name="Font">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                                        <Setter Property="Cursor" Value="Hand" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="Bd" Height="28" Padding="8,0" CornerRadius="8" Background="Transparent">
+                                                        <ContentPresenter VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontFamily="{Binding}" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <TextBlock Margin="0,12,0,0" Style="{DynamicResource Text.Label}" Text="Size" />
+                            <Slider Margin="0,4,0,0"
+                                    Minimum="10" Maximum="20"
+                                    SmallChange="1" LargeChange="2"
+                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding TextSize}"
+                                    AutomationProperties.Name="Text size" />
+
+                            <TextBlock Margin="0,12,0,8" Style="{DynamicResource Text.Label}" Text="Colour" />
+                            <views:ColorPicker SelectedColor="{Binding TextColor}" Presets="{Binding DataContext.TextPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+                            <Button Margin="0,12,0,0"
+                                    HorizontalAlignment="Left"
+                                    Style="{DynamicResource Button.Text}"
+                                    Content="Reset text"
+                                    Command="{Binding ResetTextCommand}" />
+                        </StackPanel>
                     </Border>
                 </Popup>
             </Grid>
@@ -400,6 +482,35 @@
                                 </Style.Triggers>
                             </Style>
 
+                            <!-- Item names use the fence's own colour, font and size once any of them has been chosen. -->
+                            <Style x:Key="FenceLabelBase" TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.HasCustomTextColor, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="Foreground" Value="{Binding DataContext.TextBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DataContext.HasCustomFont, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="FontFamily" Value="{Binding DataContext.TextFontFamily, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+
+                            <Style x:Key="FenceTileLabel" TargetType="TextBlock" BasedOn="{StaticResource FenceLabelBase}">
+                                <Setter Property="FontSize" Value="{DynamicResource Size.Small}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.HasCustomTextSize, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="FontSize" Value="{Binding DataContext.TextSize, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+
+                            <Style x:Key="FenceListLabel" TargetType="TextBlock" BasedOn="{StaticResource FenceLabelBase}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.HasCustomTextSize, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="FontSize" Value="{Binding DataContext.TitleSize, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+
                             <!-- Grid and Row: icon above a two-line name. -->
                             <DataTemplate x:Key="TileItem" DataType="{x:Type vm:FenceItemViewModel}">
                                 <Button Width="{Binding DataContext.ItemWidth, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -412,8 +523,8 @@
                                                Source="{Binding Icon}"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                         <TextBlock Margin="0,6,0,0"
-                                                   MaxHeight="32"
-                                                   FontSize="{DynamicResource Size.Small}"
+                                                   MaxHeight="{Binding DataContext.LabelMaxHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                   Style="{StaticResource FenceTileLabel}"
                                                    TextAlignment="Center"
                                                    TextWrapping="Wrap"
                                                    TextTrimming="CharacterEllipsis"
@@ -427,7 +538,7 @@
                                 <Button Padding="8,4" HorizontalContentAlignment="Stretch" Style="{StaticResource FenceItem}">
                                     <DockPanel>
                                         <Image DockPanel.Dock="Left" Width="24" Height="24" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
-                                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource FenceListLabel}" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
                                     </DockPanel>
                                 </Button>
                             </DataTemplate>

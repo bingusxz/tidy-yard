@@ -22,6 +22,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private readonly FileMoveService _moves;
     private readonly DispatcherTimer _refreshDelay;
     private bool _syncingTint;
+    private bool _syncingText;
     private FileSystemWatcher? _watcher;
 
     [ObservableProperty]
@@ -117,6 +118,9 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _syncingTint = true;
         _tintColor = ThemeService.TryParseHex(model.TintColor, out var tint) ? tint : Colors.White;
         _syncingTint = false;
+        _syncingText = true;
+        _textColor = ThemeService.TryParseHex(model.TextColor, out var text) ? text : Colors.Black;
+        _syncingText = false;
         _title = model.Title;
         _isRolledUp = model.IsRolledUp;
         _glassOpacity = settings.Current.OpacityPercent / 100.0;
@@ -416,6 +420,118 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _store.Changed();
         OnPropertyChanged(nameof(HasCustomTint));
         OnPropertyChanged(nameof(TintBrush));
+    }
+
+    // ---- Text: colour, font and size of the title and item names ------------------------------
+
+    private const double ThemeLabelSize = 11; // Size.Small in the theme
+
+    private static readonly Lazy<IReadOnlyList<string>> InstalledFonts = new(() =>
+        Fonts.SystemFontFamilies.Select(f => f.Source).Order(StringComparer.CurrentCultureIgnoreCase).ToList());
+
+    [ObservableProperty]
+    private bool _isTextPopupOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomTextColor))]
+    [NotifyPropertyChangedFor(nameof(TextBrush))]
+    private Color _textColor;
+
+    public IReadOnlyList<string> AvailableFonts => InstalledFonts.Value;
+
+    public IReadOnlyList<Color> TextPresets { get; } =
+    [
+        Color.FromRgb(0x1E, 0x1C, 0x19), Color.FromRgb(0x3E, 0x6A, 0x4B), Color.FromRgb(0x2B, 0x4A, 0x7A), Color.FromRgb(0x8A, 0x2F, 0x2F),
+        Color.FromRgb(0xFF, 0xFF, 0xFF), Color.FromRgb(0xF3, 0xEF, 0xE6), Color.FromRgb(0xE8, 0xB3, 0x4B), Color.FromRgb(0xA8, 0xD5, 0xB5),
+    ];
+
+    public bool HasCustomTextColor => Model.TextColor is not null;
+
+    public Brush TextBrush => new SolidColorBrush(TextColor);
+
+    public bool HasCustomFont => Model.FontFamilyName is not null;
+
+    public FontFamily TextFontFamily => new(Model.FontFamilyName ?? "Segoe UI");
+
+    public string? SelectedFont
+    {
+        get => Model.FontFamilyName;
+        set
+        {
+            if (string.IsNullOrEmpty(value) || value == Model.FontFamilyName)
+            {
+                return;
+            }
+
+            Model.FontFamilyName = value;
+            _store.Changed();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasCustomFont));
+            OnPropertyChanged(nameof(TextFontFamily));
+        }
+    }
+
+    public bool HasCustomTextSize => Model.TextSize is not null;
+
+    /// <summary>Size of item names. The slider starts at the theme's size when nothing has been chosen.</summary>
+    public double TextSize
+    {
+        get => Model.TextSize ?? ThemeLabelSize;
+        set
+        {
+            value = Math.Round(Math.Clamp(value, 10, 20));
+            if (Model.TextSize is { } current ? current == value : value == ThemeLabelSize)
+            {
+                return;
+            }
+
+            Model.TextSize = value;
+            _store.Changed();
+            NotifyTextSizeChanged();
+        }
+    }
+
+    public double TitleSize => TextSize + 2;
+
+    /// <summary>Room for two lines of item names at the chosen size.</summary>
+    public double LabelMaxHeight => Math.Ceiling(TextSize * 2.9);
+
+    private void NotifyTextSizeChanged()
+    {
+        OnPropertyChanged(nameof(TextSize));
+        OnPropertyChanged(nameof(TitleSize));
+        OnPropertyChanged(nameof(LabelMaxHeight));
+        OnPropertyChanged(nameof(HasCustomTextSize));
+    }
+
+    partial void OnTextColorChanged(Color value)
+    {
+        if (_syncingText)
+        {
+            return;
+        }
+
+        Model.TextColor = ThemeService.ToHex(value);
+        _store.Changed();
+    }
+
+    [RelayCommand]
+    private void PickText() => IsTextPopupOpen = true;
+
+    /// <summary>Back to the theme's text colour, font and sizes.</summary>
+    [RelayCommand]
+    private void ResetText()
+    {
+        Model.TextColor = null;
+        Model.FontFamilyName = null;
+        Model.TextSize = null;
+        _store.Changed();
+        OnPropertyChanged(nameof(HasCustomTextColor));
+        OnPropertyChanged(nameof(TextBrush));
+        OnPropertyChanged(nameof(SelectedFont));
+        OnPropertyChanged(nameof(HasCustomFont));
+        OnPropertyChanged(nameof(TextFontFamily));
+        NotifyTextSizeChanged();
     }
 
     [RelayCommand]

@@ -116,6 +116,7 @@ public partial class FenceWindow : Window
                 ApplyRollUp(_viewModel.IsRolledUp);
                 break;
             case nameof(FenceViewModel.Layout) or nameof(FenceViewModel.HasTabBar) or nameof(FenceViewModel.CanGoBack)
+                or nameof(FenceViewModel.LabelMaxHeight)
                 when _viewModel.IsRowLayout && !_viewModel.IsRolledUp:
                 FitToOneRow();
                 break;
@@ -217,8 +218,8 @@ public partial class FenceWindow : Window
     {
         var wasLocked = _widget.IsLocked;
         _widget.IsLocked = false;
-        // Plus the tab bar (34) and the back bar (32) when they are showing.
-        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 56 + 10
+        // Plus the tab bar (34) and the back bar (32) when they are showing. 24 + the name's height = 56 at the theme size.
+        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 24 + _viewModel.LabelMaxHeight + 10
             + (_viewModel.HasTabBar ? 34 : 0) + (_viewModel.CanGoBack ? 32 : 0);
         _widget.IsLocked = wasLocked;
     }

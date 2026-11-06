@@ -66,6 +66,15 @@ public sealed class Fence
     /// <summary>The fence's own glass colour as #RRGGBB, or null for the theme tint.</summary>
     public string? TintColor { get; set; }
 
+    /// <summary>Colour of the fence's title and item names as #RRGGBB, or null for the theme's text colour.</summary>
+    public string? TextColor { get; set; }
+
+    /// <summary>Font of the fence's title and item names, or null for the theme font.</summary>
+    public string? FontFamilyName { get; set; }
+
+    /// <summary>Size (WPF units) of item names; the title is two larger. Null for the theme sizes.</summary>
+    public double? TextSize { get; set; }
+
     /// <summary>Height (WPF units) to return to when the fence is rolled back down.</summary>
     public double ExpandedHeight { get; set; } = 280;
 }
