@@ -55,6 +55,9 @@ public sealed class Fence
     /// <summary>Rolled up = only the title bar is shown.</summary>
     public bool IsRolledUp { get; set; }
 
+    /// <summary>A rolled-up fence drops open while the pointer is over it, and rolls back up when it leaves.</summary>
+    public bool PeekOnHover { get; set; } = true;
+
     /// <summary>Locked fences cannot be moved or resized (each fence has its own lock).</summary>
     public bool IsLocked { get; set; }
 

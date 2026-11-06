@@ -44,6 +44,8 @@ public partial class FenceWindow : Window
         }
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _hoverTimer.Tick += OnHoverTick;
+        _hoverTimer.Start();
     }
 
     public FenceViewModel ViewModel => _viewModel;
@@ -91,6 +93,7 @@ public partial class FenceWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _hoverTimer.Stop();
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         base.OnClosed(e);
     }
@@ -122,20 +125,92 @@ public partial class FenceWindow : Window
     /// <summary>Rolled up: only the title bar shows. The full height is remembered for rolling down.</summary>
     private void ApplyRollUp(bool rolledUp)
     {
-        var wasLocked = _widget.IsLocked;
-        _widget.IsLocked = false; // a locked fence may still roll up and down
+        _peeking = false;
         if (rolledUp)
         {
             _viewModel.SaveExpandedHeight(ActualHeight);
-            Height = RolledUpHeight;
+            SetHeight(RolledUpHeight);
+
+            // The pointer is still on the roll-up button: stay rolled up until it has left once.
+            _mustLeaveFirst = true;
         }
         else
         {
-            Height = Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80);
+            SetHeight(Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80));
         }
+    }
 
+    /// <summary>Changes the height even when the fence is locked (a locked fence may still roll up and down).</summary>
+    private void SetHeight(double height)
+    {
+        var wasLocked = _widget.IsLocked;
+        _widget.IsLocked = false;
+        Height = height;
         _widget.IsLocked = wasLocked;
     }
+
+    // ---- Rolled up: drop open while the pointer is over the fence --------------------------
+
+    // The pointer is read from the screen on a short timer, not from WPF mouse events: in an unlocked
+    // fence the title bar is a drag area, which does not raise MouseEnter or MouseLeave.
+    private readonly DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private bool _peeking;
+    private bool _mustLeaveFirst;
+    private bool _contextMenuOpen;
+    private int _insideTicks;
+    private int _outsideTicks;
+
+    private bool CanPeek => _viewModel.IsRolledUp && _viewModel.PeekOnHover;
+
+    private bool IsPopupOpen =>
+        _contextMenuOpen || MenuButton.ContextMenu is { IsOpen: true } || _viewModel.IsColorPickerOpen;
+
+    private void OnHoverTick(object? sender, EventArgs e)
+    {
+        if (!_viewModel.IsRolledUp)
+        {
+            _peeking = false;
+        }
+
+        if (!_peeking && !CanPeek)
+        {
+            _insideTicks = 0;
+            return;
+        }
+
+        var over = IsVisible && Interop.NativeMethods.IsCursorOverWindow(_widget.Handle);
+        if (!_peeking)
+        {
+            if (!over)
+            {
+                _mustLeaveFirst = false;
+            }
+
+            _insideTicks = over && !_mustLeaveFirst ? _insideTicks + 1 : 0;
+            if (_insideTicks >= 2)
+            {
+                _insideTicks = 0;
+                _peeking = true;
+                SetHeight(Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80));
+            }
+
+            return;
+        }
+
+        // Stay open while a menu is up, a file is being dragged out, or the name is being typed.
+        var keepOpen = over || IsPopupOpen || _dragOut is not null || _viewModel.IsRenaming;
+        _outsideTicks = keepOpen ? 0 : _outsideTicks + 1;
+        if (_outsideTicks >= 4 || !CanPeek)
+        {
+            _outsideTicks = 0;
+            _peeking = false;
+            SetHeight(RolledUpHeight);
+        }
+    }
+
+    private void OnContextMenuOpening(object sender, ContextMenuEventArgs e) => _contextMenuOpen = true;
+
+    private void OnContextMenuClosing(object sender, ContextMenuEventArgs e) => _contextMenuOpen = false;
 
     /// <summary>Row layout: shrink the fence to a single strip of tiles (title + one row + scrollbar).</summary>
     private void FitToOneRow()

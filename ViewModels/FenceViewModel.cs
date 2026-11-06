@@ -458,6 +458,26 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleRollUp() => IsRolledUp = !IsRolledUp;
 
+    /// <summary>Whether a rolled-up fence drops open while the pointer is over it.</summary>
+    public bool PeekOnHover
+    {
+        get => Model.PeekOnHover;
+        set
+        {
+            if (Model.PeekOnHover == value)
+            {
+                return;
+            }
+
+            Model.PeekOnHover = value;
+            _store.Changed();
+            OnPropertyChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void TogglePeekOnHover() => PeekOnHover = !PeekOnHover;
+
     [RelayCommand]
     private void BeginRename()
     {

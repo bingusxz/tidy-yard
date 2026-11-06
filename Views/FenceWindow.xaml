@@ -16,6 +16,8 @@
         Width="360" Height="280"
         MinWidth="200" MinHeight="44"
         AllowDrop="True"
+        ContextMenuOpening="OnContextMenuOpening"
+        ContextMenuClosing="OnContextMenuClosing"
         DragEnter="OnDragOver"
         DragOver="OnDragOver"
         DragLeave="OnDragLeave"
@@ -156,6 +158,7 @@
                                       Command="{Binding RemoveTabCommand}"
                                       CommandParameter="{Binding SelectedTab}"
                                       Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
+                            <MenuItem Header="Open when rolled up and hovered" Command="{Binding TogglePeekOnHoverCommand}" IsChecked="{Binding PeekOnHover, Mode=OneWay}" />
                             <MenuItem Header="Colour…" Command="{Binding PickColorCommand}" />
                             <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
                             <Separator />

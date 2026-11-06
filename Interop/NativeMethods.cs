@@ -132,6 +132,27 @@ internal static class NativeMethods
             ? (r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top)
             : null;
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    /// <summary>
+    /// True when the mouse pointer is inside the window's rectangle. Works for the title bar too, which a
+    /// draggable (non-client) caption area does not report through WPF mouse events.
+    /// </summary>
+    public static bool IsCursorOverWindow(IntPtr hwnd) =>
+        hwnd != IntPtr.Zero
+        && GetCursorPos(out var p)
+        && GetWindowRect(hwnd, out var r)
+        && p.X >= r.Left && p.X < r.Right && p.Y >= r.Top && p.Y < r.Bottom;
+
     /// <summary>Moves and sizes a window in physical screen pixels without activating it.</summary>
     public static void SetWindowBounds(IntPtr hwnd, int x, int y, int width, int height)
     {
