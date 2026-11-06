@@ -14,7 +14,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Width="360" Height="280"
-        MinWidth="200" MinHeight="44"
+        MinWidth="96" MinHeight="44"
         AllowDrop="True"
         MouseRightButtonUp="OnWindowRightClick"
         ContextMenuOpening="OnContextMenuOpening"
@@ -42,6 +42,22 @@
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding HasCustomTint}" Value="True">
                             <Setter Property="Background" Value="{Binding TintBrush}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
+        <!-- Border line round the plot: off until a width is chosen. Follows the glass corners. -->
+        <Border IsHitTestVisible="False"
+                BorderThickness="{Binding BorderEdge}"
+                CornerRadius="{Binding BorderCornerRadius}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.RuleStrong}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasCustomBorderColor}" Value="True">
+                            <Setter Property="BorderBrush" Value="{Binding BorderBrushValue}" />
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
@@ -226,7 +242,64 @@
                                         Command="{Binding ClosePanelsCommand}"
                                         ToolTip="Close" AutomationProperties.Name="Close" />
                             </Grid>
-                            <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <!-- What the colour wheel below changes: the glass, or the border line. -->
+                            <ListBox HorizontalAlignment="Stretch"
+                                     Margin="0,0,0,12"
+                                     Style="{DynamicResource ListBox.Segmented}"
+                                     ItemsSource="{Binding ColorTargets}"
+                                     SelectedItem="{Binding SelectedColorTarget}"
+                                     AutomationProperties.Name="Change colour of">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <views:ColorPicker SelectedColor="{Binding EditorColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+                            <TextBlock Margin="0,16,0,0" Style="{DynamicResource Text.Label}" Text="Corners" />
+                            <ListBox HorizontalAlignment="Stretch"
+                                     Margin="0,4,0,0"
+                                     Style="{DynamicResource ListBox.Segmented}"
+                                     ItemsSource="{Binding CornerOptions}"
+                                     SelectedItem="{Binding SelectedCorner}"
+                                     AutomationProperties.Name="Corners">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <TextBlock Margin="0,12,0,0" Style="{DynamicResource Text.Label}" Text="Border" />
+                            <ListBox HorizontalAlignment="Stretch"
+                                     Margin="0,4,0,0"
+                                     Style="{DynamicResource ListBox.Segmented}"
+                                     ItemsSource="{Binding BorderOptions}"
+                                     SelectedItem="{Binding SelectedBorder}"
+                                     AutomationProperties.Name="Border">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" Margin="-4,0" Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </StackPanel>
                     </Border>
                 </Popup>

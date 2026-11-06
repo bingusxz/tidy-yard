@@ -498,6 +498,18 @@ internal static class NativeMethods
         return DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int)) == 0;
     }
 
+    /// <summary>
+    /// How Windows 11 rounds a window's corners: 1 = square, 2 = round (about 8 px), 3 = slightly round (about 4 px).
+    /// Has no effect on Windows 10, where windows are square.
+    /// </summary>
+    public static void SetCornerPreference(IntPtr hwnd, int preference)
+    {
+        if (hwnd != IntPtr.Zero && SupportsAcrylicBackdrop)
+        {
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+        }
+    }
+
     public const int WM_NCACTIVATE = 0x0086;
 
     [DllImport("user32.dll")]

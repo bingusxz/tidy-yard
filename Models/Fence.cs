@@ -25,6 +25,15 @@ public enum FenceTitleAlign
     Right,
 }
 
+/// <summary>How rounded a plot's corners are. Windows draws the glass corners, so these are its three settings.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<FenceCorners>))]
+public enum FenceCorners
+{
+    Square,
+    Soft,
+    Round,
+}
+
 /// <summary>A fence: a desktop panel that shows the contents of one folder.</summary>
 public sealed class Fence
 {
@@ -76,6 +85,14 @@ public sealed class Fence
     public string? TintColor { get; set; }
 
     public FenceTitleAlign TitleAlign { get; set; } = FenceTitleAlign.Center;
+
+    public FenceCorners Corners { get; set; } = FenceCorners.Round;
+
+    /// <summary>Width of a line drawn round the plot (WPF units); 0 draws none.</summary>
+    public double BorderWidth { get; set; }
+
+    /// <summary>Colour of that line as #RRGGBB, or null for a soft theme line.</summary>
+    public string? BorderColor { get; set; }
 
     /// <summary>
     /// The fence grows or shrinks to fit its contents when it opens and when its contents change, so nothing is

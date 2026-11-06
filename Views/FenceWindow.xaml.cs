@@ -51,6 +51,7 @@ public partial class FenceWindow : Window
         Loaded += (_, _) =>
         {
             System.Windows.Interop.HwndSource.FromHwnd(_widget.Handle)?.AddHook(OnWindowMessage);
+            ApplyCorners();
             QueueFit();
         };
 
@@ -169,6 +170,9 @@ public partial class FenceWindow : Window
             case nameof(FenceViewModel.IsRolledUp):
                 ApplyRollUp(_viewModel.IsRolledUp);
                 break;
+            case nameof(FenceViewModel.Corners):
+                ApplyCorners();
+                break;
             case nameof(FenceViewModel.Layout) or nameof(FenceViewModel.HasTabBar) or nameof(FenceViewModel.CanGoBack)
                 or nameof(FenceViewModel.LabelMaxHeight) or nameof(FenceViewModel.IconSize)
                 or nameof(FenceViewModel.HasNotice) or nameof(FenceViewModel.HasMessage) or nameof(FenceViewModel.FitHeight):
@@ -176,6 +180,15 @@ public partial class FenceWindow : Window
                 break;
         }
     }
+
+    /// <summary>Windows draws the glass corners: square, slightly round or round.</summary>
+    private void ApplyCorners() =>
+        Interop.NativeMethods.SetCornerPreference(_widget.Handle, _viewModel.Corners switch
+        {
+            Models.FenceCorners.Square => 1,
+            Models.FenceCorners.Soft => 3,
+            _ => 2,
+        });
 
     // ---- Height follows the contents --------------------------------------------------------
 
