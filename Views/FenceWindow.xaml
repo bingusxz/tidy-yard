@@ -48,22 +48,6 @@
             </Border.Style>
         </Border>
 
-        <!-- Border line round the plot: off until a width is chosen. Follows the glass corners. -->
-        <Border IsHitTestVisible="False"
-                BorderThickness="{Binding BorderEdge}"
-                CornerRadius="{Binding BorderCornerRadius}">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.RuleStrong}" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding HasCustomBorderColor}" Value="True">
-                            <Setter Property="BorderBrush" Value="{Binding BorderBrushValue}" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-        </Border>
-
         <!-- Shown while files are dragged over the fence. -->
         <Border x:Name="DropHighlight" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Background="{DynamicResource Brush.AccentSoft}" Visibility="Collapsed" IsHitTestVisible="False" />
 
@@ -190,33 +174,39 @@
                         <ContextMenu>
                             <MenuItem Header="{Binding CountText}" IsEnabled="False" Visibility="{Binding HasCount, Converter={StaticResource BoolToVisibility}}" />
                             <MenuItem Header="{Binding RollUpMenuText}" Command="{Binding ToggleRollUpCommand}" />
-                            <Separator />
                             <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
-                            <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
-                            <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
                             <Separator />
-                            <MenuItem Header="New tab" Command="{Binding NewTabCommand}" />
-                            <MenuItem Header="Tab from folder…" Command="{Binding NewTabFromFolderCommand}" />
-                            <MenuItem Header="Rename tab"
-                                      Command="{Binding BeginRenameTabCommand}"
-                                      CommandParameter="{Binding SelectedTab}"
-                                      Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
-                            <MenuItem Header="Remove tab (keeps the folder)"
-                                      Command="{Binding RemoveTabCommand}"
-                                      CommandParameter="{Binding SelectedTab}"
-                                      Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
-                            <MenuItem Header="Open when rolled up and hovered" Command="{Binding TogglePeekOnHoverCommand}" IsChecked="{Binding PeekOnHover, Mode=OneWay}" />
-                            <MenuItem Header="Fit height to contents" Command="{Binding ToggleFitHeightCommand}" IsChecked="{Binding FitHeight, Mode=OneWay}" />
-                            <MenuItem Header="Colour…" Command="{Binding PickColorCommand}" />
-                            <MenuItem Header="Text…" Command="{Binding PickTextCommand}" />
-                            <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
-                            <Separator />
-                            <MenuItem Header="Grid layout" Command="{Binding SetLayoutCommand}" CommandParameter="Grid" IsChecked="{Binding IsGridLayout, Mode=OneWay}" />
-                            <MenuItem Header="Row layout" Command="{Binding SetLayoutCommand}" CommandParameter="Row" IsChecked="{Binding IsRowLayout, Mode=OneWay}" />
-                            <MenuItem Header="List layout" Command="{Binding SetLayoutCommand}" CommandParameter="List" IsChecked="{Binding IsListLayout, Mode=OneWay}" />
+                            <MenuItem Header="Folder">
+                                <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
+                                <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
+                            </MenuItem>
+                            <MenuItem Header="Tabs">
+                                <MenuItem Header="New tab" Command="{Binding NewTabCommand}" />
+                                <MenuItem Header="Tab from folder…" Command="{Binding NewTabFromFolderCommand}" />
+                                <MenuItem Header="Rename tab"
+                                          Command="{Binding BeginRenameTabCommand}"
+                                          CommandParameter="{Binding SelectedTab}"
+                                          Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
+                                <MenuItem Header="Remove tab (keeps the folder)"
+                                          Command="{Binding RemoveTabCommand}"
+                                          CommandParameter="{Binding SelectedTab}"
+                                          Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
+                            </MenuItem>
+                            <MenuItem Header="Look">
+                                <MenuItem Header="Colour and corners…" Command="{Binding PickColorCommand}" />
+                                <MenuItem Header="Text…" Command="{Binding PickTextCommand}" />
+                                <MenuItem Header="Reset colour" Command="{Binding ResetColorCommand}" Visibility="{Binding HasCustomTint, Converter={StaticResource BoolToVisibility}}" />
+                                <Separator />
+                                <MenuItem Header="Grid layout" Command="{Binding SetLayoutCommand}" CommandParameter="Grid" IsChecked="{Binding IsGridLayout, Mode=OneWay}" />
+                                <MenuItem Header="Row layout" Command="{Binding SetLayoutCommand}" CommandParameter="Row" IsChecked="{Binding IsRowLayout, Mode=OneWay}" />
+                                <MenuItem Header="List layout" Command="{Binding SetLayoutCommand}" CommandParameter="List" IsChecked="{Binding IsListLayout, Mode=OneWay}" />
+                            </MenuItem>
+                            <MenuItem Header="Behaviour">
+                                <MenuItem Header="Open on hover when rolled up" Command="{Binding TogglePeekOnHoverCommand}" IsChecked="{Binding PeekOnHover, Mode=OneWay}" />
+                                <MenuItem Header="Fit height to contents" Command="{Binding ToggleFitHeightCommand}" IsChecked="{Binding FitHeight, Mode=OneWay}" />
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="{Binding LockMenuText}" Command="{Binding ToggleLockCommand}" />
-                            <Separator />
                             <MenuItem Header="Remove plot (keeps the folder)" Command="{Binding RemoveCommand}" />
                         </ContextMenu>
                     </Button.ContextMenu>
@@ -248,64 +238,21 @@
                                         Command="{Binding ClosePanelsCommand}"
                                         ToolTip="Close" AutomationProperties.Name="Close" />
                             </Grid>
-                            <!-- What the colour wheel below changes: the glass, or the border line. -->
-                            <ListBox HorizontalAlignment="Stretch"
-                                     Margin="0,0,0,12"
-                                     Style="{DynamicResource ListBox.Segmented}"
-                                     ItemsSource="{Binding ColorTargets}"
-                                     SelectedItem="{Binding SelectedColorTarget}"
-                                     AutomationProperties.Name="Change colour of">
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Rows="1" />
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
 
-                            <views:ColorPicker SelectedColor="{Binding EditorColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
-
-                            <TextBlock Margin="0,16,0,0" Style="{DynamicResource Text.Label}" Text="Corners" />
-                            <ListBox HorizontalAlignment="Stretch"
-                                     Margin="0,4,0,0"
-                                     Style="{DynamicResource ListBox.Segmented}"
-                                     ItemsSource="{Binding CornerOptions}"
-                                     SelectedItem="{Binding SelectedCorner}"
-                                     AutomationProperties.Name="Corners">
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Rows="1" />
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock HorizontalAlignment="Center" Text="{Binding Name}" />
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <TextBlock Margin="0,12,0,0" Style="{DynamicResource Text.Label}" Text="Border" />
-                            <ListBox HorizontalAlignment="Stretch"
-                                     Margin="0,4,0,0"
-                                     Style="{DynamicResource ListBox.Segmented}"
-                                     ItemsSource="{Binding BorderOptions}"
-                                     SelectedItem="{Binding SelectedBorder}"
-                                     AutomationProperties.Name="Border">
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Rows="1" />
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock HorizontalAlignment="Center" Margin="-4,0" Text="{Binding Name}" />
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <!-- Any corner size from square (0) up. 4 and 8 use Windows' own smooth corners. -->
+                            <DockPanel Margin="0,16,0,0">
+                                <TextBlock DockPanel.Dock="Right"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                           Text="{Binding CornerSize, StringFormat='{}{0:0} px'}" />
+                                <TextBlock Style="{DynamicResource Text.Label}" Text="Corners" />
+                            </DockPanel>
+                            <Slider Margin="0,4,0,0"
+                                    Minimum="0" Maximum="24"
+                                    SmallChange="1" LargeChange="4"
+                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding CornerSize}"
+                                    AutomationProperties.Name="Corner size" />
                         </StackPanel>
                     </Border>
                 </Popup>

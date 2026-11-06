@@ -729,19 +729,48 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="Bd" Background="Transparent" Height="32" Padding="8,0,12,0" CornerRadius="6">
-                        <DockPanel>
-                            <!-- Checked items (the current layout) get a small accent dot. -->
-                            <Ellipse x:Name="Check" DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,8,0"
-                                     VerticalAlignment="Center" Fill="{DynamicResource Brush.Accent}" Visibility="Hidden" />
-                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" />
-                        </DockPanel>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="Bd" Background="Transparent" Height="32" Padding="8,0,12,0" CornerRadius="6">
+                            <DockPanel>
+                                <!-- An item that opens a submenu shows a small arrow. -->
+                                <TextBlock x:Name="Arrow" DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center"
+                                           FontFamily="{DynamicResource Font.Icons}" FontSize="{DynamicResource Size.Icon}"
+                                           Foreground="{DynamicResource Brush.TextMuted}" Text="{DynamicResource Glyph.ChevronRight}"
+                                           Visibility="Collapsed" />
+                                <!-- Checked items (the current layout) get a small accent dot. -->
+                                <Ellipse x:Name="Check" DockPanel.Dock="Left" Width="6" Height="6" Margin="0,0,8,0"
+                                         VerticalAlignment="Center" Fill="{DynamicResource Brush.Accent}" Visibility="Hidden" />
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                            </DockPanel>
+                        </Border>
+                        <Popup x:Name="PART_Popup"
+                               Placement="Right"
+                               HorizontalOffset="-2"
+                               VerticalOffset="-5"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{DynamicResource Brush.Window}"
+                                    BorderBrush="{DynamicResource Brush.RuleStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="4"
+                                    MinWidth="184">
+                                <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </Border>
+                        </Popup>
+                    </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="HasItems" Value="True">
+                            <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Check" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">

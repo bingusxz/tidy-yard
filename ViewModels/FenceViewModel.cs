@@ -130,7 +130,6 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _syncingTint = true;
         _tintColor = ThemeService.TryParseHex(model.TintColor, out var tint) ? tint : Colors.White;
         _syncingTint = false;
-        _editorColor = _tintColor; // the colour panel opens on the glass colour
         _syncingText = true;
         _textColor = ColorOrBlack(model.TitleTextColor); // the panel opens on the header
         _syncingText = false;
@@ -781,113 +780,28 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ---- Frame: corners, a border line, and what the colour wheel is editing ---------------------
+    // ---- Corners ---------------------------------------------------------------------------------
 
-    public IReadOnlyList<string> ColorTargets { get; } = ["Glass", "Border"];
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EditingGlass))]
-    private string _selectedColorTarget = "Glass";
-
-    public bool EditingGlass => SelectedColorTarget != "Border";
-
-    /// <summary>The colour wheel's colour: the glass colour or the border colour, whichever is being edited.</summary>
-    [ObservableProperty]
-    private Color _editorColor;
-
-    private bool _syncingEditor;
-
-    partial void OnSelectedColorTargetChanged(string value)
+    /// <summary>
+    /// Corner size in pixels, 0 to 24. The window draws it (see FenceWindow): 0, 4 and 8 use Windows' own smooth
+    /// corners, anything else is cut out by hand, so its edge is a little rougher.
+    /// </summary>
+    public double CornerSize
     {
-        _syncingEditor = true;
-        EditorColor = EditingGlass ? TintColor : ColorOrBlack(Model.BorderColor);
-        _syncingEditor = false;
-    }
-
-    partial void OnEditorColorChanged(Color value)
-    {
-        if (_syncingEditor)
-        {
-            return;
-        }
-
-        if (EditingGlass)
-        {
-            TintColor = value;
-            return;
-        }
-
-        Model.BorderColor = ThemeService.ToHex(value);
-        _store.Changed();
-        OnPropertyChanged(nameof(HasCustomBorderColor));
-        OnPropertyChanged(nameof(BorderBrushValue));
-    }
-
-    public IReadOnlyList<CornerOption> CornerOptions { get; } =
-    [
-        new("Square", FenceCorners.Square),
-        new("Soft", FenceCorners.Soft),
-        new("Round", FenceCorners.Round),
-    ];
-
-    public IReadOnlyList<BorderOption> BorderOptions { get; } =
-    [
-        new("None", 0),
-        new("Thin", 1),
-        new("Medium", 2),
-        new("Thick", 4),
-    ];
-
-    public FenceCorners Corners => Model.Corners;
-
-    public CornerOption SelectedCorner
-    {
-        get => CornerOptions.First(o => o.Value == Model.Corners);
+        get => Model.CornerSize;
         set
         {
-            if (value is null || value.Value == Model.Corners)
+            var size = (int)Math.Round(Math.Clamp(value, 0, 24));
+            if (size == Model.CornerSize)
             {
                 return;
             }
 
-            Model.Corners = value.Value;
+            Model.CornerSize = size;
             _store.Changed();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(Corners));
-            OnPropertyChanged(nameof(BorderCornerRadius));
         }
     }
-
-    public BorderOption SelectedBorder
-    {
-        get => BorderOptions.FirstOrDefault(o => o.Width == Model.BorderWidth) ?? BorderOptions[0];
-        set
-        {
-            if (value is null || value.Width == Model.BorderWidth)
-            {
-                return;
-            }
-
-            Model.BorderWidth = value.Width;
-            _store.Changed();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(BorderEdge));
-        }
-    }
-
-    public System.Windows.Thickness BorderEdge => new(Model.BorderWidth);
-
-    /// <summary>Matches the corner Windows draws, so the border line follows the glass edge.</summary>
-    public System.Windows.CornerRadius BorderCornerRadius => Model.Corners switch
-    {
-        FenceCorners.Square => new(0),
-        FenceCorners.Soft => new(4),
-        _ => new(8),
-    };
-
-    public bool HasCustomBorderColor => Model.BorderColor is not null;
-
-    public Brush BorderBrushValue => SolidBrushFor(Model.BorderColor);
 
     public System.Windows.HorizontalAlignment TitleHorizontalAlignment => TitleAlign switch
     {
