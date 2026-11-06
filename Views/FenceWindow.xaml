@@ -192,6 +192,10 @@
                                           CommandParameter="{Binding SelectedTab}"
                                           Visibility="{Binding HasTabBar, Converter={StaticResource BoolToVisibility}}" />
                             </MenuItem>
+                            <MenuItem Header="Add shortcut">
+                                <MenuItem Header="Recycle Bin" Command="{Binding AddShortcutCommand}" CommandParameter="recyclebin" />
+                                <MenuItem Header="This PC" Command="{Binding AddShortcutCommand}" CommandParameter="thispc" />
+                            </MenuItem>
                             <MenuItem Header="Look">
                                 <MenuItem Header="Colour and corners…" Command="{Binding PickColorCommand}" />
                                 <MenuItem Header="Text…" Command="{Binding PickTextCommand}" />
@@ -240,19 +244,19 @@
                             </Grid>
                             <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
 
-                            <!-- Any corner size from square (0) up. 4 and 8 use Windows' own smooth corners. -->
+                            <!-- Three stops: Windows can round a glass window to square, soft or round, and no other size. -->
                             <DockPanel Margin="0,16,0,0">
                                 <TextBlock DockPanel.Dock="Right"
                                            Foreground="{DynamicResource Brush.TextMuted}"
-                                           Text="{Binding CornerSize, StringFormat='{}{0:0} px'}" />
+                                           Text="{Binding CornerName}" />
                                 <TextBlock Style="{DynamicResource Text.Label}" Text="Corners" />
                             </DockPanel>
                             <Slider Margin="0,4,0,0"
-                                    Minimum="0" Maximum="24"
-                                    SmallChange="1" LargeChange="4"
-                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Minimum="0" Maximum="8"
+                                    SmallChange="4" LargeChange="4"
+                                    TickFrequency="4" IsSnapToTickEnabled="True"
                                     Value="{Binding CornerSize}"
-                                    AutomationProperties.Name="Corner size" />
+                                    AutomationProperties.Name="Corners" />
                         </StackPanel>
                     </Border>
                 </Popup>

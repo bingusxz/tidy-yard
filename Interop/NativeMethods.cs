@@ -527,34 +527,6 @@ internal static class NativeMethods
         }
     }
 
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool redraw);
-
-    /// <summary>
-    /// Cuts the window to a rounded rectangle with the given corner radius, for corner sizes Windows does not draw
-    /// itself. The edge is not smoothed. Sizes are physical pixels.
-    /// </summary>
-    public static void SetRoundedRegion(IntPtr hwnd, int width, int height, int radius)
-    {
-        if (hwnd != IntPtr.Zero && width > 0 && height > 0)
-        {
-            // Windows owns the region once it is set, so it is not deleted here.
-            SetWindowRgn(hwnd, CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2), true);
-        }
-    }
-
-    /// <summary>Removes any cut-out shape, so the window is a plain rectangle again (or Windows' own rounding).</summary>
-    public static void ClearWindowRegion(IntPtr hwnd)
-    {
-        if (hwnd != IntPtr.Zero)
-        {
-            SetWindowRgn(hwnd, IntPtr.Zero, true);
-        }
-    }
-
     public const int WM_NCACTIVATE = 0x0086;
 
     [DllImport("user32.dll")]

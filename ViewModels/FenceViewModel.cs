@@ -721,6 +721,28 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleRollUp() => IsRolledUp = !IsRolledUp;
 
+    /// <summary>
+    /// Puts a shortcut to a built-in Windows place (Recycle Bin, This PC) in the folder being shown. Those places
+    /// are not files, so they cannot be dragged in.
+    /// </summary>
+    [RelayCommand]
+    private void AddShortcut(string? key)
+    {
+        if (key is null)
+        {
+            return;
+        }
+
+        try
+        {
+            ShortcutService.Create(CurrentPath, key);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            ShowNotice($"Could not add the shortcut: {ex.Message}");
+        }
+    }
+
     /// <summary>Whether a rolled-up fence drops open while the pointer is over it.</summary>
     public bool PeekOnHover
     {
@@ -783,16 +805,16 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     // ---- Corners ---------------------------------------------------------------------------------
 
     /// <summary>
-    /// Corner size in pixels, 0 to 24. The window draws it (see FenceWindow): 0, 4 and 8 use Windows' own smooth
-    /// corners, anything else is cut out by hand, so its edge is a little rougher.
+    /// Corner size: 0 (square), 4 (soft) or 8 (round). These are the three sizes Windows 11 can round a glass window
+    /// to. A window with the glass effect ignores any other shape, so the slider has three stops.
     /// </summary>
     public double CornerSize
     {
-        get => Model.CornerSize;
+        get => SnapCorner(Model.CornerSize);
         set
         {
-            var size = (int)Math.Round(Math.Clamp(value, 0, 24));
-            if (size == Model.CornerSize)
+            var size = SnapCorner(value);
+            if (size == SnapCorner(Model.CornerSize))
             {
                 return;
             }
@@ -800,9 +822,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
             Model.CornerSize = size;
             _store.Changed();
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CornerName));
         }
     }
 
+    public string CornerName => SnapCorner(Model.CornerSize) switch { 0 => "Square", 4 => "Soft", _ => "Round" };
+
+    public static int SnapCorner(double size) => size < 2 ? 0 : size < 6 ? 4 : 8;
     public System.Windows.HorizontalAlignment TitleHorizontalAlignment => TitleAlign switch
     {
         FenceTitleAlign.Left => System.Windows.HorizontalAlignment.Left,

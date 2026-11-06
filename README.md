@@ -55,10 +55,11 @@ A plot is a box on the desktop backed by a real folder. Drag files in, drag them
 - **Right-click** anywhere on a plot for its options: roll up, lock, layout, colour, text and more.
 - **Three layouts:** grid, a single row, or a list.
 - **Make one fast.** Tray icon, New plot gives you a blank plot or a template (Documents, Images, Programs, Archives) that adds a sort rule for its file types. **Win+Alt+N** makes a plot right where the pointer is. Settings, Plots lists every plot with lock, roll up and remove.
-- **Corners.** A slider sets the corner size from square up to 24 px. 0, 4 and 8 px use Windows' own smooth corners; other sizes are cut by hand, so the edge is a little rougher. Plots can also be made small, down to a narrow title strip.
+- **Corners.** A slider with three stops: square, soft or round. Those are the only corner sizes Windows 11 can draw on a glass window. Plots can also be made small, down to a narrow title strip.
 - **Make each one yours.** Every plot has its own glass colour, and its own font, size and colour for the title and for the file names, set separately. The font list has search. The title can sit left, centre or right.
 - **Rename it, the folder follows.** Renaming a plot also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
 - **Lock to the desktop** so a plot sits behind your windows and cannot be moved by accident.
+- **Recycle Bin and This PC.** These are built-in Windows places, not files, so they cannot be dragged in. Use the plot menu, Add shortcut, to put a shortcut to one in a plot.
 - **Auto-sort** (off by default): new desktop files that match a rule, by file type or a word in the name, move into a plot or tab. Files already on the desktop are left alone, every move is logged, and the notification has an Undo button.
 - **Tidy Desktop** sorts loose files into plots by type. It shows you the plan first, logs every move, and can undo the last one.
 

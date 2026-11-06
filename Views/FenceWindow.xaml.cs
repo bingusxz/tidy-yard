@@ -56,10 +56,6 @@ public partial class FenceWindow : Window
         };
 
         viewModel.Items.CollectionChanged += OnItemsChanged;
-
-        // A hand-cut corner shape has to follow the window as it is resized or moved to another screen.
-        SizeChanged += (_, _) => ApplyCornerShape();
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Background, ApplyCornerShape);
     }
 
     private void OnItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => QueueFit();
@@ -185,39 +181,10 @@ public partial class FenceWindow : Window
         }
     }
 
-    /// <summary>
-    /// Corner size. 0, 4 and 8 pixels are what Windows 11 can draw itself (square, slightly round, round), with
-    /// smooth edges. Any other size turns Windows' rounding off and cuts the window to a rounded shape instead.
-    /// </summary>
-    private void ApplyCorners()
-    {
-        var size = (int)_viewModel.CornerSize;
-        var handle = _widget.Handle;
-        _customCorners = size is not (0 or 4 or 8);
-        Interop.NativeMethods.SetCornerPreference(handle, size switch { 4 => 3, 8 => 2, _ => 1 });
-        if (_customCorners)
-        {
-            ApplyCornerShape();
-        }
-        else
-        {
-            Interop.NativeMethods.ClearWindowRegion(handle);
-        }
-    }
-
-    private bool _customCorners;
-
-    /// <summary>Re-cuts the rounded shape to the window's current size. Sizes here are physical pixels.</summary>
-    private void ApplyCornerShape()
-    {
-        if (!_customCorners || Interop.NativeMethods.GetWindowBounds(_widget.Handle) is not { } bounds)
-        {
-            return;
-        }
-
-        var scale = System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX;
-        Interop.NativeMethods.SetRoundedRegion(_widget.Handle, bounds.Width, bounds.Height, (int)Math.Round(_viewModel.CornerSize * scale));
-    }
+    /// <summary>Square, slightly round or round: the three corner sizes Windows 11 draws on a glass window.</summary>
+    private void ApplyCorners() =>
+        Interop.NativeMethods.SetCornerPreference(
+            _widget.Handle, FenceViewModel.SnapCorner(_viewModel.CornerSize) switch { 0 => 1, 4 => 3, _ => 2 });
 
     // ---- Height follows the contents --------------------------------------------------------
 
