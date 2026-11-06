@@ -78,6 +78,13 @@ public partial class App : Application
             return;
         }
 
+        // Before any window exists. Software drawing keeps the GPU driver out of this process, which is most of
+        // the memory a plain WPF app uses. The app has almost no animation, so there is little to draw.
+        if (!_settings.Current.HardwareRendering)
+        {
+            System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        }
+
         var themes = new ThemeService();
         themes.Apply(_settings.Current.Theme, _settings.Current.AccentColor, _settings.Current.TintColor);
 
@@ -106,6 +113,9 @@ public partial class App : Application
         _hotkeys = new HotkeyService();
         _hotkeys.Register(virtualKey: 0x46, windows.BringFencesToFront);
         _hotkeys.Register(virtualKey: 0x4E, windows.NewFenceAtPointer);
+
+        // Gives idle memory back to Windows: once after start-up, then every few minutes.
+        new MemoryTrimService().Start();
 
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows, moves);

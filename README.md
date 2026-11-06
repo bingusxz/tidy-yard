@@ -120,6 +120,7 @@ Updates are read from this repository's Releases, so the repository has to be pu
 
 ## Notes
 
+- Tidy Yard is built to stay light. It draws in software so the graphics driver is not loaded into it, and it hands unused memory back to Windows every few minutes. If drawing ever looks slow on your machine, set `"HardwareRendering": true` in `settings.json` and restart.
 - Tidy Yard runs from the tray. Closing the calendar leaves it running; use Quit in the tray menu to exit.
 - Desktop pinning uses the WorkerW window, so it can behave differently on unusual shell replacements.
 - Only an installed copy can update. A copy run from the build folder says so in Settings.

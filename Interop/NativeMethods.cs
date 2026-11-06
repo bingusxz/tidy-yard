@@ -147,6 +147,20 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
+    [DllImport("psapi.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+    /// <summary>
+    /// Hands this process's unused memory pages back to Windows. They come back on demand if the app touches
+    /// them again, so this only lowers what an idle app holds on to.
+    /// </summary>
+    public static void TrimWorkingSet()
+    {
+        using var self = System.Diagnostics.Process.GetCurrentProcess();
+        EmptyWorkingSet(self.Handle);
+    }
+
     /// <summary>The mouse pointer in physical screen pixels, or null if Windows will not say.</summary>
     public static (int X, int Y)? GetCursorPosition() => GetCursorPos(out var p) ? (p.X, p.Y) : null;
 

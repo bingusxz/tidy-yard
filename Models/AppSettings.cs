@@ -46,6 +46,12 @@ public sealed class AppSettings
     /// <summary>Icon size in fences: 32 (small), 48 (medium) or 64 (large).</summary>
     public int FenceIconSize { get; set; } = 48;
 
+    /// <summary>
+    /// Off (the default): WPF draws in software, which keeps the graphics driver out of the app and saves roughly
+    /// half of its memory. Turn on in settings.json only if drawing ever looks slow on your machine.
+    /// </summary>
+    public bool HardwareRendering { get; set; }
+
     public WindowBounds? CalendarBounds { get; set; }
 }
 
