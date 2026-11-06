@@ -237,6 +237,30 @@
         </Setter>
     </Style>
 
+    <!-- Renaming in place (a tab's name): no box of its own, it sits on the chip it replaces, with a thin accent line. -->
+    <Style x:Key="TextBox.Inline" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.AccentSoft}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Line" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="0,0,0,1" Padding="{TemplateBinding Padding}">
+                        <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" Focusable="False" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Line" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Quick add: a plus glyph and placeholder in a card-coloured field. -->
     <Style x:Key="TextBox.QuickAdd" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Background" Value="{DynamicResource Brush.Card}" />

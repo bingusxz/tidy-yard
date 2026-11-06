@@ -16,6 +16,15 @@ public enum FenceLayout
     List,
 }
 
+/// <summary>Where a fence's title sits in its title bar.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<FenceTitleAlign>))]
+public enum FenceTitleAlign
+{
+    Left,
+    Center,
+    Right,
+}
+
 /// <summary>A fence: a desktop panel that shows the contents of one folder.</summary>
 public sealed class Fence
 {
@@ -66,14 +75,33 @@ public sealed class Fence
     /// <summary>The fence's own glass colour as #RRGGBB, or null for the theme tint.</summary>
     public string? TintColor { get; set; }
 
-    /// <summary>Colour of the fence's title and item names as #RRGGBB, or null for the theme's text colour.</summary>
+    public FenceTitleAlign TitleAlign { get; set; } = FenceTitleAlign.Center;
+
+    /// <summary>
+    /// The fence grows or shrinks to fit its contents when it opens and when its contents change, so nothing is
+    /// cut off. Turn off to keep a height set by hand.
+    /// </summary>
+    public bool FitHeight { get; set; } = true;
+
+    // The header (title) and the files (item names) are styled separately. Null = the theme's own.
+
+    /// <summary>Colour of item names as #RRGGBB.</summary>
     public string? TextColor { get; set; }
 
-    /// <summary>Font of the fence's title and item names, or null for the theme font.</summary>
+    /// <summary>Font of item names.</summary>
     public string? FontFamilyName { get; set; }
 
-    /// <summary>Size (WPF units) of item names; the title is two larger. Null for the theme sizes.</summary>
+    /// <summary>Size (WPF units) of item names.</summary>
     public double? TextSize { get; set; }
+
+    /// <summary>Colour of the title as #RRGGBB.</summary>
+    public string? TitleTextColor { get; set; }
+
+    /// <summary>Font of the title.</summary>
+    public string? TitleFontFamilyName { get; set; }
+
+    /// <summary>Size (WPF units) of the title.</summary>
+    public double? TitleTextSize { get; set; }
 
     /// <summary>Height (WPF units) to return to when the fence is rolled back down.</summary>
     public double ExpandedHeight { get; set; } = 280;

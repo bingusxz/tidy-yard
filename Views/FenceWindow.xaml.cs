@@ -48,8 +48,16 @@ public partial class FenceWindow : Window
         _hoverTimer.Start();
 
         // Added on Loaded, after WindowChrome's own hook, so this one sees the message first.
-        Loaded += (_, _) => System.Windows.Interop.HwndSource.FromHwnd(_widget.Handle)?.AddHook(OnWindowMessage);
+        Loaded += (_, _) =>
+        {
+            System.Windows.Interop.HwndSource.FromHwnd(_widget.Handle)?.AddHook(OnWindowMessage);
+            QueueFit();
+        };
+
+        viewModel.Items.CollectionChanged += OnItemsChanged;
     }
+
+    private void OnItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => QueueFit();
 
     // ---- Right-click shows the fence's own menu, not the Windows window menu ---------------
 
@@ -139,6 +147,7 @@ public partial class FenceWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _hoverTimer.Stop();
+        _viewModel.Items.CollectionChanged -= OnItemsChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         base.OnClosed(e);
     }
@@ -161,10 +170,77 @@ public partial class FenceWindow : Window
                 ApplyRollUp(_viewModel.IsRolledUp);
                 break;
             case nameof(FenceViewModel.Layout) or nameof(FenceViewModel.HasTabBar) or nameof(FenceViewModel.CanGoBack)
-                or nameof(FenceViewModel.LabelMaxHeight)
-                when _viewModel.IsRowLayout && !_viewModel.IsRolledUp:
-                FitToOneRow();
+                or nameof(FenceViewModel.LabelMaxHeight) or nameof(FenceViewModel.IconSize)
+                or nameof(FenceViewModel.HasNotice) or nameof(FenceViewModel.HasMessage) or nameof(FenceViewModel.FitHeight):
+                QueueFit();
                 break;
+        }
+    }
+
+    // ---- Height follows the contents --------------------------------------------------------
+
+    private bool _fitQueued;
+
+    /// <summary>Re-fits after the current layout pass, once, however many changes arrive together.</summary>
+    private void QueueFit()
+    {
+        if (_fitQueued)
+        {
+            return;
+        }
+
+        _fitQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            _fitQueued = false;
+            if (_viewModel.IsRolledUp && !_peeking)
+            {
+                return; // a bare title strip stays 44 high; it is fitted when it opens
+            }
+
+            if (_viewModel.FitHeight)
+            {
+                SetHeight(FitContentHeight());
+            }
+            else if (_viewModel.IsRowLayout && !_viewModel.IsRolledUp)
+            {
+                FitToOneRow();
+            }
+        });
+    }
+
+    /// <summary>The height that shows everything in the fence, up to three quarters of the screen (then it scrolls).</summary>
+    private double FitContentHeight()
+    {
+        if (Content is not FrameworkElement root)
+        {
+            return Height;
+        }
+
+        // Ask the content how tall it wants to be at the current width, then put the real layout back.
+        root.Measure(new Size(ActualWidth > 0 ? ActualWidth : Width, double.PositiveInfinity));
+        var wanted = Math.Ceiling(root.DesiredSize.Height) + 6;
+        root.InvalidateMeasure();
+        return Math.Clamp(wanted, 88, Math.Max(88, SystemParameters.WorkArea.Height * 0.75));
+    }
+
+    /// <summary>The height a fence takes when it opens: fitted to its contents, or the height it had.</summary>
+    private double OpenHeight() =>
+        _viewModel.FitHeight ? FitContentHeight() : Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80);
+
+    /// <summary>Drag handle of the colour and text panels: moves the panel, which stays where it is put.</summary>
+    private void OnPanelDrag(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        var node = sender as DependencyObject;
+        while (node is not null and not Popup)
+        {
+            node = LogicalTreeHelper.GetParent(node);
+        }
+
+        if (node is Popup popup)
+        {
+            popup.HorizontalOffset += e.HorizontalChange;
+            popup.VerticalOffset += e.VerticalChange;
         }
     }
 
@@ -182,7 +258,7 @@ public partial class FenceWindow : Window
         }
         else
         {
-            SetHeight(Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80));
+            SetHeight(OpenHeight());
         }
     }
 
@@ -237,7 +313,7 @@ public partial class FenceWindow : Window
             {
                 _insideTicks = 0;
                 _peeking = true;
-                SetHeight(Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80));
+                SetHeight(OpenHeight());
             }
 
             return;

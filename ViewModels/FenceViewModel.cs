@@ -131,7 +131,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _tintColor = ThemeService.TryParseHex(model.TintColor, out var tint) ? tint : Colors.White;
         _syncingTint = false;
         _syncingText = true;
-        _textColor = ThemeService.TryParseHex(model.TextColor, out var text) ? text : Colors.Black;
+        _textColor = ColorOrBlack(model.TitleTextColor); // the panel opens on the header
         _syncingText = false;
         _title = model.Title;
         _isRolledUp = model.IsRolledUp;
@@ -437,6 +437,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     // ---- Text: colour, font and size of the title and item names ------------------------------
 
     private const double ThemeLabelSize = 11; // Size.Small in the theme
+    private const double ThemeTitleSize = 13; // Size.Body in the theme
 
     private static readonly Lazy<IReadOnlyList<string>> InstalledFonts = new(() =>
         Fonts.SystemFontFamilies.Select(f => f.Source).Order(StringComparer.CurrentCultureIgnoreCase).ToList());
@@ -444,9 +445,8 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isTextPopupOpen;
 
+    /// <summary>The colour wheel's colour: the header's or the files', whichever the panel is editing.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCustomTextColor))]
-    [NotifyPropertyChangedFor(nameof(TextBrush))]
     private Color _textColor;
 
     public IReadOnlyList<string> AvailableFonts => InstalledFonts.Value;
@@ -480,63 +480,120 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         Color.FromRgb(0xFF, 0xFF, 0xFF), Color.FromRgb(0xF3, 0xEF, 0xE6), Color.FromRgb(0xE8, 0xB3, 0x4B), Color.FromRgb(0xA8, 0xD5, 0xB5),
     ];
 
+    // The header and the files each have their own colour, font and size. The Text panel edits one at a time.
+
+    public IReadOnlyList<string> TextTargets { get; } = ["Header", "Files"];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EditingHeader))]
+    [NotifyPropertyChangedFor(nameof(ResetTextLabel))]
+    private string _selectedTextTarget = "Header";
+
+    public bool EditingHeader => SelectedTextTarget != "Files";
+
+    public string ResetTextLabel => EditingHeader ? "Reset header text" : "Reset file text";
+
+    partial void OnSelectedTextTargetChanged(string value)
+    {
+        // The font list, size slider and colour wheel now show the other one's settings.
+        _syncingText = true;
+        TextColor = ColorOrBlack(EditingHeader ? Model.TitleTextColor : Model.TextColor);
+        _syncingText = false;
+        OnPropertyChanged(nameof(SelectedFont));
+        OnPropertyChanged(nameof(EditorTextSize));
+    }
+
+    /// <summary>
+    /// The colour the wheel shows. With nothing chosen it starts at full brightness (a hair off pure white, so the
+    /// white preset still counts as a change): a black start leaves the wheel black and every pick comes out black.
+    /// </summary>
+    private static Color ColorOrBlack(string? hex) =>
+        ThemeService.TryParseHex(hex, out var color) ? color : Color.FromRgb(0xFE, 0xFE, 0xFE);
+
+    private static SolidColorBrush SolidBrushFor(string? hex) => new(ColorOrBlack(hex));
+
+    // Files (item names)
     public bool HasCustomTextColor => Model.TextColor is not null;
 
-    public Brush TextBrush => new SolidColorBrush(TextColor);
+    public Brush TextBrush => SolidBrushFor(Model.TextColor);
 
     public bool HasCustomFont => Model.FontFamilyName is not null;
 
     public FontFamily TextFontFamily => new(Model.FontFamilyName ?? "Segoe UI");
 
-    public string? SelectedFont
-    {
-        get => Model.FontFamilyName;
-        set
-        {
-            if (string.IsNullOrEmpty(value) || value == Model.FontFamilyName)
-            {
-                return;
-            }
-
-            Model.FontFamilyName = value;
-            _store.Changed();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasCustomFont));
-            OnPropertyChanged(nameof(TextFontFamily));
-        }
-    }
-
     public bool HasCustomTextSize => Model.TextSize is not null;
 
-    /// <summary>Size of item names. The slider starts at the theme's size when nothing has been chosen.</summary>
-    public double TextSize
+    public double ItemTextSize => Model.TextSize ?? ThemeLabelSize;
+
+    /// <summary>The list layout shows names a little larger than the tiles do.</summary>
+    public double ListLabelSize => ItemTextSize + 2;
+
+    /// <summary>Room for two lines of item names at the chosen size.</summary>
+    public double LabelMaxHeight => Math.Ceiling(ItemTextSize * 2.9);
+
+    // Header (the fence's title)
+    public bool HasCustomTitleColor => Model.TitleTextColor is not null;
+
+    public Brush TitleBrush => SolidBrushFor(Model.TitleTextColor);
+
+    public bool HasCustomTitleFont => Model.TitleFontFamilyName is not null;
+
+    public FontFamily TitleFontFamily => new(Model.TitleFontFamilyName ?? "Segoe UI");
+
+    public bool HasCustomTitleSize => Model.TitleTextSize is not null;
+
+    public double TitleTextSize => Model.TitleTextSize ?? ThemeTitleSize;
+
+    // What the panel's font list, size slider and colour wheel edit: the header or the files.
+    public string? SelectedFont
     {
-        get => Model.TextSize ?? ThemeLabelSize;
+        get => EditingHeader ? Model.TitleFontFamilyName : Model.FontFamilyName;
         set
         {
-            value = Math.Round(Math.Clamp(value, 10, 20));
-            if (Model.TextSize is { } current ? current == value : value == ThemeLabelSize)
+            if (string.IsNullOrEmpty(value) || value == SelectedFont)
             {
                 return;
             }
 
-            Model.TextSize = value;
+            if (EditingHeader)
+            {
+                Model.TitleFontFamilyName = value;
+            }
+            else
+            {
+                Model.FontFamilyName = value;
+            }
+
             _store.Changed();
-            NotifyTextSizeChanged();
+            NotifyTextChanged();
         }
     }
 
-    public double TitleSize => TextSize + 2;
-
-    /// <summary>Room for two lines of item names at the chosen size.</summary>
-    public double LabelMaxHeight => Math.Ceiling(TextSize * 2.9);
-
-    private void NotifyTextSizeChanged()
+    /// <summary>The slider starts at the theme's size when nothing has been chosen.</summary>
+    public double EditorTextSize
     {
-        OnPropertyChanged(nameof(TextSize));
-        OnPropertyChanged(nameof(TitleSize));
-        OnPropertyChanged(nameof(LabelMaxHeight));
-        OnPropertyChanged(nameof(HasCustomTextSize));
+        get => EditingHeader ? TitleTextSize : ItemTextSize;
+        set
+        {
+            value = Math.Round(Math.Clamp(value, 10, 24));
+            var stored = EditingHeader ? Model.TitleTextSize : Model.TextSize;
+            if (stored is { } current ? current == value : value == EditorTextSize)
+            {
+                return;
+            }
+
+            if (EditingHeader)
+            {
+                Model.TitleTextSize = value;
+            }
+            else
+            {
+                Model.TextSize = value;
+            }
+
+            _store.Changed();
+            NotifyTextChanged();
+        }
     }
 
     partial void OnTextColorChanged(Color value)
@@ -546,31 +603,79 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
             return;
         }
 
-        Model.TextColor = ThemeService.ToHex(value);
+        var hex = ThemeService.ToHex(value);
+        if (EditingHeader)
+        {
+            Model.TitleTextColor = hex;
+        }
+        else
+        {
+            Model.TextColor = hex;
+        }
+
         _store.Changed();
+        NotifyTextChanged();
+    }
+
+    private void NotifyTextChanged()
+    {
+        foreach (var name in new[]
+                 {
+                     nameof(SelectedFont), nameof(EditorTextSize),
+                     nameof(HasCustomTextColor), nameof(TextBrush), nameof(HasCustomFont), nameof(TextFontFamily),
+                     nameof(HasCustomTextSize), nameof(ItemTextSize), nameof(ListLabelSize), nameof(LabelMaxHeight),
+                     nameof(HasCustomTitleColor), nameof(TitleBrush), nameof(HasCustomTitleFont), nameof(TitleFontFamily),
+                     nameof(HasCustomTitleSize), nameof(TitleTextSize),
+                 })
+        {
+            OnPropertyChanged(name);
+        }
     }
 
     [RelayCommand]
-    private void PickText() => IsTextPopupOpen = true;
+    private void PickText()
+    {
+        IsColorPickerOpen = false;
+        IsTextPopupOpen = true;
+    }
 
-    /// <summary>Back to the theme's text colour, font and sizes.</summary>
+    [RelayCommand]
+    private void ClosePanels()
+    {
+        IsColorPickerOpen = false;
+        IsTextPopupOpen = false;
+    }
+
+    /// <summary>Back to the theme's colour, font and size for whichever of header or files is being edited.</summary>
     [RelayCommand]
     private void ResetText()
     {
-        Model.TextColor = null;
-        Model.FontFamilyName = null;
-        Model.TextSize = null;
+        if (EditingHeader)
+        {
+            Model.TitleTextColor = null;
+            Model.TitleFontFamilyName = null;
+            Model.TitleTextSize = null;
+        }
+        else
+        {
+            Model.TextColor = null;
+            Model.FontFamilyName = null;
+            Model.TextSize = null;
+        }
+
         _store.Changed();
-        OnPropertyChanged(nameof(HasCustomTextColor));
-        OnPropertyChanged(nameof(TextBrush));
-        OnPropertyChanged(nameof(SelectedFont));
-        OnPropertyChanged(nameof(HasCustomFont));
-        OnPropertyChanged(nameof(TextFontFamily));
-        NotifyTextSizeChanged();
+        _syncingText = true;
+        TextColor = ColorOrBlack(null);
+        _syncingText = false;
+        NotifyTextChanged();
     }
 
     [RelayCommand]
-    private void PickColor() => IsColorPickerOpen = true;
+    private void PickColor()
+    {
+        IsTextPopupOpen = false;
+        IsColorPickerOpen = true;
+    }
 
     [RelayCommand]
     private void ResetColor()
@@ -628,6 +733,52 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void TogglePeekOnHover() => PeekOnHover = !PeekOnHover;
+
+    /// <summary>Whether the fence's height follows its contents.</summary>
+    public bool FitHeight
+    {
+        get => Model.FitHeight;
+        set
+        {
+            if (Model.FitHeight == value)
+            {
+                return;
+            }
+
+            Model.FitHeight = value;
+            _store.Changed();
+            OnPropertyChanged();
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleFitHeight() => FitHeight = !FitHeight;
+
+    public IReadOnlyList<FenceTitleAlign> TitleAlignments { get; } = Enum.GetValues<FenceTitleAlign>();
+
+    public FenceTitleAlign TitleAlign
+    {
+        get => Model.TitleAlign;
+        set
+        {
+            if (Model.TitleAlign == value)
+            {
+                return;
+            }
+
+            Model.TitleAlign = value;
+            _store.Changed();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(TitleHorizontalAlignment));
+        }
+    }
+
+    public System.Windows.HorizontalAlignment TitleHorizontalAlignment => TitleAlign switch
+    {
+        FenceTitleAlign.Left => System.Windows.HorizontalAlignment.Left,
+        FenceTitleAlign.Right => System.Windows.HorizontalAlignment.Right,
+        _ => System.Windows.HorizontalAlignment.Center,
+    };
 
     [RelayCommand]
     private void BeginRename()
