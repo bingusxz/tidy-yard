@@ -23,7 +23,31 @@ public static class ShortcutService
     {
         var place = Places.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"Unknown place: {key}", nameof(key));
-        var path = FileMoveService.UniquePath(Path.Combine(folder, place.Name + ".lnk"));
+        return Write(folder, place.Name, place.ExplorerArguments, place.Icon);
+    }
+
+    // Icons for the places people drag from the desktop, by their Windows identifier.
+    private static readonly Dictionary<string, string> KnownIcons = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["::{645FF040-5081-101B-9F08-00AA002F954E}"] = "imageres.dll,54",  // Recycle Bin
+        ["::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"] = "imageres.dll,109", // This PC
+        ["::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"] = "imageres.dll,25",  // Network
+        ["::{26EE0668-A00A-44D7-9371-BEB064C98683}"] = "imageres.dll,22",  // Control Panel
+    };
+
+    /// <summary>
+    /// Makes a shortcut for a place dragged in from the desktop (parsing name "::{GUID}"), opened in Explorer.
+    /// </summary>
+    public static string CreateForPlace(string folder, string displayName, string parsingName)
+    {
+        var name = string.Concat(displayName.Split(Path.GetInvalidFileNameChars())).Trim();
+        return Write(folder, name.Length > 0 ? name : "Shortcut", "shell:" + parsingName,
+            KnownIcons.TryGetValue(parsingName, out var icon) ? icon : null);
+    }
+
+    private static string Write(string folder, string name, string explorerArguments, string? icon)
+    {
+        var path = FileMoveService.UniquePath(Path.Combine(folder, name + ".lnk"));
 
         // Windows' own scripting object writes the .lnk, so no extra library is needed.
         var shellType = Type.GetTypeFromProgID("WScript.Shell")
@@ -35,8 +59,12 @@ public static class ShortcutService
             try
             {
                 link.TargetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-                link.Arguments = place.ExplorerArguments;
-                link.IconLocation = Path.Combine(Environment.SystemDirectory, place.Icon);
+                link.Arguments = explorerArguments;
+                if (icon is not null)
+                {
+                    link.IconLocation = Path.Combine(Environment.SystemDirectory, icon);
+                }
+
                 link.Save();
             }
             finally

@@ -395,9 +395,30 @@ public partial class FenceWindow : Window
     private void OnDragOver(object sender, DragEventArgs e)
     {
         var hasFiles = e.Data.GetDataPresent(DataFormats.FileDrop) && !ReferenceEquals(e.Data, _dragOut);
-        e.Effects = hasFiles ? DragDropEffects.Move : DragDropEffects.None;
-        DropHighlight.Visibility = hasFiles ? Visibility.Visible : Visibility.Collapsed;
+        var hasPlaces = !hasFiles && IsShellPlaceDrag(e);
+        e.Effects = hasFiles ? DragDropEffects.Move : hasPlaces ? DragDropEffects.Link : DragDropEffects.None;
+        DropHighlight.Visibility = hasFiles || hasPlaces ? Visibility.Visible : Visibility.Collapsed;
         e.Handled = true;
+    }
+
+    // Dragging the Recycle Bin, This PC or Control Panel sends no file, only a place in Windows' own list.
+    private const string ShellPlaceFormat = "Shell IDList Array";
+
+    private bool IsShellPlaceDrag(DragEventArgs e) =>
+        !ReferenceEquals(e.Data, _dragOut)
+        && !e.Data.GetDataPresent(DataFormats.FileDrop)
+        && e.Data.GetDataPresent(ShellPlaceFormat);
+
+    /// <summary>The desktop places in the drag: those with a "::{GUID}" name. Real files and folders are handled as files.</summary>
+    private static List<(string ParsingName, string DisplayName)> ReadPlaces(IDataObject data)
+    {
+        if (data.GetData(ShellPlaceFormat) is not System.IO.MemoryStream stream)
+        {
+            return [];
+        }
+
+        return [.. Interop.NativeMethods.ReadShellPlaces(stream.ToArray())
+            .Where(p => p.ParsingName.StartsWith("::{", StringComparison.Ordinal))];
     }
 
     private void OnDragLeave(object sender, DragEventArgs e) => DropHighlight.Visibility = Visibility.Collapsed;
@@ -409,6 +430,12 @@ public partial class FenceWindow : Window
         {
             _viewModel.DropFiles(paths);
             e.Effects = DragDropEffects.Move;
+        }
+        else if (IsShellPlaceDrag(e))
+        {
+            // Link, not Move: the desktop's own icon must stay where it is.
+            _viewModel.AddShellPlaces(ReadPlaces(e.Data));
+            e.Effects = DragDropEffects.Link;
         }
 
         e.Handled = true;

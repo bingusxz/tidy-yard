@@ -527,6 +527,91 @@ internal static class NativeMethods
         }
     }
 
+    [DllImport("shell32.dll", PreserveSig = false)]
+    private static extern void SHGetNameFromIDList(IntPtr pidl, int sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string name);
+
+    private const int SIGDN_NORMALDISPLAY = 0;
+    private const int SIGDN_DESKTOPABSOLUTEPARSING = unchecked((int)0x80028000);
+
+    /// <summary>
+    /// Reads the places in a "Shell IDList Array" drag (what Explorer sends when you drag the Recycle Bin, This PC or
+    /// Control Panel, which are not files). Gives each one's parsing name ("::{GUID}") and its display name.
+    /// </summary>
+    public static IReadOnlyList<(string ParsingName, string DisplayName)> ReadShellPlaces(byte[] cida)
+    {
+        var places = new List<(string, string)>();
+        if (cida.Length < 12)
+        {
+            return places;
+        }
+
+        // CIDA: a count, then offsets (the parent folder first, then each item), each pointing at an item-ID list.
+        var count = BitConverter.ToInt32(cida, 0);
+        if (count <= 0 || cida.Length < 4 + 4 * (count + 1))
+        {
+            return places;
+        }
+
+        int Offset(int i) => BitConverter.ToInt32(cida, 4 + 4 * i);
+
+        // Length of an item-ID list without its 2-byte terminator, or -1 if it runs off the end.
+        int ListLength(int offset)
+        {
+            for (var p = offset; p >= 0 && p + 2 <= cida.Length;)
+            {
+                var size = BitConverter.ToUInt16(cida, p);
+                if (size == 0)
+                {
+                    return p - offset;
+                }
+
+                p += size;
+            }
+
+            return -1;
+        }
+
+        var parentOffset = Offset(0);
+        var parentLength = ListLength(parentOffset);
+        if (parentLength < 0)
+        {
+            return places;
+        }
+
+        for (var i = 1; i <= count; i++)
+        {
+            var childOffset = Offset(i);
+            var childLength = ListLength(childOffset);
+            if (childLength < 0)
+            {
+                continue;
+            }
+
+            // Parent folder + item = one absolute ID list, ended by two zero bytes.
+            var list = new byte[parentLength + childLength + 2];
+            Array.Copy(cida, parentOffset, list, 0, parentLength);
+            Array.Copy(cida, childOffset, list, parentLength, childLength);
+            var memory = Marshal.AllocHGlobal(list.Length);
+            try
+            {
+                Marshal.Copy(list, 0, memory, list.Length);
+                SHGetNameFromIDList(memory, SIGDN_DESKTOPABSOLUTEPARSING, out var parsing);
+                SHGetNameFromIDList(memory, SIGDN_NORMALDISPLAY, out var display);
+                places.Add((parsing, display));
+            }
+            catch (COMException)
+            {
+                // An item Windows cannot name is skipped.
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(memory);
+            }
+        }
+
+        return places;
+    }
+
     public const int WM_NCACTIVATE = 0x0086;
 
     [DllImport("user32.dll")]

@@ -722,6 +722,25 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private void ToggleRollUp() => IsRolledUp = !IsRolledUp;
 
     /// <summary>
+    /// A place dragged in from the desktop (Recycle Bin, This PC, Control Panel) is not a file, so it becomes a
+    /// shortcut in the folder being shown. The desktop icon itself stays where it is.
+    /// </summary>
+    public void AddShellPlaces(IEnumerable<(string ParsingName, string DisplayName)> places)
+    {
+        try
+        {
+            foreach (var (parsing, display) in places)
+            {
+                ShortcutService.CreateForPlace(CurrentPath, display, parsing);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            ShowNotice($"Could not add the shortcut: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Puts a shortcut to a built-in Windows place (Recycle Bin, This PC) in the folder being shown. Those places
     /// are not files, so they cannot be dragged in.
     /// </summary>
