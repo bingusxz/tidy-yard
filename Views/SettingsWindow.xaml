@@ -11,9 +11,8 @@
         Style="{DynamicResource Style.Window}"
         WindowStyle="None"
         ResizeMode="CanResize"
-        SizeToContent="Height"
         MaxHeight="{Binding Source={x:Static SystemParameters.WorkArea}, Path=Height}"
-        Width="520"
+        Width="780" Height="620"
         WindowStartupLocation="CenterScreen">
 
     <!-- CanResize keeps the system frame Windows needs for the acrylic backdrop;
@@ -34,6 +33,92 @@
         </Style>
 
         <views:InverseBooleanConverter x:Key="Inverse" />
+
+        <!-- Sidebar list: plain text entries, soft accent fill on the one open. -->
+        <Style x:Key="Nav.List" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <ItemsPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+                        <Setter Property="FontWeight" Value="Medium" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Margin" Value="0,0,0,2" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Bd" Height="36" Padding="12,0" CornerRadius="8" Background="Transparent">
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Hover}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Pages: each shows only while its sidebar entry is selected. -->
+        <Style x:Key="Page" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
+        <Style x:Key="Page0" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="0">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Page1" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="1">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Page2" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="2">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Page3" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="3">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Page4" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="4">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <!-- Round colour swatch that opens the picker. Background = the colour shown. -->
         <Style x:Key="Swatch" TargetType="ToggleButton">
@@ -89,11 +174,31 @@
                         WindowChrome.IsHitTestVisibleInChrome="True" />
             </Grid>
 
-            <!-- Scrolls on small screens; the window never grows taller than the work area. -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="168" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar: one entry per page. -->
+            <ListBox x:Name="Nav"
+                     Margin="0,8,16,0"
+                     Style="{StaticResource Nav.List}"
+                     SelectedIndex="0"
+                     AutomationProperties.Name="Settings sections">
+                <ListBoxItem Content="Appearance" />
+                <ListBoxItem Content="Calendar" />
+                <ListBoxItem Content="Fences" />
+                <ListBoxItem Content="Auto-sort" />
+                <ListBoxItem Content="General" />
+            </ListBox>
+
+            <!-- Scrolls when a page is taller than the window; the window never grows taller than the work area. -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
             <StackPanel Margin="0,0,8,0">
 
             <!-- Appearance -->
+            <StackPanel Style="{StaticResource Page0}">
             <TextBlock Margin="0,16,0,8" Style="{DynamicResource Text.Label}" Text="APPEARANCE" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
@@ -228,8 +333,10 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Widget -->
+            <StackPanel Style="{StaticResource Page1}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="CALENDAR" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
@@ -299,8 +406,10 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Fences -->
+            <StackPanel Style="{StaticResource Page2}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="FENCES" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
@@ -348,8 +457,10 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Auto-sort -->
+            <StackPanel Style="{StaticResource Page3}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="AUTO-SORT" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
                 <StackPanel DataContext="{Binding AutoSort}">
@@ -445,8 +556,10 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Calendar links -->
+            <StackPanel Style="{StaticResource Page1}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="CALENDAR LINKS" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
                 <StackPanel DataContext="{Binding Links}">
@@ -527,8 +640,10 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Updates -->
+            <StackPanel Style="{StaticResource Page4}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="UPDATES" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
@@ -570,8 +685,10 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            </StackPanel>
 
             <!-- Data -->
+            <StackPanel Style="{StaticResource Page4}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="DATA" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <Grid Style="{StaticResource Row}">
@@ -595,8 +712,10 @@
                             Command="{Binding OpenDataFolderCommand}" />
                 </Grid>
             </Border>
+            </StackPanel>
 
             <!-- Backup -->
+            <StackPanel Style="{StaticResource Page4}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="BACKUP" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
                 <StackPanel DataContext="{Binding Backup}">
@@ -646,7 +765,9 @@
                 </StackPanel>
             </Border>
             </StackPanel>
+            </StackPanel>
             </ScrollViewer>
+            </Grid>
         </DockPanel>
     </Grid>
 </Window>
