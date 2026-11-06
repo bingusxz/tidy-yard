@@ -4,8 +4,14 @@ using System.Windows.Media;
 
 namespace TidyYard.Services;
 
-public sealed record ThemeOption(string Key, string Name, bool IsDark)
+/// <param name="Swatch">The theme's glass colour (#RRGGBB), for the preview chip in Settings.</param>
+/// <param name="Dot">The theme's accent colour (#RRGGBB), for the preview chip in Settings.</param>
+public sealed record ThemeOption(string Key, string Name, bool IsDark, string Swatch, string Dot)
 {
+    public Brush SwatchBrush => ThemeService.TryParseHex(Swatch, out var c) ? new SolidColorBrush(c) : Brushes.Gray;
+
+    public Brush DotBrush => ThemeService.TryParseHex(Dot, out var c) ? new SolidColorBrush(c) : Brushes.Gray;
+
     /// <summary>Screen readers and list items read this.</summary>
     public override string ToString() => Name;
 }
@@ -21,9 +27,15 @@ public sealed class ThemeService
 
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("Paper", "Paper", IsDark: false),
-        new("NightShift", "Night Shift", IsDark: true),
-        new("Moss", "Moss", IsDark: true),
+        new("Paper", "Paper", IsDark: false, "#F3EFE6", "#3E6A4B"),
+        new("Linen", "Linen", IsDark: false, "#ECE7DF", "#9A4527"),
+        new("Sage", "Sage", IsDark: false, "#E8EDE3", "#2F6B45"),
+        new("Blush", "Blush", IsDark: false, "#F4E9E7", "#8A3B62"),
+        new("Fog", "Fog", IsDark: false, "#E6EAEF", "#2D4F8A"),
+        new("NightShift", "Night Shift", IsDark: true, "#141413", "#E0A44A"),
+        new("Moss", "Moss", IsDark: true, "#1C3025", "#C9A45A"),
+        new("Ink", "Ink", IsDark: true, "#22201D", "#8FB8A0"),
+        new("Slate", "Slate", IsDark: true, "#1A2029", "#7FB0E8"),
     ];
 
     private ResourceDictionary? _current;

@@ -103,7 +103,7 @@ public sealed partial class AutoSortViewModel : ObservableObject
         {
             var match = Destinations.FirstOrDefault(d => d.FenceId == rule.FenceId && d.TabId == rule.TabId)
                         ?? Destinations.FirstOrDefault(d => d.FenceId == rule.FenceId && rule.TabId is null);
-            Rules.Add(new SortRuleItemViewModel(rule, match?.Name ?? "a fence that was removed", match is null, RemoveCommand));
+            Rules.Add(new SortRuleItemViewModel(rule, match?.Name ?? "a plot that was removed", match is null, RemoveCommand));
         }
 
         OnPropertyChanged(nameof(HasRules));

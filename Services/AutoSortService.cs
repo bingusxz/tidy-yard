@@ -243,7 +243,7 @@ public sealed class AutoSortService : IDisposable
                 ? $"Moved {Path.GetFileName(first.To)}"
                 : $"Moved {sorted.Count.ToString(CultureInfo.CurrentCulture)} files";
             var where = sorted.Select(s => s.Destination).Distinct().ToList();
-            var line = where.Count == 1 ? $"into {where[0]}" : $"into {where.Count} fences";
+            var line = where.Count == 1 ? $"into {where[0]}" : $"into {where.Count} plots";
 
             new ToastContentBuilder()
                 .AddText(title)

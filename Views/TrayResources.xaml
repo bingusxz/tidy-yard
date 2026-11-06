@@ -13,11 +13,11 @@
             <ContextMenu>
                 <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
                 <Separator />
-                <MenuItem Header="New fence" Command="{Binding NewFenceCommand}" />
-                <MenuItem Header="Fence from folder…" Command="{Binding NewFenceFromFolderCommand}" />
-                <MenuItem Header="Bring unlocked fences to front (Win+Alt+F)" Command="{Binding BringFencesToFrontCommand}" />
-                <MenuItem Header="Lock all fences" Command="{Binding LockAllFencesCommand}" />
-                <MenuItem Header="Unlock all fences" Command="{Binding UnlockAllFencesCommand}" />
+                <MenuItem Header="New plot" Command="{Binding NewFenceCommand}" />
+                <MenuItem Header="Plot from folder…" Command="{Binding NewFenceFromFolderCommand}" />
+                <MenuItem Header="Bring unlocked plots to front (Win+Alt+F)" Command="{Binding BringFencesToFrontCommand}" />
+                <MenuItem Header="Lock all plots" Command="{Binding LockAllFencesCommand}" />
+                <MenuItem Header="Unlock all plots" Command="{Binding UnlockAllFencesCommand}" />
                 <MenuItem Header="Tidy desktop…" Command="{Binding TidyDesktopCommand}" />
                 <MenuItem Header="{Binding UndoText}" Command="{Binding UndoLastMoveCommand}" />
                 <Separator />

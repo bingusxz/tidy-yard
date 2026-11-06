@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Blush: pale pink paper, ink text, plum accent.
+         Every text colour is at least 4.5:1 (WCAG AA) on the glass at full background opacity. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/TidyYard;component/Themes/Typography.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <SolidColorBrush x:Key="Brush.Window" Color="#F4E9E7" />
+    <SolidColorBrush x:Key="Brush.Glass" Color="#F4E9E7" />
+
+    <SolidColorBrush x:Key="Brush.Card" Color="#99FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#59FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Raised" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Hover" Color="#12000000" />
+    <SolidColorBrush x:Key="Brush.Pressed" Color="#21000000" />
+    <SolidColorBrush x:Key="Brush.Input" Color="#CCFFFFFF" />
+    <SolidColorBrush x:Key="Brush.Rule" Color="#1A000000" />
+    <SolidColorBrush x:Key="Brush.RuleStrong" Color="#33000000" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#2A1D20" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#62504F" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#735F5C" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="#8A3B62" />
+    <SolidColorBrush x:Key="Brush.AccentSoft" Color="#268A3B62" />
+    <SolidColorBrush x:Key="Brush.OnAccent" Color="#FBF1F5" />
+
+</ResourceDictionary>

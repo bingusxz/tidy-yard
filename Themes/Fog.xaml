@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Fog: cool grey-blue paper, ink text, navy accent.
+         Every text colour is at least 4.5:1 (WCAG AA) on the glass at full background opacity. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/TidyYard;component/Themes/Typography.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <SolidColorBrush x:Key="Brush.Window" Color="#E6EAEF" />
+    <SolidColorBrush x:Key="Brush.Glass" Color="#E6EAEF" />
+
+    <SolidColorBrush x:Key="Brush.Card" Color="#99FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#59FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Raised" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Hover" Color="#12000000" />
+    <SolidColorBrush x:Key="Brush.Pressed" Color="#21000000" />
+    <SolidColorBrush x:Key="Brush.Input" Color="#CCFFFFFF" />
+    <SolidColorBrush x:Key="Brush.Rule" Color="#1A000000" />
+    <SolidColorBrush x:Key="Brush.RuleStrong" Color="#33000000" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#1B2230" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#4A5568" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#5B6779" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="#2D4F8A" />
+    <SolidColorBrush x:Key="Brush.AccentSoft" Color="#262D4F8A" />
+    <SolidColorBrush x:Key="Brush.OnAccent" Color="#F2F6FC" />
+
+</ResourceDictionary>

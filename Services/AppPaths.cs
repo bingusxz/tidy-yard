@@ -42,7 +42,7 @@ public static class AppPaths
         Directory.CreateDirectory(FenceFoldersRoot);
         for (var n = 1; ; n++)
         {
-            var title = $"Fence {n}";
+            var title = $"Plot {n}";
             var folder = Path.Combine(FenceFoldersRoot, title);
             if (!Directory.Exists(folder) && !File.Exists(folder))
             {

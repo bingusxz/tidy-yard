@@ -40,7 +40,7 @@ public sealed class FileMoveService
             var destination = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
             if (!Directory.Exists(destination))
             {
-                problems.Add($"{Path.GetFileName(raw)}: the fence folder does not exist ({destination}).");
+                problems.Add($"{Path.GetFileName(raw)}: the plot folder does not exist ({destination}).");
                 continue;
             }
 
@@ -112,7 +112,7 @@ public sealed class FileMoveService
             var isFolder = Directory.Exists(to);
             if (!isFolder && !File.Exists(to))
             {
-                problems.Add($"{Path.GetFileName(to)} is no longer in the fence.");
+                problems.Add($"{Path.GetFileName(to)} is no longer in the plot.");
                 continue;
             }
 
@@ -157,7 +157,7 @@ public sealed class FileMoveService
             var isFolder = Directory.Exists(to);
             if (!isFolder && !File.Exists(to))
             {
-                problems.Add($"{Path.GetFileName(to)} is no longer in the fence.");
+                problems.Add($"{Path.GetFileName(to)} is no longer in the plot.");
                 continue;
             }
 
@@ -219,7 +219,7 @@ public sealed class FileMoveService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            problem = $"The folder could not be renamed ({ex.Message}). Close anything that has it open and rename the fence again.";
+            problem = $"The folder could not be renamed ({ex.Message}). Close anything that has it open and rename the plot again.";
             return null;
         }
 

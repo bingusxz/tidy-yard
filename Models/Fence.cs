@@ -30,7 +30,7 @@ public sealed class Fence
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public string Title { get; set; } = "Fence";
+    public string Title { get; set; } = "Plot";
 
     /// <summary>
     /// The folder of the fence's first tab. Kept for fences saved before tabs existed, and so that

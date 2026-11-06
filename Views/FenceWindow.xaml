@@ -96,7 +96,7 @@
                          Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
                          IsVisibleChanged="OnRenameBoxVisibleChanged"
                          LostKeyboardFocus="OnRenameBoxLostFocus"
-                         AutomationProperties.Name="Fence name"
+                         AutomationProperties.Name="Plot name"
                          WindowChrome.IsHitTestVisibleInChrome="True">
                     <TextBox.InputBindings>
                         <KeyBinding Key="Enter" Command="{Binding CommitRenameCommand}" />
@@ -157,8 +157,8 @@
                         Grid.Column="4"
                         Content="{DynamicResource Glyph.More}"
                         Click="OnMenuClick"
-                        ToolTip="Fence options"
-                        AutomationProperties.Name="Fence options"
+                        ToolTip="Plot options"
+                        AutomationProperties.Name="Plot options"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
@@ -201,7 +201,7 @@
                             <Separator />
                             <MenuItem Header="{Binding LockMenuText}" Command="{Binding ToggleLockCommand}" />
                             <Separator />
-                            <MenuItem Header="Remove fence (keeps the folder)" Command="{Binding RemoveCommand}" />
+                            <MenuItem Header="Remove plot (keeps the folder)" Command="{Binding RemoveCommand}" />
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
@@ -220,7 +220,7 @@
                             <!-- Drag the title to move the panel; it stays open until closed. -->
                             <Grid Margin="0,-4,0,8">
                                 <Thumb Height="28" Cursor="SizeAll" DragDelta="OnPanelDrag" />
-                                <TextBlock VerticalAlignment="Center" IsHitTestVisible="False" Style="{DynamicResource Text.Label}" Text="Fence colour" />
+                                <TextBlock VerticalAlignment="Center" IsHitTestVisible="False" Style="{DynamicResource Text.Label}" Text="Plot colour" />
                                 <Button Width="28" Height="28" HorizontalAlignment="Right"
                                         Style="{DynamicResource Button.Icon}" Content="{DynamicResource Glyph.Close}"
                                         Command="{Binding ClosePanelsCommand}"

@@ -105,7 +105,7 @@ public sealed class WindowService : IWindowService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show($"Could not create a folder for the fence.\n\n{ex.Message}", "Tidy Yard",
+            MessageBox.Show($"Could not create a folder for the plot.\n\n{ex.Message}", "Tidy Yard",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -132,7 +132,7 @@ public sealed class WindowService : IWindowService
 
     public string? PickFolder(string? startFolder)
     {
-        var dialog = new OpenFolderDialog { Title = "Choose a folder for this fence" };
+        var dialog = new OpenFolderDialog { Title = "Choose a folder for this plot" };
         if (!string.IsNullOrEmpty(startFolder) && Directory.Exists(startFolder))
         {
             dialog.InitialDirectory = startFolder;

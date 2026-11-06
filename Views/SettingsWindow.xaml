@@ -189,7 +189,7 @@
                      AutomationProperties.Name="Settings sections">
                 <ListBoxItem Content="Appearance" />
                 <ListBoxItem Content="Calendar" />
-                <ListBoxItem Content="Fences" />
+                <ListBoxItem Content="Plots" />
                 <ListBoxItem Content="Auto-sort" />
                 <ListBoxItem Content="General" />
             </ListBox>
@@ -203,16 +203,65 @@
             <TextBlock Margin="0,16,0,8" Style="{DynamicResource Text.Label}" Text="APPEARANCE" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
-                    <Grid Style="{StaticResource Row}">
-                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Theme" />
-                        <ListBox HorizontalAlignment="Right"
-                                 VerticalAlignment="Center"
-                                 Style="{DynamicResource ListBox.Segmented}"
+                    <!-- Theme: a chip per theme showing its glass colour and accent. -->
+                    <StackPanel Margin="0,8,0,8">
+                        <TextBlock FontWeight="Medium" Text="Theme" />
+                        <ListBox Margin="-4,8,0,0"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                  ItemsSource="{Binding Themes}"
                                  SelectedItem="{Binding SelectedTheme}"
-                                 DisplayMemberPath="Name"
-                                 AutomationProperties.Name="Theme" />
-                    </Grid>
+                                 AutomationProperties.Name="Theme">
+                            <ListBox.Template>
+                                <ControlTemplate TargetType="ListBox">
+                                    <ItemsPresenter />
+                                </ControlTemplate>
+                            </ListBox.Template>
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
+                                    <Setter Property="Cursor" Value="Hand" />
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Ring" Width="92" Margin="4" Padding="4" CornerRadius="12"
+                                                        BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
+                                                    <StackPanel>
+                                                        <Border Height="40" CornerRadius="8" Background="{Binding SwatchBrush}"
+                                                                BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1">
+                                                            <Ellipse Width="14" Height="14" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                                                     Fill="{Binding DotBrush}" />
+                                                        </Border>
+                                                        <TextBlock Margin="0,6,0,2" HorizontalAlignment="Center"
+                                                                   FontSize="{DynamicResource Size.Small}"
+                                                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                                                   Text="{Binding Name}" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.RuleStrong}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </StackPanel>
                     <Border Height="1" Background="{DynamicResource Brush.Rule}" />
 
                     <!-- Accent colour -->
@@ -367,7 +416,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Show calendar" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Turn off to use Tidy Yard for fences only. Open Calendar in the tray still works." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Turn off to use Tidy Yard for plots only. Open Calendar in the tray still works." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"
@@ -393,7 +442,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Start with Windows" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Starts Tidy Yard when you sign in, with fences and calendar where you left them." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Starts Tidy Yard when you sign in, with plots and calendar where you left them." />
                             <TextBlock Style="{DynamicResource Text.Muted}"
                                        Foreground="{DynamicResource Brush.Accent}"
                                        Text="{Binding StartupError}"
@@ -411,7 +460,7 @@
 
             <!-- Fences -->
             <StackPanel Style="{StaticResource Page2}">
-            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="FENCES" />
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="PLOTS" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
                     <Grid Style="{StaticResource Row}">
@@ -422,7 +471,7 @@
                                  ItemsSource="{Binding IconSizes}"
                                  SelectedItem="{Binding SelectedIconSize}"
                                  DisplayMemberPath="Name"
-                                 AutomationProperties.Name="Fence icon size" />
+                                 AutomationProperties.Name="Plot icon size" />
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Brush.Rule}" />
                     <Grid Style="{StaticResource Row}">
@@ -432,7 +481,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Hide desktop icons" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Same as right-click desktop > View > Show desktop icons. Fences stay visible." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Same as right-click desktop > View > Show desktop icons. Plots stay visible." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"
@@ -448,7 +497,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Tidy desktop" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Sorts loose desktop files into fences by type. Shows you the plan first." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Sorts loose desktop files into plots by type. Shows you the plan first." />
                         </StackPanel>
                         <Button Grid.Column="1"
                                 VerticalAlignment="Center"
@@ -473,7 +522,7 @@
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Sort new desktop files" />
                             <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
-                                       Text="Moves each new file that matches a rule into a fence. Files already on the desktop are left alone. Every move is logged, and the notification has an Undo button." />
+                                       Text="Moves each new file that matches a rule into a plot. Files already on the desktop are left alone. Every move is logged, and the notification has an Undo button." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"
@@ -516,7 +565,7 @@
 
                     <Border Height="1" Margin="0,4,0,12" Background="{DynamicResource Brush.Rule}" />
                     <TextBlock TextWrapping="Wrap"
-                               Text="Create a fence first, then add a rule."
+                               Text="Create a plot first, then add a rule."
                                Margin="0,0,0,4">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
@@ -542,7 +591,7 @@
                                   ItemsSource="{Binding Destinations}"
                                   SelectedItem="{Binding SelectedDestination}"
                                   DisplayMemberPath="Name"
-                                  AutomationProperties.Name="Destination fence" />
+                                  AutomationProperties.Name="Destination plot" />
                         <TextBlock Margin="2,8,0,0"
                                    FontWeight="Medium"
                                    Foreground="{DynamicResource Brush.Accent}"
@@ -728,7 +777,7 @@
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Back up your data" />
                             <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
-                                       Text="Saves your events, checklists, settings and fence layout as one file. Your files and folders are not included." />
+                                       Text="Saves your events, checklists, settings and plot layout as one file. Your files and folders are not included." />
                         </StackPanel>
                         <Button Grid.Column="1" VerticalAlignment="Top" Style="{DynamicResource Button.Text}" Content="Back up…" Command="{Binding BackUpCommand}" />
                     </Grid>
@@ -741,7 +790,7 @@
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Restore from a backup" />
                             <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
-                                       Text="Replaces your current events, settings and fences. What you have now is saved first, in the backups folder. Calendar links need adding again on another PC." />
+                                       Text="Replaces your current events, settings and plots. What you have now is saved first, in the backups folder. Calendar links need adding again on another PC." />
                         </StackPanel>
                         <Button Grid.Column="1" VerticalAlignment="Top" Style="{DynamicResource Button.Text}" Content="Restore…" Command="{Binding RestoreCommand}" />
                     </Grid>

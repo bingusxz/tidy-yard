@@ -18,7 +18,7 @@
 Tidy Yard is a Windows desktop app made of two things that live on your wallpaper:
 
 - **A calendar widget** with events, reminders, checklists and your Google, Outlook or iCloud calendars.
-- **Fences**: boxes on the desktop that each show a real folder, so loose files have a place to go.
+- **Plots**: boxes on the desktop that each show a real folder, so loose files have a place to go.
 
 It sits behind your windows and is built to be quick to read and quick to use. On Windows 11 it gets the acrylic glass look.
 
@@ -30,7 +30,7 @@ It sits behind your windows and is built to be quick to read and quick to use. O
 
 You need Windows 10 (version 1809 or later) or Windows 11. If the .NET 8 desktop runtime is missing, the installer adds it.
 
-**Updating:** open **Settings, General, Updates** and press **Check now**. Tidy Yard downloads the newest release, installs it and restarts. It also checks quietly in the background every few hours and tells you when a new version is ready. Your events, settings and fences are never touched by an update.
+**Updating:** open **Settings, General, Updates** and press **Check now**. Tidy Yard downloads the newest release, installs it and restarts. It also checks quietly in the background every few hours and tells you when a new version is ready. Your events, settings and plots are never touched by an update.
 
 ## The calendar
 
@@ -41,30 +41,31 @@ You need Windows 10 (version 1809 or later) or Windows 11. If the .NET 8 desktop
 - Reminders arrive as Windows toast notifications, with snooze.
 - Checklists on events.
 - **Calendar links:** show events from Google Calendar, Outlook or iCloud by pasting the calendar's secret iCal link. Repeating events and time zones are handled. The link is stored encrypted for your Windows account, and your PC reads it directly with no server in between. The calendars are read-only here.
+- Right-click a day for New event or Open day. Hover a day for a moment to see all of its events in a small card. Month cells show as many events as fit before saying "N more".
 - Resizable, and it can be locked in place so it sits behind your windows.
 
-## Fences
+## Plots
 
-A fence is a box on the desktop backed by a real folder. Drag files in, drag them out, double-click to open.
+A plot is a box on the desktop backed by a real folder. Drag files in, drag them out, double-click to open.
 
-- **Tabs.** One fence can hold several folders, switched with a tab bar that appears once there is more than one tab. Folders open inside the fence with a back button, and you can drop files onto a folder icon or a tab to move them in.
-- **Roll up.** A rolled-up fence is a bare title strip. Hover it and it drops open to fit its contents, then rolls back up when you move away.
-- **Fits its contents.** A fence grows or shrinks to show everything in it, up to three quarters of the screen, then it scrolls. Turn this off per fence if you prefer to set the height yourself.
-- **Right-click** anywhere on a fence for its options: roll up, lock, layout, colour, text and more.
+- **Tabs.** One plot can hold several folders, switched with a tab bar that appears once there is more than one tab. Folders open inside the plot with a back button, and you can drop files onto a folder icon or a tab to move them in.
+- **Roll up.** A rolled-up plot is a bare title strip. Hover it and it drops open to fit its contents, then rolls back up when you move away.
+- **Fits its contents.** A plot grows or shrinks to show everything in it, up to three quarters of the screen, then it scrolls. Turn this off per plot if you prefer to set the height yourself.
+- **Right-click** anywhere on a plot for its options: roll up, lock, layout, colour, text and more.
 - **Three layouts:** grid, a single row, or a list.
-- **Make each one yours.** Every fence has its own glass colour, and its own font, size and colour for the title and for the file names, set separately. The font list has search. The title can sit left, centre or right.
-- **Rename it, the folder follows.** Renaming a fence also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
-- **Lock to the desktop** so a fence sits behind your windows and cannot be moved by accident.
-- **Auto-sort** (off by default): new desktop files that match a rule, by file type or a word in the name, move into a fence or tab. Files already on the desktop are left alone, every move is logged, and the notification has an Undo button.
-- **Tidy Desktop** sorts loose files into fences by type. It shows you the plan first, logs every move, and can undo the last one.
+- **Make each one yours.** Every plot has its own glass colour, and its own font, size and colour for the title and for the file names, set separately. The font list has search. The title can sit left, centre or right.
+- **Rename it, the folder follows.** Renaming a plot also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
+- **Lock to the desktop** so a plot sits behind your windows and cannot be moved by accident.
+- **Auto-sort** (off by default): new desktop files that match a rule, by file type or a word in the name, move into a plot or tab. Files already on the desktop are left alone, every move is logged, and the notification has an Undo button.
+- **Tidy Desktop** sorts loose files into plots by type. It shows you the plan first, logs every move, and can undo the last one.
 
 Files are only ever moved, never deleted or overwritten.
 
 ## Themes and settings
 
-Three themes: **Paper** (warm off-white with a muted green accent), **Night Shift** (near-black with amber) and **Moss** (deep green with brass). Pick your own accent colour and background tint, and set how much of your wallpaper shows through the glass.
+Nine themes. Light, paper-like ones: **Paper** (warm off-white, muted green), **Linen** (warm greige, terracotta), **Sage** (soft green, deep green), **Blush** (pale pink, plum) and **Fog** (cool grey-blue, navy). Dark ones: **Night Shift** (near-black, amber), **Moss** (deep green, brass), **Ink** (warm charcoal, sage) and **Slate** (blue-grey, sky). Every theme's text meets WCAG AA contrast. Pick your own accent colour and background tint on top, and set how much of your wallpaper shows through the glass.
 
-Settings has a sidebar with a page each for Appearance, Calendar, Fences, Auto-sort and General. You can hide the desktop icons, start Tidy Yard with Windows, and back up or restore everything.
+Settings has a sidebar with a page each for Appearance, Calendar, Plots, Auto-sort and General. You can hide the desktop icons, start Tidy Yard with Windows, and back up or restore everything.
 
 ## Your data
 
@@ -74,15 +75,15 @@ Everything lives in `%APPDATA%\TidyYard`:
 | --- | --- |
 | `tidyyard.db` | Events, reminders and checklists (SQLite) |
 | `settings.json` | Settings and window positions |
-| `fences.json` | Fence layout and look |
-| `moves.log` | Every file move made by fences or cleanup |
+| `fences.json` | Plot layout and look |
+| `moves.log` | Every file move made by plots or cleanup |
 | `error.log` | Errors, if any |
 
-New fence folders are created in `Tidy Yard Fences` in your user folder.
+New plot folders are created in `Tidy Yard Fences` in your user folder.
 
 Updates replace the program files only. Before the database layout changes, a copy is saved as `tidyyard.db.backup-vN` next to it.
 
-Settings has **Back up** and **Restore**: one `.zip` with your events, checklists, settings and fence layout. A restore is checked first and applied the next time the app starts, after the current data is copied to a `backups` folder. Nothing is deleted. A deleted event can be undone for a few seconds, and is removed from the database for good after 30 days.
+Settings has **Back up** and **Restore**: one `.zip` with your events, checklists, settings and plot layout. A restore is checked first and applied the next time the app starts, after the current data is copied to a `backups` folder. Nothing is deleted. A deleted event can be undone for a few seconds, and is removed from the database for good after 30 days.
 
 ## Build it yourself
 
@@ -95,12 +96,12 @@ dotnet run
 
 Close any running copy of Tidy Yard before building, or the build cannot replace the program file.
 
-The app is C# and WPF on .NET 8, using MVVM with [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet). Events live in SQLite, and fence layout and settings in JSON. The font is [Inter](https://rsms.me/inter/), bundled under the SIL Open Font License.
+The app is C# and WPF on .NET 8, using MVVM with [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet). Events live in SQLite, and plot layout and settings in JSON. The font is [Inter](https://rsms.me/inter/), bundled under the SIL Open Font License.
 
 | Folder | What is in it |
 | --- | --- |
 | `Views`, `ViewModels`, `Models` | Windows, their logic, and the data |
-| `Services` | Reminders, storage, themes, fences, updates, backup |
+| `Services` | Reminders, storage, themes, plots, updates, backup |
 | `Interop` | The Windows API calls, all in one file |
 | `Themes` | The three themes and the shared control styles |
 

@@ -64,7 +64,7 @@ public sealed partial class CleanupViewModel : ObservableObject
 
     public string Summary => IsEmpty
         ? "Your desktop has nothing to tidy."
-        : "Each group moves into a fence of the same name. Files are moved, never overwritten, and you can undo the whole cleanup from the tray menu.";
+        : "Each group moves into a plot of the same name. Files are moved, never overwritten, and you can undo the whole cleanup from the tray menu.";
 
     private int SelectedCount => Groups.Where(g => g.IsIncluded).Sum(g => g.Group.Paths.Count);
 
@@ -76,7 +76,7 @@ public sealed partial class CleanupViewModel : ObservableObject
         var groups = Groups.Where(g => g.IsIncluded).Select(g => g.Group).ToList();
         var result = _windows.MoveIntoCategoryFences(groups);
         Result = result.Problems.Count == 0
-            ? $"Moved {result.Moved} items into fences."
+            ? $"Moved {result.Moved} items into plots."
             : $"Moved {result.Moved} items. Not moved:\n{string.Join("\n", result.Problems.Take(8))}";
         IsDone = true;
         MoveCommand.NotifyCanExecuteChanged();
