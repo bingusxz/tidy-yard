@@ -237,6 +237,9 @@
         </Setter>
     </Style>
 
+    <!-- Almost invisible, but not transparent: lets a see-through window still receive the mouse. -->
+    <SolidColorBrush x:Key="Brush.HitArea" Color="#01000000" />
+
     <!-- Hover card: a flat rounded card in the theme's colours. -->
     <Style x:Key="ToolTip.Card" TargetType="ToolTip">
         <Setter Property="Background" Value="Transparent" />

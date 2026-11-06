@@ -35,7 +35,10 @@
 
     <Grid>
         <!-- Tint: the theme glass, or this fence's own colour. -->
-        <Border Opacity="{Binding GlassOpacity}" CornerRadius="{Binding FlatCornerRadius}">
+        <!-- A see-through window passes clicks to whatever is behind it. This near-invisible layer keeps the plot clickable. -->
+        <Border Background="{DynamicResource Brush.HitArea}" CornerRadius="{Binding FlatCornerRadius}" />
+
+        <Border Opacity="{Binding TintOpacity}" CornerRadius="{Binding FlatCornerRadius}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
@@ -257,6 +260,18 @@
                                     TickFrequency="{Binding CornerStep}" IsSnapToTickEnabled="True"
                                     Value="{Binding CornerSize}"
                                     AutomationProperties.Name="Corners" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="Glass can only be square, soft or round. Turn on Flat style to drag to any size.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFlat}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
 
                             <Grid Margin="0,16,0,0">
                                 <Grid.ColumnDefinitions>

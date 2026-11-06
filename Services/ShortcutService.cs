@@ -14,8 +14,8 @@ public static class ShortcutService
 
     public static IReadOnlyList<Place> Places { get; } =
     [
-        new("recyclebin", "Recycle Bin", "shell:RecycleBinFolder", "imageres.dll,54"),
-        new("thispc", "This PC", "shell:MyComputerFolder", "imageres.dll,109"),
+        new("recyclebin", "Recycle Bin", "shell:RecycleBinFolder", "shell32.dll,31"),
+        new("thispc", "This PC", "shell:MyComputerFolder", "shell32.dll,15"),
     ];
 
     /// <summary>Creates "Recycle Bin.lnk" (or another place) in <paramref name="folder"/> and returns its path.</summary>
@@ -29,10 +29,10 @@ public static class ShortcutService
     // Icons for the places people drag from the desktop, by their Windows identifier.
     private static readonly Dictionary<string, string> KnownIcons = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["::{645FF040-5081-101B-9F08-00AA002F954E}"] = "imageres.dll,54",  // Recycle Bin
-        ["::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"] = "imageres.dll,109", // This PC
-        ["::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"] = "imageres.dll,25",  // Network
-        ["::{26EE0668-A00A-44D7-9371-BEB064C98683}"] = "imageres.dll,22",  // Control Panel
+        ["::{645FF040-5081-101B-9F08-00AA002F954E}"] = "shell32.dll,31",  // Recycle Bin
+        ["::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"] = "shell32.dll,15",  // This PC
+        ["::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"] = "shell32.dll,17",  // Network
+        ["::{26EE0668-A00A-44D7-9371-BEB064C98683}"] = "shell32.dll,21",  // Control Panel
     };
 
     /// <summary>

@@ -332,6 +332,11 @@ public sealed class WindowService : IWindowService
             Title = title,
             FolderPath = folder,
             Bounds = bounds ?? ScreenService.Cascade(_fences.Fences.Count, 360, 280),
+
+            // New plots start flat, so the Corners slider drags freely from the start. Plots made before this
+            // keep their glass; either can be switched in the colour panel.
+            Flat = true,
+            CornerSize = 12,
         };
         _fences.Add(fence);
         OpenFence(fence, bringToFront);
