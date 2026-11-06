@@ -136,17 +136,15 @@ public sealed partial class CalendarViewModel : ObservableObject
     /// <summary>The day card's Reminders page: every upcoming reminder, not only the selected day's.</summary>
     public UpcomingRemindersViewModel Reminders { get; }
 
-    // ---- The day card's pages: the day's agenda, all reminders, standalone lists ----------------
+    // ---- The day card's lower section: always shown, whatever day is selected ------------------
+    // The agenda for the selected day sits above it. This part is for everything that is not tied to that day.
 
-    public IReadOnlyList<string> CardTabs { get; } = ["Day", "Reminders", "Lists"];
+    public IReadOnlyList<string> CardTabs { get; } = ["Reminders", "Lists"];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDayTab))]
     [NotifyPropertyChangedFor(nameof(IsRemindersTab))]
     [NotifyPropertyChangedFor(nameof(IsListsTab))]
-    private string _selectedCardTab = "Day";
-
-    public bool IsDayTab => SelectedCardTab == "Day";
+    private string _selectedCardTab = "Reminders";
 
     public bool IsRemindersTab => SelectedCardTab == "Reminders";
 
@@ -233,7 +231,6 @@ public sealed partial class CalendarViewModel : ObservableObject
             return;
         }
 
-        SelectedCardTab = "Day"; // the editor lives on the Day page
         SelectedDate = item.Model.Date;
         Editor.EditCommand.Execute(Editor.Events.FirstOrDefault(e => e.Model.Id == item.Model.Id) ?? item);
     }
@@ -282,7 +279,6 @@ public sealed partial class CalendarViewModel : ObservableObject
             return;
         }
 
-        SelectedCardTab = "Day";
         SelectedDate = cell.Date;
         Editor.NewEventCommand.Execute(null);
     }

@@ -94,44 +94,18 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Pages of the card: the day's agenda, every upcoming reminder, standalone lists. Hidden while the form is open. -->
-                    <ListBox DockPanel.Dock="Top"
-                             Margin="0,12,0,0"
-                             HorizontalAlignment="Stretch"
-                             ItemsSource="{Binding DataContext.CardTabs, RelativeSource={RelativeSource AncestorType=Window}}"
-                             SelectedItem="{Binding DataContext.SelectedCardTab, RelativeSource={RelativeSource AncestorType=Window}}"
-                             AutomationProperties.Name="Day card page">
-                        <ListBox.Style>
-                            <Style TargetType="ListBox" BasedOn="{StaticResource ListBox.Segmented}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ListBox.Style>
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" />
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Margin="-6,0" HorizontalAlignment="Center" FontSize="{DynamicResource Size.Small}" Text="{Binding}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
 
                     <Grid Margin="0,12,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
                         <!-- Agenda for the selected day -->
-                        <Grid>
+                        <Grid Grid.Row="0">
                             <Grid.Style>
                                 <Style TargetType="Grid">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding DataContext.IsDayTab, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -230,6 +204,37 @@
                             </ScrollViewer>
                         </Grid>
 
+                        <!-- Lower section: always there, whatever day is selected. Reminders across all days, or standalone lists. -->
+                        <DockPanel Grid.Row="1" Margin="0,12,0,0">
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+                            <Border DockPanel.Dock="Top" Height="1" Margin="0,0,0,12" Background="{DynamicResource Brush.Rule}" />
+                            <ListBox DockPanel.Dock="Top"
+                                     Margin="0,0,0,8"
+                                     HorizontalAlignment="Stretch"
+                                     Style="{DynamicResource ListBox.Segmented}"
+                                     ItemsSource="{Binding DataContext.CardTabs, RelativeSource={RelativeSource AncestorType=Window}}"
+                                     SelectedItem="{Binding DataContext.SelectedCardTab, RelativeSource={RelativeSource AncestorType=Window}}"
+                                     AutomationProperties.Name="Lower section">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Center" FontSize="{DynamicResource Size.Small}" Text="{Binding}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Grid>
                         <!-- Reminders: everything coming up, across all days. -->
                         <Grid>
                             <Grid.Style>
@@ -273,6 +278,9 @@
                                                     <TextBlock FontWeight="Medium" TextWrapping="Wrap" Text="{Binding Title}" />
                                                     <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Size.Small}" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding WhenText}" />
                                                     <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Size.Small}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding LeadText}" />
+                                                    <TextBlock Margin="0,2,0,0" FontSize="{DynamicResource Size.Small}" Foreground="{DynamicResource Brush.TextDim}"
+                                                               Text="{Binding RepeatText}"
+                                                               Visibility="{Binding IsRepeating, Converter={StaticResource BoolToVisibility}}" />
                                                 </StackPanel>
                                             </Button>
                                         </DataTemplate>
@@ -376,9 +384,11 @@
                                 </ItemsControl>
                             </ScrollViewer>
                         </DockPanel>
+                            </Grid>
+                        </DockPanel>
 
                         <!-- Add / edit form -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        <ScrollViewer Grid.RowSpan="2" VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
                                       Focusable="False"
                                       Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVisibility}}">

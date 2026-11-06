@@ -24,6 +24,11 @@ public sealed class ReminderLineViewModel
 
     /// <summary>"10 minutes before".</summary>
     public string LeadText { get; }
+
+    /// <summary>"Every day", for an event that repeats; nothing for a single one.</summary>
+    public string RepeatText => Item.RepeatText;
+
+    public bool IsRepeating => Item.IsRepeating;
 }
 
 /// <summary>
@@ -59,6 +64,10 @@ public sealed partial class UpcomingRemindersViewModel : ObservableObject
             .Where(e => e.ReminderMinutes is not null && e.TimeOnThisDay is not null)
             .Select(e => (Event: e, Start: e.Date.ToDateTime(e.TimeOnThisDay!.Value)))
             .Where(x => x.Start >= now)
+            .OrderBy(x => x.Start)
+            // A repeating event (a daily reminder) is listed once, at its next time, not once for every day.
+            .GroupBy(x => (x.Event.IsImported, x.Event.Id))
+            .Select(g => g.First())
             .OrderBy(x => x.Start)
             .Take(MaxLines)
             .Select(x => new ReminderLineViewModel(

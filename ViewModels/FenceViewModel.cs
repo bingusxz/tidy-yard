@@ -502,6 +502,8 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _syncingText = false;
         OnPropertyChanged(nameof(SelectedFont));
         OnPropertyChanged(nameof(EditorTextSize));
+        OnPropertyChanged(nameof(HasPreviewFont));
+        OnPropertyChanged(nameof(PreviewFontFamily));
     }
 
     /// <summary>
@@ -544,6 +546,11 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     public bool HasCustomTitleSize => Model.TitleTextSize is not null;
 
     public double TitleTextSize => Model.TitleTextSize ?? ThemeTitleSize;
+
+    // The sample line under the font list, drawn in the font being edited (the theme font when none is chosen).
+    public bool HasPreviewFont => SelectedFont is not null;
+
+    public FontFamily PreviewFontFamily => new(SelectedFont ?? "Segoe UI");
 
     // What the panel's font list, size slider and colour wheel edit: the header or the files.
     public string? SelectedFont
@@ -622,7 +629,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     {
         foreach (var name in new[]
                  {
-                     nameof(SelectedFont), nameof(EditorTextSize),
+                     nameof(SelectedFont), nameof(EditorTextSize), nameof(HasPreviewFont), nameof(PreviewFontFamily),
                      nameof(HasCustomTextColor), nameof(TextBrush), nameof(HasCustomFont), nameof(TextFontFamily),
                      nameof(HasCustomTextSize), nameof(ItemTextSize), nameof(ListLabelSize), nameof(LabelMaxHeight),
                      nameof(HasCustomTitleColor), nameof(TitleBrush), nameof(HasCustomTitleFont), nameof(TitleFontFamily),

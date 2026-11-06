@@ -235,7 +235,13 @@
                         <StackPanel Width="232">
                             <!-- Drag the title to move the panel; it stays open until closed. -->
                             <Grid Margin="0,-4,0,8">
-                                <Thumb Height="28" Cursor="SizeAll" DragDelta="OnPanelDrag" />
+                                <Thumb Height="28" Cursor="SizeAll" DragDelta="OnPanelDrag">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
                                 <TextBlock VerticalAlignment="Center" IsHitTestVisible="False" Style="{DynamicResource Text.Label}" Text="Plot colour" />
                                 <Button Width="28" Height="28" HorizontalAlignment="Right"
                                         Style="{DynamicResource Button.Icon}" Content="{DynamicResource Glyph.Close}"
@@ -319,7 +325,13 @@
                         <StackPanel Width="232">
                             <!-- Drag the title to move the panel; it stays open until closed. -->
                             <Grid Margin="0,-4,0,8">
-                                <Thumb Height="28" Cursor="SizeAll" DragDelta="OnPanelDrag" />
+                                <Thumb Height="28" Cursor="SizeAll" DragDelta="OnPanelDrag">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
                                 <TextBlock VerticalAlignment="Center" IsHitTestVisible="False" Style="{DynamicResource Text.Label}" Text="Text" />
                                 <Button Width="28" Height="28" HorizontalAlignment="Right"
                                         Style="{DynamicResource Button.Icon}" Content="{DynamicResource Glyph.Close}"
@@ -407,10 +419,25 @@
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding}" FontFamily="{Binding}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+
+                            <!-- One live preview of the chosen font, instead of drawing every name in its own font. -->
+                            <Border Margin="0,6,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource Brush.Surface}">
+                                <TextBlock Text="Costing Files, 12 Nov" TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasPreviewFont}" Value="True">
+                                                    <Setter Property="FontFamily" Value="{Binding PreviewFontFamily}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
 
                             <TextBlock Margin="0,12,0,0" Style="{DynamicResource Text.Label}" Text="Size" />
                             <Slider Margin="0,4,0,0"

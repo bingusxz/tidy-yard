@@ -39,7 +39,7 @@ You need Windows 10 (version 1809 or later) or Windows 11. If the .NET 8 desktop
 - Events can have an end time or last several days. They can repeat every day, weekday, week, month or year, optionally until an end date, with "Skip this day" for a single exception.
 - Drag an event to another day to reschedule it. Search (Ctrl+F) finds events or jumps to a date. Deleting an event or skipping a day has an Undo.
 - Reminders arrive as Windows toast notifications, with snooze.
-- The day card on the left has three pages: **Day** (the agenda and the event editor), **Reminders** (every upcoming reminder across all days, not only the selected one) and **Lists** (standalone checklists such as Groceries, with tick boxes, not tied to a day).
+- The day card on the left shows the selected day's agenda and event editor on top. Below it is a section that is always there, whatever day you pick: **Reminders** (every upcoming reminder across all days, a repeating one listed once at its next time) and **Lists** (standalone checklists such as Groceries, with tick boxes, not tied to a day).
 - Checklists on events.
 - **Calendar links:** show events from Google Calendar, Outlook or iCloud by pasting the calendar's secret iCal link. Repeating events and time zones are handled. The link is stored encrypted for your Windows account, and your PC reads it directly with no server in between. The calendars are read-only here.
 - Right-click a day for New event or Open day. Hover a day for a moment to see all of its events in a small card. Month cells show as many events as fit before saying "N more".
