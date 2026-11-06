@@ -28,7 +28,8 @@
     <Window.Resources>
         <!-- One settings row: label and hint on the left, control on the right. -->
         <Style x:Key="Row" TargetType="Grid">
-            <Setter Property="Margin" Value="0,0,0,4" />
+            <!-- 4px above and below, so the space around dividers and at the card edges is equal. -->
+            <Setter Property="Margin" Value="0,4" />
             <Setter Property="MinHeight" Value="48" />
         </Style>
 
@@ -675,7 +676,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Check automatically" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Downloads new versions in the background. Your events, settings and fences are never touched." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Downloads new versions in the background. Your data is never touched." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"

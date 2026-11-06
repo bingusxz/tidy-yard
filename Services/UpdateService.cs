@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows.Threading;
 using Velopack;
 using Velopack.Locators;
+using Velopack.Sources;
 
 namespace TidyYard.Services;
 
@@ -13,10 +14,12 @@ namespace TidyYard.Services;
 public sealed class UpdateService
 {
     /// <summary>
-    /// Where releases are published: a web address, or a folder. Empty until a host is chosen.
+    /// Where releases are published: a GitHub repository whose Releases hold the files from release.ps1.
+    /// It must be public, because the app cannot sign in, so it is a separate repository that holds only the
+    /// installers and update files; the source repository stays private. A plain web address or a folder also works.
     /// Can be overridden per machine with "UpdateFeed" in settings.json.
     /// </summary>
-    public const string DefaultFeed = "";
+    public const string DefaultFeed = "https://github.com/bingusxz/tidy-yard-releases";
 
     private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
@@ -77,7 +80,10 @@ public sealed class UpdateService
             {
                 try
                 {
-                    _manager = new UpdateManager(Feed);
+                    // A GitHub address reads the repository's Releases; anything else is a web address or a folder.
+                    _manager = IsGitHub(Feed)
+                        ? new UpdateManager(new GithubSource(Feed, accessToken: null, prerelease: false))
+                        : new UpdateManager(Feed);
                 }
                 catch (Exception ex) when (ex is ArgumentException or IOException or UriFormatException)
                 {
@@ -88,6 +94,10 @@ public sealed class UpdateService
             return _manager;
         }
     }
+
+    private static bool IsGitHub(string feed) =>
+        Uri.TryCreate(feed, UriKind.Absolute, out var uri)
+        && uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Starts the background checks: one shortly after start-up, then every few hours.</summary>
     public void Start()
@@ -131,6 +141,14 @@ public sealed class UpdateService
             SetBusy(true, $"Downloading {version}");
             await manager.DownloadUpdatesAsync(update, percent => SetStatus($"Downloading {version}: {percent}%"));
             _pending = update;
+            if (manual)
+            {
+                // The user pressed "Check now": install the latest right away instead of waiting for a second click.
+                SetBusy(false, $"Installing {version}. Tidy Yard will restart.");
+                ApplyAndRestart();
+                return;
+            }
+
             SetBusy(false, $"Version {version} is ready. Restart to update.");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
