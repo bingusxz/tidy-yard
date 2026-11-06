@@ -186,6 +186,47 @@ public sealed class FileMoveService
         return new MoveResult(restored.Count, problems, restored);
     }
 
+    /// <summary>
+    /// Renames a fence's own folder to match the fence's new name. Only folders Tidy Yard created directly under
+    /// the fence root are renamed; a folder the user picked is left alone. Never overwrites: a taken name gets
+    /// "(2)". The rename is logged. Returns the new path, or null with the reason in <paramref name="problem"/>
+    /// (null problem and null result = nothing to do).
+    /// </summary>
+    public string? RenameFenceFolder(string folder, string newName, out string? problem)
+    {
+        problem = null;
+        var source = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
+        var root = Path.GetFullPath(AppPaths.FenceFoldersRoot).TrimEnd(Path.DirectorySeparatorChar);
+        if (!string.Equals(Path.GetDirectoryName(source), root, StringComparison.OrdinalIgnoreCase)
+            || !Directory.Exists(source))
+        {
+            return null;
+        }
+
+        var invalid = Path.GetInvalidFileNameChars();
+        var clean = new string(newName.Where(c => !invalid.Contains(c)).ToArray()).Trim().TrimEnd('.');
+        if (clean.Length == 0 || string.Equals(Path.GetFileName(source), clean, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        // Only the letters' case changed: the same folder, so there is no clash to avoid.
+        var caseOnly = string.Equals(Path.GetFileName(source), clean, StringComparison.OrdinalIgnoreCase);
+        var target = caseOnly ? Path.Combine(root, clean) : UniquePath(Path.Combine(root, clean));
+        try
+        {
+            Directory.Move(source, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            problem = $"The folder could not be renamed ({ex.Message}). Close anything that has it open and rename the fence again.";
+            return null;
+        }
+
+        Log("rename", source, target);
+        return target;
+    }
+
     /// <summary>"Report.pdf" -> "Report (2).pdf" -> "Report (3).pdf" ... until the name is free.</summary>
     public static string UniquePath(string path)
     {

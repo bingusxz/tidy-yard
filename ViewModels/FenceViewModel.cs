@@ -465,7 +465,10 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         IsRenaming = true;
     }
 
-    /// <summary>Renames the fence only. The folder keeps its name, so no files move.</summary>
+    /// <summary>
+    /// Renames the fence. If its first tab's folder is one Tidy Yard created ("Fence 1"), the folder is
+    /// renamed to match; the files inside stay where they are. Folders the user picked are never renamed.
+    /// </summary>
     [RelayCommand]
     private void CommitRename()
     {
@@ -477,12 +480,66 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         var text = RenameText.Trim();
         if (text.Length > 0)
         {
+            var changed = !string.Equals(text, Title, StringComparison.Ordinal);
             Title = text;
             Model.Title = text;
             _store.Changed();
+            if (changed)
+            {
+                RenameFolderToMatch(text);
+            }
         }
 
         IsRenaming = false;
+    }
+
+    private void RenameFolderToMatch(string title)
+    {
+        var tab = Tabs[0].Model;
+        var old = tab.FolderPath;
+
+        // The watcher holds the folder open, which blocks the rename.
+        _watcher?.Dispose();
+        _watcher = null;
+
+        var renamed = _moves.RenameFenceFolder(old, title, out var problem);
+        if (renamed is not null)
+        {
+            var oldPrefix = Path.GetFullPath(old).TrimEnd(Path.DirectorySeparatorChar);
+            string Moved(string path) => RebasePath(path, oldPrefix, renamed);
+            foreach (var t in Model.Tabs)
+            {
+                t.FolderPath = Moved(t.FolderPath);
+            }
+
+            Model.EnsureTabs();
+            _store.Changed();
+            CurrentPath = Moved(CurrentPath);
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(LocationText));
+        }
+
+        if (problem is not null)
+        {
+            ShowNotice(problem);
+        }
+
+        Watch();
+        Refresh();
+    }
+
+    /// <summary>Swaps <paramref name="oldPrefix"/> for <paramref name="newPrefix"/> when the path is that folder or inside it.</summary>
+    private static string RebasePath(string path, string oldPrefix, string newPrefix)
+    {
+        var full = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
+        if (string.Equals(full, oldPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return newPrefix;
+        }
+
+        return full.StartsWith(oldPrefix + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? newPrefix + full[oldPrefix.Length..]
+            : path;
     }
 
     [RelayCommand]
