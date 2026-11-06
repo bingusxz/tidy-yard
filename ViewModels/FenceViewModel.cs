@@ -69,9 +69,10 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// How strong the plot's tint is. A flat plot has no blur behind it, so at a low Background opacity it would
-    /// vanish and be unreadable: it never goes below 30%.
+    /// vanish, and the theme's text (dark on a light theme) would sit on bare wallpaper and be unreadable. It never
+    /// goes below 70%, which keeps the text readable on any wallpaper.
     /// </summary>
-    public double TintOpacity => Model.Flat ? Math.Max(GlassOpacity, 0.3) : GlassOpacity;
+    public double TintOpacity => Model.Flat ? Math.Max(GlassOpacity, 0.7) : GlassOpacity;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LockMenuText))]
