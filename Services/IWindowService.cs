@@ -27,6 +27,9 @@ public interface IWindowService
     /// </summary>
     void NewFenceFromTemplate(string templateKey);
 
+    /// <summary>Closes a plot's window and opens it again from its saved settings, for a change of drawing style.</summary>
+    void ReopenFence(FenceViewModel fence);
+
     /// <summary>Every plot that is open, kept up to date as plots are added and removed.</summary>
     System.Collections.ObjectModel.ObservableCollection<FenceViewModel> Plots { get; }
 

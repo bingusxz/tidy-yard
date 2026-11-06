@@ -81,6 +81,12 @@ public sealed class Fence
     public int CornerSize { get; set; } = 8;
 
     /// <summary>
+    /// Flat style: the plot draws its own translucent rounded card with no blur, so any corner size (0 to 24)
+    /// works. Off (glass) is Windows' blurred glass, which can only be square, soft or round.
+    /// </summary>
+    public bool Flat { get; set; }
+
+    /// <summary>
     /// The fence grows or shrinks to fit its contents when it opens and when its contents change, so nothing is
     /// cut off. Turn off to keep a height set by hand.
     /// </summary>

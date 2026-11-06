@@ -26,7 +26,21 @@ public partial class FenceWindow : Window
         InitializeComponent();
         DataContext = _viewModel = viewModel;
 
-        GlassWindow.Attach(this);
+        if (viewModel.IsFlat)
+        {
+            // Flat style: the plot draws its own rounded card, so no Windows glass. A window can only be made
+            // see-through before it is shown, which is why changing style reopens the plot.
+            AllowsTransparency = true;
+            Background = System.Windows.Media.Brushes.Transparent;
+            if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+            {
+                chrome.GlassFrameThickness = new Thickness(0);
+            }
+        }
+        else
+        {
+            GlassWindow.Attach(this);
+        }
         _widget = new DesktopWidget(this, DefaultWidth, DefaultHeight, () => viewModel.Model.Bounds, viewModel.SaveBounds)
         {
             // Locked = on the desktop layer, behind every window. Unlocked = an ordinary window
@@ -182,9 +196,14 @@ public partial class FenceWindow : Window
     }
 
     /// <summary>Square, slightly round or round: the three corner sizes Windows 11 draws on a glass window.</summary>
-    private void ApplyCorners() =>
-        Interop.NativeMethods.SetCornerPreference(
-            _widget.Handle, FenceViewModel.SnapCorner(_viewModel.CornerSize) switch { 0 => 1, 4 => 3, _ => 2 });
+    private void ApplyCorners()
+    {
+        if (!_viewModel.IsFlat)
+        {
+            Interop.NativeMethods.SetCornerPreference(
+                _widget.Handle, FenceViewModel.SnapCorner(_viewModel.CornerSize) switch { 0 => 1, 4 => 3, _ => 2 });
+        }
+    }
 
     // ---- Height follows the contents --------------------------------------------------------
 

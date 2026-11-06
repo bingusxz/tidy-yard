@@ -169,6 +169,16 @@ public sealed class WindowService : IWindowService
         }
     }
 
+    public void ReopenFence(FenceViewModel fence)
+    {
+        // The new window opens first, so the app never has zero windows in between.
+        _fenceWindows.Remove(fence.Model.Id, out var old);
+        Plots.Remove(fence);
+        fence.Dispose();
+        OpenFence(fence.Model);
+        old?.Close();
+    }
+
     public void RemoveFence(FenceViewModel fence)
     {
         if (_fenceWindows.Remove(fence.Model.Id, out var window))

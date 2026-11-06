@@ -821,19 +821,32 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ---- Corners ---------------------------------------------------------------------------------
+    // ---- Corners and the flat style ----------------------------------------------------------------
+
+    /// <summary>Flat style: the plot draws its own rounded card with no blur, so any corner size works.</summary>
+    public bool IsFlat => Model.Flat;
+
+    [RelayCommand]
+    private void ToggleFlat()
+    {
+        Model.Flat = !Model.Flat;
+        _store.Changed();
+
+        // A window cannot change how it is drawn once shown, so the plot reopens in the new style.
+        _windows.ReopenFence(this);
+    }
 
     /// <summary>
-    /// Corner size: 0 (square), 4 (soft) or 8 (round). These are the three sizes Windows 11 can round a glass window
-    /// to. A window with the glass effect ignores any other shape, so the slider has three stops.
+    /// Corner size. Glass: 0 (square), 4 (soft) or 8 (round), the three sizes Windows 11 can round a glass window
+    /// to. Flat: any whole number from 0 to 24.
     /// </summary>
     public double CornerSize
     {
-        get => SnapCorner(Model.CornerSize);
+        get => Fit(Model.CornerSize);
         set
         {
-            var size = SnapCorner(value);
-            if (size == SnapCorner(Model.CornerSize))
+            var size = Fit(value);
+            if (size == Fit(Model.CornerSize))
             {
                 return;
             }
@@ -842,10 +855,22 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
             _store.Changed();
             OnPropertyChanged();
             OnPropertyChanged(nameof(CornerName));
+            OnPropertyChanged(nameof(FlatCornerRadius));
         }
     }
 
-    public string CornerName => SnapCorner(Model.CornerSize) switch { 0 => "Square", 4 => "Soft", _ => "Round" };
+    private int Fit(double size) => IsFlat ? (int)Math.Round(Math.Clamp(size, 0, 24)) : SnapCorner(size);
+
+    public double CornerMax => IsFlat ? 24 : 8;
+
+    public double CornerStep => IsFlat ? 1 : 4;
+
+    public string CornerName => IsFlat
+        ? $"{Fit(Model.CornerSize)} px"
+        : SnapCorner(Model.CornerSize) switch { 0 => "Square", 4 => "Soft", _ => "Round" };
+
+    /// <summary>The flat card's own corners. Glass windows are rounded by Windows instead.</summary>
+    public System.Windows.CornerRadius FlatCornerRadius => IsFlat ? new(Fit(Model.CornerSize)) : new(0);
 
     public static int SnapCorner(double size) => size < 2 ? 0 : size < 6 ? 4 : 8;
     public System.Windows.HorizontalAlignment TitleHorizontalAlignment => TitleAlign switch

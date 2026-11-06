@@ -35,7 +35,7 @@
 
     <Grid>
         <!-- Tint: the theme glass, or this fence's own colour. -->
-        <Border Opacity="{Binding GlassOpacity}">
+        <Border Opacity="{Binding GlassOpacity}" CornerRadius="{Binding FlatCornerRadius}">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
@@ -49,7 +49,7 @@
         </Border>
 
         <!-- Shown while files are dragged over the fence. -->
-        <Border x:Name="DropHighlight" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Background="{DynamicResource Brush.AccentSoft}" Visibility="Collapsed" IsHitTestVisible="False" />
+        <Border x:Name="DropHighlight" CornerRadius="{Binding FlatCornerRadius}" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Background="{DynamicResource Brush.AccentSoft}" Visibility="Collapsed" IsHitTestVisible="False" />
 
         <DockPanel>
             <!-- Title bar -->
@@ -244,7 +244,7 @@
                             </Grid>
                             <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
 
-                            <!-- Three stops: Windows can round a glass window to square, soft or round, and no other size. -->
+                            <!-- Glass: three stops, the only sizes Windows can round it to. Flat: any size from 0 to 24. -->
                             <DockPanel Margin="0,16,0,0">
                                 <TextBlock DockPanel.Dock="Right"
                                            Foreground="{DynamicResource Brush.TextMuted}"
@@ -252,11 +252,29 @@
                                 <TextBlock Style="{DynamicResource Text.Label}" Text="Corners" />
                             </DockPanel>
                             <Slider Margin="0,4,0,0"
-                                    Minimum="0" Maximum="8"
-                                    SmallChange="4" LargeChange="4"
-                                    TickFrequency="4" IsSnapToTickEnabled="True"
+                                    Minimum="0" Maximum="{Binding CornerMax}"
+                                    SmallChange="{Binding CornerStep}" LargeChange="{Binding CornerStep}"
+                                    TickFrequency="{Binding CornerStep}" IsSnapToTickEnabled="True"
                                     Value="{Binding CornerSize}"
                                     AutomationProperties.Name="Corners" />
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="Medium" Text="Flat style" />
+                                    <TextBlock Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                                               Text="No blur, but any corner size. The plot reopens; open this panel again." />
+                                </StackPanel>
+                                <CheckBox Grid.Column="1"
+                                          VerticalAlignment="Center"
+                                          Style="{DynamicResource CheckBox.Switch}"
+                                          IsChecked="{Binding IsFlat, Mode=OneWay}"
+                                          Command="{Binding ToggleFlatCommand}"
+                                          AutomationProperties.Name="Flat style" />
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </Popup>
