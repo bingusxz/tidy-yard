@@ -14,12 +14,11 @@ namespace TidyYard.Services;
 public sealed class UpdateService
 {
     /// <summary>
-    /// Where releases are published: a GitHub repository whose Releases hold the files from release.ps1.
-    /// It must be public, because the app cannot sign in, so it is a separate repository that holds only the
-    /// installers and update files; the source repository stays private. A plain web address or a folder also works.
+    /// Where releases are published: the GitHub repository whose Releases hold the files from release.ps1.
+    /// The repository must be public, because the app cannot sign in. A plain web address or a folder also works.
     /// Can be overridden per machine with "UpdateFeed" in settings.json.
     /// </summary>
-    public const string DefaultFeed = "https://github.com/bingusxz/tidy-yard-releases";
+    public const string DefaultFeed = "https://github.com/bingusxz/tidy-yard";
 
     private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
