@@ -28,6 +28,13 @@ if ($running) {
     $running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
 }
 
+# Keep the project's own version in step with the release, so a copy started with "dotnet run" reports the
+# release it is based on instead of an old number. Commit TidyYard.csproj after a release.
+$project = Join-Path $PSScriptRoot 'TidyYard.csproj'
+$text = [System.IO.File]::ReadAllText($project)
+$updated = [regex]::Replace($text, '<Version>[^<]*</Version>', "<Version>$Version</Version>")
+if ($updated -ne $text) { [System.IO.File]::WriteAllText($project, $updated, (New-Object System.Text.UTF8Encoding($true))) }
+
 $publish = Join-Path $PSScriptRoot 'publish'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 
