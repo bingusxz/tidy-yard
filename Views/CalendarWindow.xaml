@@ -490,7 +490,7 @@
 
                         <!-- Hairline grid: each cell draws its right and bottom rule; the outer 1px is clipped. -->
                         <Border BorderBrush="{DynamicResource Brush.Rule}" BorderThickness="0,1,0,0" ClipToBounds="True">
-                        <ItemsControl Margin="0,0,-1,-1" ItemsSource="{Binding Days}" Focusable="False">
+                        <ItemsControl Margin="0,0,-1,-1" ItemsSource="{Binding Days}" Focusable="False" SizeChanged="OnMonthGridSizeChanged">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Rows="6" Columns="7" />
@@ -509,8 +509,45 @@
                                             PreviewMouseLeftButtonUp="OnEventRelease"
                                             PreviewMouseMove="OnEventMove"
                                             Command="{Binding SelectCommand}"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            ToolTipService.IsEnabled="{Binding HasEvents}"
+                                            ToolTipService.InitialShowDelay="500"
+                                            ToolTipService.Placement="Right"
                                             AutomationProperties.Name="{Binding AccessibleName}">
-                                        <!-- Day number top-left, then up to two event titles as plain text. -->
+                                        <!-- Right-click a day for the quick actions. -->
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="New event"
+                                                          Command="{Binding PlacementTarget.Tag.NewEventOnCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="Open day"
+                                                          Command="{Binding PlacementTarget.Tag.OpenDayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <!-- Hover for a moment: every event of the day, with its time. -->
+                                        <Button.ToolTip>
+                                            <ToolTip Style="{DynamicResource ToolTip.Card}">
+                                                <StackPanel MinWidth="180" MaxWidth="300">
+                                                    <TextBlock Style="{DynamicResource Text.Label}" Text="{Binding LongDate}" />
+                                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Events}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:EventItemViewModel}">
+                                                                <Grid Margin="0,0,0,4">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="64" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding StartTimeText}" />
+                                                                    <TextBlock Grid.Column="1" TextWrapping="Wrap" Text="{Binding Title}" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Button.ToolTip>
+                                        <!-- Day number top-left, then as many event titles as fit, as plain text. -->
                                         <DockPanel Margin="6" LastChildFill="False">
                                             <Border x:Name="Mark"
                                                     DockPanel.Dock="Top"

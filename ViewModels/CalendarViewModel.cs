@@ -231,6 +231,41 @@ public sealed partial class CalendarViewModel : ObservableObject
 
     private void SelectDay(DayCellViewModel cell) => SelectedDate = cell.Date;
 
+    /// <summary>Called when the month grid changes size: every cell shows as many event lines as fit.</summary>
+    public void SetMonthLineCapacity(int capacity)
+    {
+        foreach (var day in Days)
+        {
+            day.ApplyCapacity(capacity);
+        }
+    }
+
+    /// <summary>Right-click a day, New event: opens the side card's form on that day.</summary>
+    [RelayCommand]
+    private void NewEventOn(DayCellViewModel? cell)
+    {
+        if (cell is null)
+        {
+            return;
+        }
+
+        SelectedDate = cell.Date;
+        Editor.NewEventCommand.Execute(null);
+    }
+
+    /// <summary>Right-click a day, Open day: shows that day in the Day view.</summary>
+    [RelayCommand]
+    private void OpenDay(DayCellViewModel? cell)
+    {
+        if (cell is null)
+        {
+            return;
+        }
+
+        SelectedDate = cell.Date;
+        SelectedView = ViewOptions.First(v => v.View == CalendarView.Day);
+    }
+
     // ---- Search and jump to date ---------------------------------------------------------
 
     [ObservableProperty]

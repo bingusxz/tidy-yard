@@ -10,14 +10,17 @@ namespace TidyYard.ViewModels;
 public sealed partial class DayCellViewModel : ObservableObject
 {
     public const int MaxDots = 3;
-    public const int MaxCellTitles = 2;
 
     private readonly Action<DayCellViewModel> _select;
+
+    /// <summary>How many text lines the month cell has room for (event titles plus the "more" line).</summary>
+    private int _capacity = 2;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DayNumber))]
     [NotifyPropertyChangedFor(nameof(WeekdayShort))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    [NotifyPropertyChangedFor(nameof(LongDate))]
     private DateOnly _date;
 
     [ObservableProperty]
@@ -57,6 +60,9 @@ public sealed partial class DayCellViewModel : ObservableObject
 
     public string DayNumber => Date.Day.ToString(CultureInfo.CurrentCulture);
 
+    /// <summary>"Friday 6 November": the heading of the hover card.</summary>
+    public string LongDate => Date.ToString("dddd d MMMM", CultureInfo.CurrentCulture);
+
     public string WeekdayShort =>
         CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(Date.DayOfWeek).ToUpperInvariant();
 
@@ -82,9 +88,40 @@ public sealed partial class DayCellViewModel : ObservableObject
     {
         Events = events.Select(e => new EventItemViewModel(e, clock)).ToList();
         Dots = Enumerable.Range(0, Math.Min(events.Count, MaxDots)).ToList();
-        CellEvents = Events.Take(MaxCellTitles).ToList();
-        MoreText = events.Count > MaxCellTitles ? $"{events.Count - MaxCellTitles} more" : string.Empty;
         EventCount = events.Count;
+        FitToCapacity();
+    }
+
+    /// <summary>Tells the cell how many lines fit, so it shows as many events as there is room for.</summary>
+    public void ApplyCapacity(int capacity)
+    {
+        capacity = Math.Max(2, capacity);
+        if (capacity == _capacity)
+        {
+            return;
+        }
+
+        _capacity = capacity;
+        FitToCapacity();
+    }
+
+    /// <summary>
+    /// Everything fits: show every title and no "more" line. Otherwise the last line becomes "N more", so
+    /// "more" is only ever said when the rest really does not fit.
+    /// </summary>
+    private void FitToCapacity()
+    {
+        var count = Events.Count;
+        if (count <= _capacity)
+        {
+            CellEvents = Events;
+            MoreText = string.Empty;
+            return;
+        }
+
+        var shown = Math.Max(1, _capacity - 1);
+        CellEvents = Events.Take(shown).ToList();
+        MoreText = $"{count - shown} more";
     }
 
     [RelayCommand]

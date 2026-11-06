@@ -41,6 +41,18 @@ public partial class CalendarWindow : Window
         SizeChanged += (_, _) => CardColumn.Width = new GridLength(ActualWidth < CompactWidth ? 220 : 264);
     }
 
+    /// <summary>
+    /// Works out how many event lines a month cell has room for, from the cell height: 46 for the margins, the
+    /// day number and the gap under it, and about 18 per line of text.
+    /// </summary>
+    private void OnMonthGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        const double ChromeHeight = 46;
+        const double LineHeight = 18;
+        var cellHeight = e.NewSize.Height / 6;
+        _viewModel.SetMonthLineCapacity((int)Math.Floor((cellHeight - ChromeHeight) / LineHeight));
+    }
+
     public void ShowAndFocus()
     {
         ShowInPlace();

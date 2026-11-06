@@ -237,6 +237,27 @@
         </Setter>
     </Style>
 
+    <!-- Hover card: a flat rounded card in the theme's colours. -->
+    <Style x:Key="ToolTip.Card" TargetType="ToolTip">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Font.UI}" />
+        <Setter Property="FontSize" Value="{DynamicResource Size.Body}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Margin="4" Padding="14,12" CornerRadius="10"
+                            Background="{DynamicResource Brush.Window}"
+                            BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Renaming in place (a tab's name): no box of its own, it sits on the chip it replaces, with a thin accent line. -->
     <Style x:Key="TextBox.Inline" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Background" Value="Transparent" />
