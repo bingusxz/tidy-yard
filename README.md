@@ -60,6 +60,7 @@ A plot is a box on the desktop backed by a real folder. Drag files in, drag them
 - **Rename it, the folder follows.** Renaming a plot also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
 - **Lock to the desktop** so a plot sits behind your windows and cannot be moved by accident.
 - **Recycle Bin, This PC, Control Panel.** Drag the desktop icon onto a plot and it becomes a shortcut there (the desktop icon stays put). The plot menu, Add shortcut, does the same for the Recycle Bin and This PC.
+- **Paste and copy.** Ctrl+V (or the plot menu, Folder, Paste files here) copies the files on the clipboard into the plot, and never overwrites: a name that is taken gets (2). When dragging a file in cannot move it, for example a shortcut on the shared desktop, a copy is added instead and a note says so.
 - **Auto-sort** (off by default): new desktop files that match a rule, by file type or a word in the name, move into a plot or tab. Files already on the desktop are left alone, every move is logged, and the notification has an Undo button.
 - **Tidy Desktop** sorts loose files into plots by type. It shows you the plan first, logs every move, and can undo the last one.
 

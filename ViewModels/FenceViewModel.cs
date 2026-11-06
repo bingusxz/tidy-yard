@@ -729,6 +729,16 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleRollUp() => IsRolledUp = !IsRolledUp;
 
+    /// <summary>Ctrl+V: copies the files on the clipboard into the folder being shown. The originals stay where they are.</summary>
+    public void PasteFiles(IEnumerable<string> paths)
+    {
+        var result = _moves.CopyInto(paths, CurrentPath);
+        if (result.Problems.Count > 0)
+        {
+            ShowNotice(string.Join("\n", result.Problems.Take(4)));
+        }
+    }
+
     /// <summary>
     /// A place dragged in from the desktop (Recycle Bin, This PC, Control Panel) is not a file, so it becomes a
     /// shortcut in the folder being shown. The desktop icon itself stays where it is.

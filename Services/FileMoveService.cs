@@ -88,7 +88,17 @@ public sealed class FileMoveService
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                problems.Add($"{name}: {ex.Message}");
+                // A file Windows will not let us move (a shortcut on the shared desktop, a program in a protected
+                // folder) can still be copied. The original stays where it was, and the note says so.
+                if (!isFolder && ex is UnauthorizedAccessException && TryCopy(source, target))
+                {
+                    Log("copy", source, target);
+                    problems.Add($"{name} could not be moved, so a copy was added. The original is still where it was.");
+                }
+                else
+                {
+                    problems.Add($"{name}: {ex.Message}");
+                }
             }
         }
 
@@ -100,6 +110,89 @@ public sealed class FileMoveService
         }
 
         return new MoveResult(batch.Count, problems, batch);
+    }
+
+    private static bool TryCopy(string source, string target)
+    {
+        try
+        {
+            File.Copy(source, target, overwrite: false);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Copies files and folders into <paramref name="destinationFolder"/> (for paste). Never overwrites: a name that is
+    /// taken gets "(2)". The originals are left alone, and every copy is logged. Copies are not part of "undo last move".
+    /// </summary>
+    public MoveResult CopyInto(IEnumerable<string> paths, string destinationFolder)
+    {
+        var problems = new List<string>();
+        var copied = 0;
+        var destination = Path.GetFullPath(destinationFolder).TrimEnd(Path.DirectorySeparatorChar);
+        if (!Directory.Exists(destination))
+        {
+            problems.Add($"The plot's folder does not exist ({destination}).");
+            return new MoveResult(0, problems);
+        }
+
+        foreach (var raw in paths)
+        {
+            var source = Path.GetFullPath(raw).TrimEnd(Path.DirectorySeparatorChar);
+            var name = Path.GetFileName(source);
+            var isFolder = Directory.Exists(source);
+            if (!isFolder && !File.Exists(source))
+            {
+                continue;
+            }
+
+            if (isFolder && (destination + Path.DirectorySeparatorChar).StartsWith(
+                    source + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                problems.Add($"{name}: a folder cannot be copied into itself.");
+                continue;
+            }
+
+            var target = UniquePath(Path.Combine(destination, name));
+            try
+            {
+                if (isFolder)
+                {
+                    CopyDirectory(source, target);
+                }
+                else
+                {
+                    File.Copy(source, target, overwrite: false);
+                }
+
+                Log("copy", source, target);
+                copied++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problems.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        return new MoveResult(copied, problems);
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source))
+        {
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: false);
+        }
+
+        foreach (var folder in Directory.GetDirectories(source))
+        {
+            CopyDirectory(folder, Path.Combine(target, Path.GetFileName(folder)));
+        }
     }
 
     /// <summary>Moves the last batch back. Items whose original spot is taken get a "(2)" name.</summary>

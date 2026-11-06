@@ -256,6 +256,38 @@ public partial class FenceWindow : Window
     private double OpenHeight() =>
         _viewModel.FitHeight ? FitContentHeight() : Math.Max(_viewModel.Model.ExpandedHeight, MinHeight + 80);
 
+    // ---- Paste: copy the files on the clipboard into the plot --------------------------------
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        // Not while typing a name, where Ctrl+V pastes text.
+        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control
+            && Keyboard.FocusedElement is not System.Windows.Controls.Primitives.TextBoxBase)
+        {
+            PasteFromClipboard();
+            e.Handled = true;
+        }
+
+        base.OnPreviewKeyDown(e);
+    }
+
+    private void OnPasteClick(object sender, RoutedEventArgs e) => PasteFromClipboard();
+
+    private void PasteFromClipboard()
+    {
+        try
+        {
+            if (Clipboard.ContainsFileDropList())
+            {
+                _viewModel.PasteFiles(Clipboard.GetFileDropList().Cast<string>().ToList());
+            }
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            // Another program has the clipboard open for a moment; the user can try again.
+        }
+    }
+
     /// <summary>Drag handle of the colour and text panels: moves the panel, which stays where it is put.</summary>
     private void OnPanelDrag(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
     {

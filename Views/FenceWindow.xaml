@@ -182,6 +182,7 @@
                             <MenuItem Header="Folder">
                                 <MenuItem Header="Open folder" Command="{Binding OpenFolderCommand}" />
                                 <MenuItem Header="Change folder…" Command="{Binding ChangeFolderCommand}" />
+                                <MenuItem Header="Paste files here (Ctrl+V)" Click="OnPasteClick" />
                             </MenuItem>
                             <MenuItem Header="Tabs">
                                 <MenuItem Header="New tab" Command="{Binding NewTabCommand}" />
