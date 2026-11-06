@@ -110,6 +110,56 @@ public sealed class WindowService : IWindowService
         }
     }
 
+    public System.Collections.ObjectModel.ObservableCollection<FenceViewModel> Plots { get; } = [];
+
+    public void NewFenceAtPointer()
+    {
+        try
+        {
+            var (title, folder) = AppPaths.CreateFenceFolder();
+            AddFence(title, folder, bringToFront: true, bounds: ScreenService.AtPointer(360, 280));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Could not create a folder for the plot.\n\n{ex.Message}", "Tidy Yard",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    public void NewFenceFromTemplate(string templateKey)
+    {
+        if (PlotTemplates.Find(templateKey) is not { } template)
+        {
+            return;
+        }
+
+        var existing = _fences.Fences.FirstOrDefault(f =>
+            string.Equals(f.Title, template.Title, StringComparison.CurrentCultureIgnoreCase));
+        if (existing is not null)
+        {
+            if (_fenceWindows.TryGetValue(existing.Id, out var window))
+            {
+                window.BringToFront();
+            }
+
+            return;
+        }
+
+        try
+        {
+            var folder = AppPaths.EnsureNamedFenceFolder(template.Title);
+            var fence = AddFence(template.Title, folder, bringToFront: true);
+
+            // Only adds the rule. Sorting stays off until it is switched on in Settings.
+            _settings.Update(s => s.SortRules.Add(new SortRule { Extensions = template.Extensions, FenceId = fence.Id }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show($"Could not create a folder for the plot.\n\n{ex.Message}", "Tidy Yard",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     public void NewFenceFromFolder()
     {
         if (PickFolder(null) is { } folder)
@@ -126,6 +176,7 @@ public sealed class WindowService : IWindowService
             window.Close();
         }
 
+        Plots.Remove(fence);
         fence.Dispose();
         _fences.Remove(fence.Model);
     }
@@ -264,16 +315,17 @@ public sealed class WindowService : IWindowService
     }
 
     /// <summary>bringToFront lifts the new fence above other windows so the user can name it; cleanup-made fences stay on the desktop.</summary>
-    private void AddFence(string title, string folder, bool bringToFront = false)
+    private Fence AddFence(string title, string folder, bool bringToFront = false, WindowBounds? bounds = null)
     {
         var fence = new Fence
         {
             Title = title,
             FolderPath = folder,
-            Bounds = ScreenService.Cascade(_fences.Fences.Count, 360, 280),
+            Bounds = bounds ?? ScreenService.Cascade(_fences.Fences.Count, 360, 280),
         };
         _fences.Add(fence);
         OpenFence(fence, bringToFront);
+        return fence;
     }
 
     private void OpenFence(Fence fence, bool bringToFront = false)
@@ -285,6 +337,7 @@ public sealed class WindowService : IWindowService
 
         var window = new FenceWindow(new FenceViewModel(fence, _fences, _settings, _moves, this));
         _fenceWindows[fence.Id] = window;
+        Plots.Add(window.ViewModel);
         if (bringToFront)
         {
             window.ShowForSetup();

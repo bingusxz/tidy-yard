@@ -101,9 +101,11 @@ public partial class App : Application
         _autoSort = new AutoSortService(_settings, fences, moves);
         _autoSort.Start();
 
-        // Win+Alt+F brings unlocked fences to the front, for when a window covers them.
-        _hotkeys = new HotkeyService(windows.BringFencesToFront);
-        _hotkeys.Register(virtualKey: 0x46);
+        // Win+Alt+F brings unlocked plots to the front, for when a window covers them.
+        // Win+Alt+N makes a new plot where the pointer is.
+        _hotkeys = new HotkeyService();
+        _hotkeys.Register(virtualKey: 0x46, windows.BringFencesToFront);
+        _hotkeys.Register(virtualKey: 0x4E, windows.NewFenceAtPointer);
 
         _tray = (TaskbarIcon)FindResource("TrayIcon");
         _tray.DataContext = new TrayViewModel(windows, moves);

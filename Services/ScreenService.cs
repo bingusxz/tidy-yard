@@ -82,6 +82,26 @@ public static class ScreenService
             height);
     }
 
+    /// <summary>
+    /// Physical bounds for a new window whose top-left corner is just up and left of the mouse pointer, sized for
+    /// the monitor the pointer is on and pulled fully onto it. Null if the pointer position is unavailable.
+    /// </summary>
+    public static WindowBounds? AtPointer(double width, double height)
+    {
+        if (NativeMethods.GetCursorPosition() is not { } pointer)
+        {
+            return null;
+        }
+
+        var monitor = NativeMethods.GetMonitorWorkAreas().FirstOrDefault(m =>
+            pointer.X >= m.Left && pointer.X < m.Right && pointer.Y >= m.Top && pointer.Y < m.Bottom);
+        var scale = monitor == default ? NativeMethods.GetSystemDpiScale() : monitor.DpiScale;
+        return FitToScreen(
+            new WindowBounds(pointer.X - 24 * scale, pointer.Y - 12 * scale, width * scale, height * scale, Physical: true),
+            width,
+            height);
+    }
+
     private static Rect ToRect(NativeMethods.MonitorWorkArea m) =>
         new(m.Left, m.Top, m.Right - m.Left, m.Bottom - m.Top);
 

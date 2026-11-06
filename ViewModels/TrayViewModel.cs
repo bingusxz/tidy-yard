@@ -35,6 +35,18 @@ public sealed partial class TrayViewModel : ObservableObject
     private void NewFenceFromFolder() => _windows.NewFenceFromFolder();
 
     [RelayCommand]
+    private void NewFenceAtPointer() => _windows.NewFenceAtPointer();
+
+    [RelayCommand]
+    private void NewFenceFromTemplate(string? key)
+    {
+        if (key is not null)
+        {
+            _windows.NewFenceFromTemplate(key);
+        }
+    }
+
+    [RelayCommand]
     private void BringFencesToFront() => _windows.BringFencesToFront();
 
     [RelayCommand]

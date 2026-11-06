@@ -458,6 +458,113 @@
             </Border>
             </StackPanel>
 
+            <!-- Your plots: all of them in one place -->
+            <StackPanel Style="{StaticResource Page2}">
+            <TextBlock Margin="0,16,0,8" Style="{DynamicResource Text.Label}" Text="YOUR PLOTS" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
+                <StackPanel>
+                    <TextBlock Style="{DynamicResource Text.Muted}" Text="New plot" />
+                    <StackPanel Margin="-8,4,0,0" Orientation="Horizontal">
+                        <Button Style="{DynamicResource Button.Text}" Content="Blank" Command="{Binding NewPlotCommand}" />
+                        <ItemsControl ItemsSource="{Binding PlotTemplates}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{DynamicResource Button.Text}"
+                                            Content="{Binding Title}"
+                                            Command="{Binding DataContext.NewPlotFromTemplateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    <TextBlock Margin="0,4,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
+                               Text="A template makes a folder of that name and adds a sort rule for its file types. Sorting stays off until you turn it on. Win+Alt+N makes a plot where the pointer is." />
+
+                    <Border Height="1" Margin="0,12,0,4" Background="{DynamicResource Brush.Rule}" />
+
+                    <TextBlock Margin="0,8,0,0" Text="Nothing scheduled">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Plots.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl ItemsSource="{Binding Plots}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:FenceViewModel}">
+                                <Grid MinHeight="44">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock FontWeight="Medium" TextTrimming="CharacterEllipsis" Text="{Binding Title}" />
+                                        <TextBlock Style="{DynamicResource Text.Muted}" TextTrimming="CharacterEllipsis" Text="{Binding CountText}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Width="28" Height="28"
+                                                Command="{Binding ToggleLockCommand}"
+                                                ToolTip="{Binding LockToolTip}"
+                                                AutomationProperties.Name="{Binding LockToolTip}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                                    <Setter Property="Content" Value="{DynamicResource Glyph.Unlock}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                                            <Setter Property="Content" Value="{DynamicResource Glyph.Lock}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <Button Width="28" Height="28" Margin="2,0,0,0"
+                                                Command="{Binding ToggleRollUpCommand}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                                    <Setter Property="Content" Value="{DynamicResource Glyph.ChevronUp}" />
+                                                    <Setter Property="ToolTip" Value="Roll up" />
+                                                    <Setter Property="AutomationProperties.Name" Value="Roll up" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsRolledUp}" Value="True">
+                                                            <Setter Property="Content" Value="{DynamicResource Glyph.ChevronDown}" />
+                                                            <Setter Property="ToolTip" Value="Roll down" />
+                                                            <Setter Property="AutomationProperties.Name" Value="Roll down" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <Button Margin="4,0,0,0"
+                                                Style="{DynamicResource Button.Text}"
+                                                Content="Remove"
+                                                Command="{Binding RemoveCommand}"
+                                                ToolTip="Removes the plot. Its folder and files stay where they are." />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Margin="-8,8,0,0" Orientation="Horizontal">
+                        <Button Style="{DynamicResource Button.Text}" Content="Lock all" Command="{Binding LockAllPlotsCommand}" />
+                        <Button Style="{DynamicResource Button.Text}" Content="Unlock all" Command="{Binding UnlockAllPlotsCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+
             <!-- Fences -->
             <StackPanel Style="{StaticResource Page2}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="PLOTS" />

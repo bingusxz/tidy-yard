@@ -13,7 +13,15 @@
             <ContextMenu>
                 <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
                 <Separator />
-                <MenuItem Header="New plot" Command="{Binding NewFenceCommand}" />
+                <MenuItem Header="New plot">
+                    <MenuItem Header="Blank" Command="{Binding NewFenceCommand}" />
+                    <MenuItem Header="At the pointer (Win+Alt+N)" Command="{Binding NewFenceAtPointerCommand}" />
+                    <Separator />
+                    <MenuItem Header="Documents" Command="{Binding NewFenceFromTemplateCommand}" CommandParameter="documents" />
+                    <MenuItem Header="Images" Command="{Binding NewFenceFromTemplateCommand}" CommandParameter="images" />
+                    <MenuItem Header="Programs" Command="{Binding NewFenceFromTemplateCommand}" CommandParameter="programs" />
+                    <MenuItem Header="Archives" Command="{Binding NewFenceFromTemplateCommand}" CommandParameter="archives" />
+                </MenuItem>
                 <MenuItem Header="Plot from folder…" Command="{Binding NewFenceFromFolderCommand}" />
                 <MenuItem Header="Bring unlocked plots to front (Win+Alt+F)" Command="{Binding BringFencesToFrontCommand}" />
                 <MenuItem Header="Lock all plots" Command="{Binding LockAllFencesCommand}" />

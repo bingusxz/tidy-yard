@@ -39,6 +39,7 @@ You need Windows 10 (version 1809 or later) or Windows 11. If the .NET 8 desktop
 - Events can have an end time or last several days. They can repeat every day, weekday, week, month or year, optionally until an end date, with "Skip this day" for a single exception.
 - Drag an event to another day to reschedule it. Search (Ctrl+F) finds events or jumps to a date. Deleting an event or skipping a day has an Undo.
 - Reminders arrive as Windows toast notifications, with snooze.
+- The day card on the left has three pages: **Day** (the agenda and the event editor), **Reminders** (every upcoming reminder across all days, not only the selected one) and **Lists** (standalone checklists such as Groceries, with tick boxes, not tied to a day).
 - Checklists on events.
 - **Calendar links:** show events from Google Calendar, Outlook or iCloud by pasting the calendar's secret iCal link. Repeating events and time zones are handled. The link is stored encrypted for your Windows account, and your PC reads it directly with no server in between. The calendars are read-only here.
 - Right-click a day for New event or Open day. Hover a day for a moment to see all of its events in a small card. Month cells show as many events as fit before saying "N more".
@@ -53,6 +54,8 @@ A plot is a box on the desktop backed by a real folder. Drag files in, drag them
 - **Fits its contents.** A plot grows or shrinks to show everything in it, up to three quarters of the screen, then it scrolls. Turn this off per plot if you prefer to set the height yourself.
 - **Right-click** anywhere on a plot for its options: roll up, lock, layout, colour, text and more.
 - **Three layouts:** grid, a single row, or a list.
+- **Make one fast.** Tray icon, New plot gives you a blank plot or a template (Documents, Images, Programs, Archives) that adds a sort rule for its file types. **Win+Alt+N** makes a plot right where the pointer is. Settings, Plots lists every plot with lock, roll up and remove.
+- **Frame.** Choose square, soft or round corners, and a border line (none, thin, medium, thick) in any colour. Plots can be made small, down to a narrow title strip.
 - **Make each one yours.** Every plot has its own glass colour, and its own font, size and colour for the title and for the file names, set separately. The font list has search. The title can sit left, centre or right.
 - **Rename it, the folder follows.** Renaming a plot also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
 - **Lock to the desktop** so a plot sits behind your windows and cannot be moved by accident.

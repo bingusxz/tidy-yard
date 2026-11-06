@@ -147,6 +147,9 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
+    /// <summary>The mouse pointer in physical screen pixels, or null if Windows will not say.</summary>
+    public static (int X, int Y)? GetCursorPosition() => GetCursorPos(out var p) ? (p.X, p.Y) : null;
+
     /// <summary>
     /// True when the mouse pointer is inside the window's rectangle. Works for the title bar too, which a
     /// draggable (non-client) caption area does not report through WPF mouse events.

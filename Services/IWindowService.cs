@@ -18,6 +18,18 @@ public interface IWindowService
     /// <summary>Creates a fence showing a folder the user picks.</summary>
     void NewFenceFromFolder();
 
+    /// <summary>Creates a plot with a new, empty folder, right where the mouse pointer is.</summary>
+    void NewFenceAtPointer();
+
+    /// <summary>
+    /// Creates a plot from a template (Documents, Images, ...): a folder of that name, and an auto-sort rule for
+    /// its file types. If a plot with that name already exists it is brought to the front instead.
+    /// </summary>
+    void NewFenceFromTemplate(string templateKey);
+
+    /// <summary>Every plot that is open, kept up to date as plots are added and removed.</summary>
+    System.Collections.ObjectModel.ObservableCollection<FenceViewModel> Plots { get; }
+
     /// <summary>Closes and forgets a fence. Its folder and files are left untouched.</summary>
     void RemoveFence(FenceViewModel fence);
 

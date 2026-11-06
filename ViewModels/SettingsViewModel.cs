@@ -71,6 +71,31 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(IsUpdateReady))]
     private void InstallUpdate() => _updates.ApplyAndRestart();
 
+    // ---- Your plots: see them all, make a new one -----------------------------------------------
+
+    /// <summary>Every open plot. Each row shows and changes that plot's own settings.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<FenceViewModel> Plots => _windows.Plots;
+
+    public IReadOnlyList<PlotTemplate> PlotTemplates => Services.PlotTemplates.All;
+
+    [RelayCommand]
+    private void NewPlot() => _windows.NewFence();
+
+    [RelayCommand]
+    private void NewPlotFromTemplate(PlotTemplate? template)
+    {
+        if (template is not null)
+        {
+            _windows.NewFenceFromTemplate(template.Key);
+        }
+    }
+
+    [RelayCommand]
+    private void LockAllPlots() => _windows.SetAllFencesLocked(true);
+
+    [RelayCommand]
+    private void UnlockAllPlots() => _windows.SetAllFencesLocked(false);
+
     /// <summary>The Calendar links section.</summary>
     public CalendarLinksViewModel Links { get; }
 
