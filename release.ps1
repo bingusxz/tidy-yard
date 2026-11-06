@@ -18,6 +18,16 @@ Set-Location $PSScriptRoot
 # Worked out here, not in the parameter list: Windows PowerShell 5.1 cannot read $PSScriptRoot there.
 if (-not $Output) { $Output = Join-Path $PSScriptRoot 'releases' }
 
+# A copy of the app started from this folder (for example from bin\Release) keeps TidyYard.exe locked and
+# the build cannot overwrite it. Close only those copies; an installed Tidy Yard elsewhere is left alone.
+$running = Get-Process -Name TidyYard -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -and $_.Path.StartsWith($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase) }
+if ($running) {
+    Write-Host 'Closing Tidy Yard running from this folder so it can be rebuilt...'
+    $running | Stop-Process -Force
+    $running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+}
+
 $publish = Join-Path $PSScriptRoot 'publish'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 
