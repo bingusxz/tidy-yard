@@ -20,6 +20,10 @@ public partial class StickyNoteWindow : Window
     private double _curlProgress;
     private bool _peelFromLeft;
     private System.Windows.Controls.Primitives.Thumb? _activePeelGrip;
+    private PaperSheetPhysics? _physics;
+    private double _dpi = 1;
+    private Point _sheetHome;      // where the sheet's top-left is on screen, in DIPs
+    private Point _paperOffset;    // paper's top-left relative to this window, in pixels
     public event Action<WindowBounds>? SheetDetached;
     private readonly SettingsService _settings;
     private NotepadLook _look;
@@ -54,7 +58,7 @@ public partial class StickyNoteWindow : Window
                 e.Handled = true;
             }
         };
-        Closed += (_, _) => { settings.Changed -= onSettings; _looseSheet?.Close(); store.Flush(); };
+        Closed += (_, _) => { settings.Changed -= onSettings; _physics?.Stop(); _looseSheet?.Close(); store.Flush(); };
     }
     public void FocusForEditing()
     {
@@ -101,6 +105,10 @@ public partial class StickyNoteWindow : Window
         _activePeelGrip = grip;
         _peelFromLeft = ReferenceEquals(grip, LeftPeelGrip);
         _peelStartBounds = new WindowBounds(b.X,b.Y,b.Width,b.Height,true);
+        _dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        var paperOnScreen = Paper.PointToScreen(new Point(0,0));
+        _sheetHome = new Point(paperOnScreen.X/_dpi,paperOnScreen.Y/_dpi);
+        _paperOffset = new Point(paperOnScreen.X-b.X,paperOnScreen.Y-b.Y);
         _peeling = true;_curlProgress = 0;Editor.IsReadOnly = true;
         try
         {
@@ -115,37 +123,46 @@ public partial class StickyNoteWindow : Window
     {
         if (!_peeling || _peelCompleting || _peelSurface is null || _peelStartBounds is not { } start
             || _peelStartPointer is not { } origin || Interop.NativeMethods.GetCursorPosition() is not { } pointer) return;
+        var hand = new Point(pointer.X/_dpi,pointer.Y/_dpi);
+        if (_physics is not null) { _physics.MoveHand(hand); return; }
+
         var dx = pointer.X-origin.X;var dy = pointer.Y-origin.Y;
-        if (_looseSheet is null)
-        {
-            _curlProgress = Math.Clamp(Math.Sqrt((double)dx*dx+(double)dy*dy)/(start.Height*0.45),0,1);
-            _peelSurface.Curl(SystemParameters.ClientAreaAnimation ? _curlProgress*0.8 : 0, _peelFromLeft);
-            if (_curlProgress < 1) return;
-            // Only after the sheet is completely peeled does it become free to follow the pointer.
-            ((System.Windows.Controls.Grid)Content).Children.Remove(_peelSurface);
-            _peelSurface.Margin = new Thickness(6);
-            _looseSheet = new Window { WindowStyle=WindowStyle.None,AllowsTransparency=true,Background=Brushes.Transparent,
-                ShowInTaskbar=false,ShowActivated=false,Topmost=true,IsHitTestVisible=false,ResizeMode=ResizeMode.NoResize,
-                Width=ActualWidth,Height=ActualHeight,Content=_peelSurface };
-            _looseSheet.Show();
-            _activePeelGrip?.CaptureMouse();
-        }
-        Interop.NativeMethods.SetWindowBounds(new System.Windows.Interop.WindowInteropHelper(_looseSheet).Handle,
-            (int)start.Left+dx,(int)start.Top+dy,(int)start.Width,(int)start.Height);
+        _curlProgress = Math.Clamp(Math.Sqrt((double)dx*dx+(double)dy*dy)/(start.Height*0.45),0,1);
+        _peelSurface.Curl(SystemParameters.ClientAreaAnimation ? _curlProgress*0.8 : 0, _peelFromLeft);
+        if (_curlProgress < 1) return;
+        // Only after the sheet is completely peeled does it come away from the pad and follow the hand, as paper would.
+        ((System.Windows.Controls.Grid)Content).Children.Remove(_peelSurface);
+        _physics = PaperSheetPhysics.Carry(_peelSurface,Paper.ActualWidth,Paper.ActualHeight,_sheetHome,_dpi,hand,_peelFromLeft,!SystemParameters.ClientAreaAnimation);
+        _physics.Finished += OnSheetLanded;
+        _looseSheet = _physics.Host;
+        _activePeelGrip?.CaptureMouse();
     }
 
-    private async void OnPeelCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    private void OnPeelCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
-        if (!_peeling || _peelCompleting || !ReferenceEquals(sender, _activePeelGrip)) return;
+        if (!_peeling || _peelCompleting || !ReferenceEquals(sender, _activePeelGrip) || _peelSurface is null) return;
         _peelCompleting = true;
+        if (_physics is not null)
+        {
+            // Carried: letting go drops the sheet where it is; Escape brings it back to the pad first.
+            if (e.Canceled) _physics.Cancel(); else _physics.Release();
+            return;
+        }
+
+        // Let go before it came away: the lifted part falls back onto the pad.
+        _physics = PaperSheetPhysics.FallBack(_peelSurface,Paper.ActualWidth,Paper.ActualHeight,_sheetHome,_dpi,_curlProgress*0.8,_peelFromLeft,!SystemParameters.ClientAreaAnimation);
+        _physics.Finished += OnSheetLanded;
+    }
+
+    private void OnSheetLanded(PaperSheetPhysics.Outcome outcome)
+    {
         try
         {
-            var initial = _curlProgress*0.8;
-            await AnimatePaper(160,t=>_peelSurface?.Curl(initial*(1-t), _peelFromLeft));
-            if (!e.Canceled && _looseSheet is not null && SheetDetached is not null
-                && Interop.NativeMethods.GetWindowBounds(new System.Windows.Interop.WindowInteropHelper(_looseSheet).Handle) is { } bounds)
+            if (!outcome.Canceled && SheetDetached is not null && _peelStartBounds is { } start)
             {
-                var target = ScreenService.FitToScreen(new WindowBounds(bounds.X,bounds.Y,bounds.Width,bounds.Height,true),Width,Height);
+                // The new note's window goes where the sheet came to rest, shifted by the paper's inset in the window.
+                var landed = new WindowBounds(outcome.Left*_dpi-_paperOffset.X,outcome.Top*_dpi-_paperOffset.Y,start.Width,start.Height,true);
+                var target = ScreenService.FitToScreen(landed,Width,Height);
                 // Create the new note before clearing the pad; incomplete/canceled pulls never change data.
                 SheetDetached.Invoke(target);
                 Editor.Clear();_store.Changed();_store.Flush();
@@ -156,6 +173,7 @@ public partial class StickyNoteWindow : Window
 
     private void CleanUpPeel()
     {
+        _physics?.Stop();_physics=null;
         if (_peelSurface is not null && _looseSheet is null) ((System.Windows.Controls.Grid)Content).Children.Remove(_peelSurface);
         _looseSheet?.Close();_looseSheet=null;_peelSurface=null;
         Editor.Opacity=1;Editor.IsReadOnly=false;
@@ -247,26 +265,9 @@ public partial class StickyNoteWindow : Window
         var root = (System.Windows.Controls.Grid)Content;
         root.Children.Add(crumple);
         Paper.Visibility = BackSheetOne.Visibility = BackSheetTwo.Visibility = Visibility.Hidden;
-        try { await AnimatePaper(480,t => { crumple.Crumple(t); crumple.Opacity = t < 0.75 ? 1 : 1-(t-0.75)/0.25; }); }
+        // The sheet is squeezed by a simulated hand; the window closes once it has crumpled and faded.
+        _physics = PaperSheetPhysics.Crumple(crumple,Paper.ActualWidth,Paper.ActualHeight);
+        try { await _physics.Completion; }
         finally { Close(); }
-    }
-
-    private static Task AnimatePaper(int milliseconds, Action<double> update)
-    {
-        if (!SystemParameters.ClientAreaAnimation) { update(1); return Task.CompletedTask; }
-        var done = new TaskCompletionSource();
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        timer.Tick += (_, _) =>
-        {
-            try
-            {
-                var progress = Math.Clamp(watch.Elapsed.TotalMilliseconds / milliseconds,0,1);
-                update(progress);
-                if (progress >= 1) { timer.Stop(); done.SetResult(); }
-            }
-            catch (Exception error) { timer.Stop(); done.SetException(error); }
-        };
-        timer.Start(); return done.Task;
     }
 }
