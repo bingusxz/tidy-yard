@@ -81,7 +81,7 @@
                                     <Setter Property="Margin" Value="0,0,8,0" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding HasCustomTitleColor}" Value="True">
-                                    <Setter Property="Foreground" Value="{Binding TitleBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.PlotTitleText}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding HasCustomTitleFont}" Value="True">
                                     <Setter Property="FontFamily" Value="{Binding TitleFontFamily}" />
@@ -671,7 +671,7 @@
                             <Style x:Key="FenceLabelBase" TargetType="TextBlock">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding DataContext.HasCustomTextColor, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                                        <Setter Property="Foreground" Value="{Binding DataContext.TextBrush, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.PlotItemText}" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding DataContext.HasCustomFont, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                         <Setter Property="FontFamily" Value="{Binding DataContext.TextFontFamily, RelativeSource={RelativeSource AncestorType=Window}}" />

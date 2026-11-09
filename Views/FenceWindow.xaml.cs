@@ -20,12 +20,15 @@ public partial class FenceWindow : Window
 
     private readonly FenceViewModel _viewModel;
     private readonly DesktopWidget _widget;
+    private DispatcherTimer? _colorTimer;
 
     public FenceWindow(FenceViewModel viewModel)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
         ApplyPlotColors();
+        LocationChanged += (_, _) => ReapplyColorsWhenSettled();
+        SizeChanged += (_, _) => ReapplyColorsWhenSettled();
         Services.ThemeService.Applied += OnPlotThemeApplied;
 
         if (viewModel.UsesTransparentBackground)
@@ -172,11 +175,39 @@ public partial class FenceWindow : Window
 
     private void OnPlotThemeApplied(object? sender, EventArgs e) => ApplyPlotColors();
 
-    private void ApplyPlotColors() => Services.PlotAppearance.Apply(Resources, _viewModel.GlassOpacity, _viewModel.Model.TintColor);
+    private void ApplyPlotColors() => Services.PlotAppearance.Apply(
+        Resources, _viewModel.GlassOpacity, _viewModel.Model.TintColor, _viewModel.Model.TextColor, _viewModel.Model.TitleTextColor, ScreenArea());
+
+    /// <summary>Where the plot is on screen in physical pixels: live once shown, the saved spot before that.</summary>
+    private Rect? ScreenArea()
+    {
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero && Interop.NativeMethods.GetWindowBounds(handle) is { Width: > 0 } live)
+            return new Rect(live.X, live.Y, live.Width, live.Height);
+        return _viewModel.Model.Bounds is { Physical: true, Width: > 0 } saved ? new Rect(saved.Left, saved.Top, saved.Width, saved.Height) : null;
+    }
+
+    /// <summary>Moving a plot changes which part of the wallpaper is behind it, so re-check once it settles.</summary>
+    private void ReapplyColorsWhenSettled()
+    {
+        if (_viewModel.GlassOpacity >= 1) return;
+        _colorTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _colorTimer.Tick -= OnColorTimer;
+        _colorTimer.Tick += OnColorTimer;
+        _colorTimer.Stop();
+        _colorTimer.Start();
+    }
+
+    private void OnColorTimer(object? sender, EventArgs e)
+    {
+        _colorTimer?.Stop();
+        ApplyPlotColors();
+    }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(FenceViewModel.GlassOpacity) or nameof(FenceViewModel.TintColor) or nameof(FenceViewModel.HasCustomTint))
+        if (e.PropertyName is nameof(FenceViewModel.GlassOpacity) or nameof(FenceViewModel.TintColor) or nameof(FenceViewModel.HasCustomTint)
+            or nameof(FenceViewModel.TextBrush) or nameof(FenceViewModel.TitleBrush))
             ApplyPlotColors();
         switch (e.PropertyName)
         {

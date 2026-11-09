@@ -20,6 +20,8 @@ public partial class CalendarWindow : Window
     private readonly CalendarViewModel _viewModel;
     private readonly DesktopWidget _widget;
     private bool _closingForExit;
+    private readonly Models.WindowBounds? _savedBounds;
+    private DispatcherTimer? _appearanceTimer;
     public bool UsesTransparency { get; }
     public CalendarViewModel ViewModel => _viewModel;
     public event EventHandler? TransparencyModeChanged;
@@ -29,7 +31,10 @@ public partial class CalendarWindow : Window
         InitializeComponent();
         DataContext = _viewModel = viewModel;
 
+        _savedBounds = settings.Current.CalendarBounds;
         ApplyCalendarAppearance();
+        LocationChanged += (_, _) => ReapplyAppearanceWhenSettled();
+        Loaded += (_, _) => ReapplyAppearanceWhenSettled();
         ThemeService.Applied += OnCalendarThemeApplied;
         UsesTransparency = viewModel.GlassOpacity < 1;
         if (UsesTransparency)
@@ -63,6 +68,7 @@ public partial class CalendarWindow : Window
             Resources["Size.MonthBadge"] = Math.Max(26, Math.Ceiling(13 * scale * 1.4) + 4);
             Resources["Size.MonthHeader"] = (double)Resources["Size.MonthBadge"] + 6;
             Resources["Size.MonthEventLine"] = Math.Ceiling(11 * scale * 1.5) + 2;
+            ReapplyAppearanceWhenSettled();
             SearchPanel.MaxHeight = Math.Max(100, ActualHeight - 100);
             var compact = ActualWidth / scale < CompactWidth;
             CardColumn.Width = new GridLength(Math.Round((compact ? 248 : 288) * scale));
@@ -176,8 +182,33 @@ public partial class CalendarWindow : Window
 
     private void ApplyCalendarAppearance()
     {
-        CalendarAppearance.Apply(Resources, _viewModel.GlassOpacity);
+        CalendarAppearance.Apply(Resources, _viewModel.GlassOpacity, ScreenArea());
         CalendarContent.Effect = null;
+    }
+
+    /// <summary>Where the calendar is on screen in physical pixels: live once shown, the saved spot before that.</summary>
+    private Rect? ScreenArea()
+    {
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero && NativeMethods.GetWindowBounds(handle) is { Width: > 0 } live)
+            return new Rect(live.X, live.Y, live.Width, live.Height);
+        return _savedBounds is { Physical: true, Width: > 0 } saved ? new Rect(saved.Left, saved.Top, saved.Width, saved.Height) : null;
+    }
+
+    /// <summary>Moving the calendar changes which part of the wallpaper is behind it, so re-check once it settles.</summary>
+    private void ReapplyAppearanceWhenSettled()
+    {
+        _appearanceTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _appearanceTimer.Tick -= OnAppearanceTimer;
+        _appearanceTimer.Tick += OnAppearanceTimer;
+        _appearanceTimer.Stop();
+        _appearanceTimer.Start();
+    }
+
+    private void OnAppearanceTimer(object? sender, EventArgs e)
+    {
+        _appearanceTimer?.Stop();
+        if (_viewModel.GlassOpacity < 1) ApplyCalendarAppearance();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

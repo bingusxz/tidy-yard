@@ -162,6 +162,12 @@ internal static class NativeMethods
         EmptyWorkingSet(self.Handle);
     }
 
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int index);
+
+    /// <summary>The primary monitor's size in physical pixels.</summary>
+    public static (int Width, int Height) GetPrimaryScreenSize() => (GetSystemMetrics(0 /* SM_CXSCREEN */), GetSystemMetrics(1 /* SM_CYSCREEN */));
+
     private const uint SPI_GETDESKWALLPAPER = 0x0073;
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SystemParametersInfoW")]
