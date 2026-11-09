@@ -121,6 +121,14 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="Page5" TargetType="StackPanel" BasedOn="{StaticResource Page}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedIndex, ElementName=Nav}" Value="5">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- Round colour swatch that opens the picker. Background = the colour shown. -->
         <Style x:Key="Swatch" TargetType="ToggleButton">
             <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
@@ -190,6 +198,7 @@
                 <ListBoxItem Content="Appearance" />
                 <ListBoxItem Content="Calendar" />
                 <ListBoxItem Content="Plots" />
+                <ListBoxItem Content="Notepad" />
                 <ListBoxItem Content="Auto-sort" />
                 <ListBoxItem Content="General" />
             </ListBox>
@@ -637,8 +646,136 @@
             </Border>
             </StackPanel>
 
-            <!-- Auto-sort -->
+            <!-- Notepad -->
             <StackPanel Style="{StaticResource Page3}">
+            <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="NOTEPAD" />
+            <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
+                <StackPanel>
+                    <!-- Preview: the sheet as it will be drawn, including ink that was adjusted to stay readable. -->
+                    <Border Margin="0,8,0,8" CornerRadius="4" Padding="14,6" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
+                            Background="{Binding NotepadPreviewPaper}" AutomationProperties.Name="Notepad preview">
+                        <StackPanel>
+                            <Border Height="{Binding NotepadPreviewPitch}" BorderThickness="0,0,0,1" BorderBrush="{Binding NotepadPreviewRule}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Opacity" Value="1" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NotepadPreviewRuled}" Value="False">
+                                                <Setter Property="BorderBrush" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock VerticalAlignment="Bottom" Text="Call the bank before 3pm"
+                                           FontFamily="{Binding NotepadPreviewFont}" FontSize="{Binding NotepadPreviewSize}" Foreground="{Binding NotepadPreviewInk}" />
+                            </Border>
+                            <Border Height="{Binding NotepadPreviewPitch}" BorderThickness="0,0,0,1" BorderBrush="{Binding NotepadPreviewRule}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NotepadPreviewRuled}" Value="False">
+                                                <Setter Property="BorderBrush" Value="Transparent" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock VerticalAlignment="Bottom" Text="Pick up the parcel on Friday"
+                                           FontFamily="{Binding NotepadPreviewFont}" FontSize="{Binding NotepadPreviewSize}" Foreground="{Binding NotepadPreviewInk}" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Design" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Applies to the notepad and to sticky notes." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" Width="176" VerticalAlignment="Center" Style="{DynamicResource ComboBox.Flat}"
+                                  ItemsSource="{Binding NotepadDesignOptions}" SelectedItem="{Binding SelectedNotepadDesign}"
+                                  DisplayMemberPath="Name" AutomationProperties.Name="Notepad design" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Font" />
+                        <ComboBox Grid.Column="1" Width="176" VerticalAlignment="Center" Style="{DynamicResource ComboBox.Flat}"
+                                  ItemsSource="{Binding AvailableFonts}" SelectedItem="{Binding NotepadFont}" AutomationProperties.Name="Notepad font" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" FontWeight="Medium" Text="Text size" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Slider Width="140" VerticalAlignment="Center" Minimum="10" Maximum="28" SmallChange="1" LargeChange="2" TickFrequency="1"
+                                    IsSnapToTickEnabled="True" Value="{Binding NotepadFontSize}" AutomationProperties.Name="Notepad text size" />
+                            <TextBlock Width="52" VerticalAlignment="Center" TextAlignment="Right" FontWeight="Medium" Text="{Binding NotepadFontSizeText}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Ink colour" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lightened or darkened where it cannot be read on the paper." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <ToggleButton x:Name="InkSwatch" Style="{StaticResource Swatch}"
+                                          IsHitTestVisible="{Binding IsOpen, ElementName=InkPopup, Converter={StaticResource Inverse}}"
+                                          ToolTip="Choose ink colour" AutomationProperties.Name="Choose ink colour">
+                                <ToggleButton.Background><SolidColorBrush Color="{Binding NotepadInk}" /></ToggleButton.Background>
+                            </ToggleButton>
+                            <Popup x:Name="InkPopup" IsOpen="{Binding IsChecked, ElementName=InkSwatch, Mode=TwoWay}"
+                                   PlacementTarget="{Binding ElementName=InkSwatch}" Placement="Bottom" HorizontalOffset="-232" StaysOpen="False" AllowsTransparency="True">
+                                <Border Style="{StaticResource PickerCard}">
+                                    <views:ColorPicker SelectedColor="{Binding NotepadInk}" Presets="{Binding InkPresets}" />
+                                </Border>
+                            </Popup>
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Paper colour" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="A note can still pick its own colour from its Colour button." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <ToggleButton x:Name="PaperSwatch" Style="{StaticResource Swatch}"
+                                          IsHitTestVisible="{Binding IsOpen, ElementName=PaperPopup, Converter={StaticResource Inverse}}"
+                                          ToolTip="Choose paper colour" AutomationProperties.Name="Choose paper colour">
+                                <ToggleButton.Background><SolidColorBrush Color="{Binding NotepadPaper}" /></ToggleButton.Background>
+                            </ToggleButton>
+                            <Popup x:Name="PaperPopup" IsOpen="{Binding IsChecked, ElementName=PaperSwatch, Mode=TwoWay}"
+                                   PlacementTarget="{Binding ElementName=PaperSwatch}" Placement="Bottom" HorizontalOffset="-232" StaysOpen="False" AllowsTransparency="True">
+                                <Border Style="{StaticResource PickerCard}">
+                                    <views:ColorPicker SelectedColor="{Binding NotepadPaper}" Presets="{Binding PaperPresets}" />
+                                </Border>
+                            </Popup>
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Ruled lines" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lines under each line of writing." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding NotepadRuled}" AutomationProperties.Name="Ruled lines" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+
+            <!-- Auto-sort -->
+            <StackPanel Style="{StaticResource Page4}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="AUTO-SORT" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
                 <StackPanel DataContext="{Binding AutoSort}">
@@ -821,7 +958,7 @@
             </StackPanel>
 
             <!-- Updates -->
-            <StackPanel Style="{StaticResource Page4}">
+            <StackPanel Style="{StaticResource Page5}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="UPDATES" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <StackPanel>
@@ -866,7 +1003,7 @@
             </StackPanel>
 
             <!-- Data -->
-            <StackPanel Style="{StaticResource Page4}">
+            <StackPanel Style="{StaticResource Page5}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="DATA" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,8" Margin="0,0,8,0">
                 <Grid Style="{StaticResource Row}">
@@ -893,7 +1030,7 @@
             </StackPanel>
 
             <!-- Backup -->
-            <StackPanel Style="{StaticResource Page4}">
+            <StackPanel Style="{StaticResource Page5}">
             <TextBlock Margin="0,20,0,8" Style="{DynamicResource Text.Label}" Text="BACKUP" />
             <Border Background="{DynamicResource Brush.Card}" CornerRadius="12" Padding="16,12" Margin="0,0,8,0">
                 <StackPanel DataContext="{Binding Backup}">

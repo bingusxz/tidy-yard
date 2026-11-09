@@ -158,6 +158,116 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool _syncingColors;
 
+    // ---- Notepad: design, font, ink and paper for the notepad and sticky notes -------------------
+
+    private bool _syncingNotepad;
+
+    [ObservableProperty]
+    private NotepadDesign _selectedNotepadDesign;
+
+    [ObservableProperty]
+    private string _notepadFont = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NotepadFontSizeText))]
+    private int _notepadFontSize;
+
+    [ObservableProperty]
+    private Color _notepadInk;
+
+    [ObservableProperty]
+    private Color _notepadPaper;
+
+    [ObservableProperty]
+    private bool _notepadRuled;
+
+    public IReadOnlyList<NotepadDesign> NotepadDesignOptions => NotepadDesigns.All;
+
+    public IReadOnlyList<string> AvailableFonts => InstalledFonts.Names;
+
+    public string NotepadFontSizeText => $"{NotepadFontSize} pt";
+
+    public IReadOnlyList<Color> InkPresets { get; } = Presets(
+        "#000000", "#2D2B27", "#1F3A5F", "#3E6A4B", "#7A2E2E", "#ECE7DB", "#FFFFFF");
+
+    public IReadOnlyList<Color> PaperPresets { get; } = Presets(
+        "#FFFFFF", "#FAF9F6", "#F5E8B8", "#F1EADC", "#DFEAF0", "#F0E1E1", "#2B2A27", "#141413");
+
+    // What a sheet will really look like, including the ink being darkened or lightened if it cannot be read.
+    private NotepadLook PreviewLook => NotepadLook.From(_settings.Current.Notepad);
+
+    public System.Windows.Media.Brush NotepadPreviewPaper => new SolidColorBrush(PreviewLook.Paper);
+
+    public System.Windows.Media.Brush NotepadPreviewInk => new SolidColorBrush(PreviewLook.Ink);
+
+    public System.Windows.Media.Brush NotepadPreviewRule => new SolidColorBrush(PreviewLook.Rule);
+
+    public FontFamily NotepadPreviewFont => PreviewLook.Font;
+
+    public double NotepadPreviewSize => PreviewLook.FontSize;
+
+    public double NotepadPreviewPitch => PreviewLook.LinePitch;
+
+    public bool NotepadPreviewRuled => PreviewLook.Ruled;
+
+    partial void OnSelectedNotepadDesignChanged(NotepadDesign value)
+    {
+        if (_syncingNotepad || value.Key == NotepadDesigns.Custom) return;
+        _settings.Update(s => NotepadDesigns.Apply(value, s.Notepad));
+        SyncNotepadFromSettings();
+    }
+
+    partial void OnNotepadFontChanged(string value) => EditNotepad(n => n.FontFamily = value);
+
+    partial void OnNotepadFontSizeChanged(int value) => EditNotepad(n => n.FontSize = value);
+
+    partial void OnNotepadInkChanged(Color value) => EditNotepad(n => n.InkColor = ThemeService.ToHex(value));
+
+    partial void OnNotepadPaperChanged(Color value) => EditNotepad(n => n.PaperColor = ThemeService.ToHex(value));
+
+    partial void OnNotepadRuledChanged(bool value) => EditNotepad(n => n.RuledLines = value);
+
+    /// <summary>A hand edit: save it, and show Custom unless the values happen to equal a ready-made design.</summary>
+    private void EditNotepad(Action<NotepadSettings> change)
+    {
+        if (_syncingNotepad) return;
+        _settings.Update(s =>
+        {
+            change(s.Notepad);
+            s.Notepad.Design = NotepadDesigns.Match(s.Notepad).Key;
+        });
+        _syncingNotepad = true;
+        SelectedNotepadDesign = NotepadDesigns.All.First(d => d.Key == _settings.Current.Notepad.Design);
+        _syncingNotepad = false;
+        RefreshNotepadPreview();
+    }
+
+    private void SyncNotepadFromSettings()
+    {
+        var n = _settings.Current.Notepad;
+        _syncingNotepad = true;
+        NotepadFont = n.FontFamily;
+        NotepadFontSize = n.FontSize;
+        NotepadInk = ThemeService.TryParseHex(n.InkColor, out var ink) ? ink : Colors.Black;
+        NotepadPaper = ThemeService.TryParseHex(n.PaperColor, out var paper) ? paper : Colors.White;
+        NotepadRuled = n.RuledLines;
+        SelectedNotepadDesign = NotepadDesigns.All.First(d => d.Key == NotepadDesigns.Match(n).Key);
+        _syncingNotepad = false;
+        RefreshNotepadPreview();
+    }
+
+    private void RefreshNotepadPreview()
+    {
+        foreach (var name in new[]
+                 {
+                     nameof(NotepadPreviewPaper), nameof(NotepadPreviewInk), nameof(NotepadPreviewRule), nameof(NotepadPreviewFont),
+                     nameof(NotepadPreviewSize), nameof(NotepadPreviewPitch), nameof(NotepadPreviewRuled),
+                 })
+        {
+            OnPropertyChanged(name);
+        }
+    }
+
     public SettingsViewModel(SettingsService settings, ThemeService themes, IWindowService windows, UpdateService updates, CalendarLinksViewModel links, AutoSortViewModel autoSort, BackupViewModel backup)
     {
         _settings = settings;
@@ -201,6 +311,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         _accentColor = ThemeService.TryParseHex(settings.Current.AccentColor, out var accent) ? accent : themes.ThemeColor("Brush.Accent");
         _tintColor = ThemeService.TryParseHex(settings.Current.TintColor, out var tint) ? tint : themes.ThemeColor("Brush.Glass");
         _syncingColors = false;
+
+        var notepad = settings.Current.Notepad;
+        _syncingNotepad = true;
+        _notepadFont = notepad.FontFamily;
+        _notepadFontSize = notepad.FontSize;
+        _notepadInk = ThemeService.TryParseHex(notepad.InkColor, out var ink) ? ink : Colors.Black;
+        _notepadPaper = ThemeService.TryParseHex(notepad.PaperColor, out var paper) ? paper : Colors.White;
+        _notepadRuled = notepad.RuledLines;
+        _selectedNotepadDesign = NotepadDesigns.All.First(d => d.Key == NotepadDesigns.Match(notepad).Key);
+        _syncingNotepad = false;
     }
 
     public IReadOnlyList<ThemeOption> Themes => ThemeService.Themes;

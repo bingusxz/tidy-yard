@@ -488,9 +488,6 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private const double ThemeLabelSize = 11; // Size.Small in the theme
     private const double ThemeTitleSize = 13; // Size.Body in the theme
 
-    private static readonly Lazy<IReadOnlyList<string>> InstalledFonts = new(() =>
-        Fonts.SystemFontFamilies.Select(f => f.Source).Order(StringComparer.CurrentCultureIgnoreCase).ToList());
-
     [ObservableProperty]
     private bool _isTextPopupOpen;
 
@@ -498,7 +495,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private Color _textColor;
 
-    public IReadOnlyList<string> AvailableFonts => InstalledFonts.Value;
+    public IReadOnlyList<string> AvailableFonts => Services.InstalledFonts.Names;
 
     /// <summary>What was typed in the font search box; the font list narrows to names containing it.</summary>
     [ObservableProperty]

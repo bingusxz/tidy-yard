@@ -46,7 +46,7 @@
    <Border.RenderTransform><TransformGroup><RotateTransform x:Name="PaperRotation"/><TranslateTransform x:Name="PaperSlide"/></TransformGroup></Border.RenderTransform>
    <Grid>
     <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/><RowDefinition Height="16"/></Grid.RowDefinitions>
-    <Border Background="#14000000" />
+    <Border x:Name="HeaderBand" Background="#14000000" />
     <DockPanel Margin="8,0,4,0">
      <Button DockPanel.Dock="Right" Width="28" Click="OnTear" ToolTip="Delete note (recoverable from tray)" AutomationProperties.Name="Delete note" WindowChrome.IsHitTestVisibleInChrome="True">
       <Path Width="12" Height="14" Stretch="Uniform" Stroke="{DynamicResource Brush.PaperText}" StrokeThickness="1.5" Data="M3,4 L13,4 M6,4 L6,2 L10,2 L10,4 M4,4 L5,15 L11,15 L12,4 M7,7 L7,12 M9,7 L9,12" />
@@ -55,7 +55,7 @@
      <Button DockPanel.Dock="Right" Content="Colour" Width="48" Click="OnColor" ToolTip="Change paper colour" AutomationProperties.Name="Change paper colour" WindowChrome.IsHitTestVisibleInChrome="True" />
      <TextBlock x:Name="SheetHeading" Text="NOTEPAD" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource Brush.PaperMuted}" />
     </DockPanel>
-    <Rectangle Grid.Row="1" Margin="14,12,14,4" IsHitTestVisible="False" Opacity="0.12">
+    <Rectangle x:Name="Rules" Grid.Row="1" Margin="14,12,14,4" IsHitTestVisible="False" Opacity="0.12">
      <Rectangle.Fill>
       <DrawingBrush TileMode="Tile" Viewport="0,0,16,26" ViewportUnits="Absolute" Viewbox="0,0,16,26" ViewboxUnits="Absolute">
        <DrawingBrush.Drawing><GeometryDrawing Geometry="M0,25 L16,25"><GeometryDrawing.Pen><Pen Brush="{DynamicResource Brush.PaperRule}" Thickness="0.6" /></GeometryDrawing.Pen></GeometryDrawing></DrawingBrush.Drawing>

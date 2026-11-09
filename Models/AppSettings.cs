@@ -56,6 +56,26 @@ public sealed class AppSettings
     public bool HardwareRendering { get; set; }
 
     public WindowBounds? CalendarBounds { get; set; }
+
+    /// <summary>How the notepad and sticky notes look. The defaults match the original paper notepad.</summary>
+    public NotepadSettings Notepad { get; set; } = new();
+}
+
+/// <summary>Writing surface for the notepad and sticky notes. A note can still override its paper colour.</summary>
+public sealed class NotepadSettings
+{
+    /// <summary>Key of the chosen design (see NotepadDesigns), or "Custom" once any value below was changed by hand.</summary>
+    public string Design { get; set; } = "Paper";
+
+    public string FontFamily { get; set; } = "Segoe Print";
+
+    public int FontSize { get; set; } = 15;
+
+    public string InkColor { get; set; } = "#2D2B27";
+
+    public string PaperColor { get; set; } = "#FAF9F6";
+
+    public bool RuledLines { get; set; } = true;
 }
 
 /// <summary>

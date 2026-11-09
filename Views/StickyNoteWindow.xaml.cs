@@ -21,12 +21,17 @@ public partial class StickyNoteWindow : Window
     private bool _peelFromLeft;
     private System.Windows.Controls.Primitives.Thumb? _activePeelGrip;
     public event Action<WindowBounds>? SheetDetached;
-    public StickyNoteWindow(StickyNote note, StickyNoteStore store)
+    private readonly SettingsService _settings;
+    private NotepadLook _look;
+    public StickyNoteWindow(StickyNote note, StickyNoteStore store, SettingsService settings)
     {
         InitializeComponent();
-        _note = note; _store = store;
+        _note = note; _store = store; _settings = settings;
+        _look = NotepadLook.From(settings.Current.Notepad);
         Editor.Text = note.Text;
-        ApplyColor();
+        ApplyLook();
+        EventHandler onSettings = (_, _) => Dispatcher.BeginInvoke(ApplyLook);
+        settings.Changed += onSettings;
         BackSheetOne.Visibility = BackSheetTwo.Visibility = PeelGrip.Visibility = LeftPeelGrip.Visibility = note.IsPad ? Visibility.Visible : Visibility.Collapsed;
         SheetHeading.Text = note.IsPad ? "NOTEPAD" : "NOTE";
         _widget = new DesktopWidget(this, 280, 280, () => note.Bounds, bounds => { note.Bounds = bounds; store.Changed(); });
@@ -49,7 +54,7 @@ public partial class StickyNoteWindow : Window
                 e.Handled = true;
             }
         };
-        Closed += (_, _) => { _looseSheet?.Close(); store.Flush(); };
+        Closed += (_, _) => { settings.Changed -= onSettings; _looseSheet?.Close(); store.Flush(); };
     }
     public void FocusForEditing()
     {
@@ -71,8 +76,11 @@ public partial class StickyNoteWindow : Window
         using (var drawing = visual.RenderOpen())
         {
             drawing.DrawRectangle(Paper.Background, null, new Rect(0,0,width,height));
-            var pen = new Pen(new SolidColorBrush(Color.FromArgb(24,70,70,70)),0.6);
-            for (double y = 76; y < height - 16; y += 26) drawing.DrawLine(pen,new Point(14,y),new Point(width-14,y));
+            if (_look.Ruled)
+            {
+                var pen = new Pen(new SolidColorBrush(Color.FromArgb(24,_look.Rule.R,_look.Rule.G,_look.Rule.B)),0.6);
+                for (double y = 50 + _look.LinePitch; y < height - 16; y += _look.LinePitch) drawing.DrawLine(pen,new Point(14,y),new Point(width-14,y));
+            }
             // Capture writing only. Toolbar controls and pad labels never become part of the sheet.
             drawing.DrawRectangle(new VisualBrush(Editor),null,new Rect(14,50,Editor.ActualWidth,Editor.ActualHeight));
         }
@@ -164,13 +172,15 @@ public partial class StickyNoteWindow : Window
     {
         if (_peeling || _tearing || sender is not System.Windows.Controls.Button button) return;
         var menu = new System.Windows.Controls.ContextMenu { PlacementTarget = button };
-        string[] names = ["White", "Cream", "Yellow", "Blue", "Rose"];
+        // Index 0 follows the paper colour chosen in Settings; the rest are fixed colours for this note only.
+        string[] names = ["Default", "Cream", "Yellow", "Blue", "Rose"];
+        var designPaper = NotepadLook.From(_settings.Current.Notepad).Paper;
         for (var i = 0; i < names.Length; i++)
         {
             var index = i;
             var item = new System.Windows.Controls.MenuItem { Header = names[i], IsCheckable = true, IsChecked = _note.ColorIndex == i };
-            item.Icon = new System.Windows.Shapes.Rectangle { Width = 14, Height = 14, Fill = new SolidColorBrush(PaperColor(i)), Stroke = Brushes.Gray, StrokeThickness = 0.5 };
-            item.Click += (_, _) => { _note.ColorIndex = index; ApplyColor(); _store.Changed(); };
+            item.Icon = new System.Windows.Shapes.Rectangle { Width = 14, Height = 14, Fill = new SolidColorBrush(i == 0 ? designPaper : PaperColor(i)), Stroke = Brushes.Gray, StrokeThickness = 0.5 };
+            item.Click += (_, _) => { _note.ColorIndex = index; ApplyLook(); _store.Changed(); };
             menu.Items.Add(item);
         }
         menu.IsOpen = true;
@@ -180,13 +190,40 @@ public partial class StickyNoteWindow : Window
         string[] colors = ["#FAF9F6", "#F1EADC", "#F5E8B8", "#DFEAF0", "#F0E1E1"];
         return (Color)ColorConverter.ConvertFromString(colors[Math.Clamp(index, 0, colors.Length-1)]);
     }
-    private void ApplyColor()
+
+    private static SolidColorBrush Solid(Color color) { var brush = new SolidColorBrush(color); brush.Freeze(); return brush; }
+
+    /// <summary>Applies the Notepad settings (font, ink, paper, rules) plus this note's own paper colour, if it has one.</summary>
+    private void ApplyLook()
     {
-        var color = PaperColor(_note.ColorIndex);
-        Paper.Background = new SolidColorBrush(color);
-        BackSheetOne.Background = new SolidColorBrush(Color.FromRgb((byte)(color.R*0.93),(byte)(color.G*0.93),(byte)(color.B*0.93)));
-        BackSheetTwo.Background = new SolidColorBrush(Color.FromRgb((byte)(color.R*0.85),(byte)(color.G*0.85),(byte)(color.B*0.85)));
+        _look = NotepadLook.From(_settings.Current.Notepad, _note.ColorIndex > 0 ? PaperColor(_note.ColorIndex) : null);
+        var look = _look;
+        var color = look.Paper;
+        Paper.Background = Solid(color);
+        BackSheetOne.Background = Solid(Color.FromRgb((byte)(color.R*0.93),(byte)(color.G*0.93),(byte)(color.B*0.93)));
+        BackSheetTwo.Background = Solid(Color.FromRgb((byte)(color.R*0.85),(byte)(color.G*0.85),(byte)(color.B*0.85)));
         Resources["Brush.PaperFold"] = BackSheetOne.Background;
+        Resources["Brush.PaperText"] = Solid(look.Ink);
+        Resources["Brush.PaperMuted"] = Solid(look.Muted);
+        Resources["Brush.PaperRule"] = Solid(look.Rule);
+        Resources["Brush.PaperHover"] = Solid(look.Hover);
+        Resources["Brush.PaperPressed"] = Solid(look.Pressed);
+        HeaderBand.Background = Solid(look.Band);
+        Editor.FontFamily = look.Font;
+        Editor.FontSize = look.FontSize;
+        Editor.SelectionBrush = Solid(Color.FromArgb(0x55, look.Ink.R, look.Ink.G, look.Ink.B));
+        // A fixed line height keeps the ruled lines under the writing whatever the font.
+        Editor.SetValue(System.Windows.Controls.TextBlock.LineHeightProperty, look.LinePitch);
+        Editor.SetValue(System.Windows.Controls.TextBlock.LineStackingStrategyProperty, LineStackingStrategy.BlockLineHeight);
+        Rules.Visibility = look.Ruled ? Visibility.Visible : Visibility.Collapsed;
+        var pitch = look.LinePitch;
+        var ruleBrush = new DrawingBrush
+        {
+            TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 16, pitch), ViewportUnits = BrushMappingMode.Absolute,
+            Viewbox = new Rect(0, 0, 16, pitch), ViewboxUnits = BrushMappingMode.Absolute,
+            Drawing = new GeometryDrawing(null, new Pen(Solid(look.Rule), 0.6), Geometry.Parse($"M0,{pitch - 1} L16,{pitch - 1}")),
+        };
+        Rules.Fill = ruleBrush;
     }
     private void OnPin(object sender, RoutedEventArgs e)
     {
