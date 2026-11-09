@@ -56,6 +56,35 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     public bool HasCount => CountText.Length > 0;
 
+    public bool SortByName => Model.SortBy == FenceSort.Name;
+    public bool SortByDateModified => Model.SortBy == FenceSort.DateModified;
+    public bool SortByType => Model.SortBy == FenceSort.Type;
+    public bool SortBySize => Model.SortBy == FenceSort.Size;
+    public bool SortDescending => Model.SortDescending;
+
+    [RelayCommand]
+    private void SetSort(string? name)
+    {
+        if (!Enum.TryParse<FenceSort>(name, out var sort)) return;
+        Model.SortBy = sort;
+        SaveSort();
+    }
+
+    [RelayCommand]
+    private void ToggleSortDescending()
+    {
+        Model.SortDescending = !Model.SortDescending;
+        SaveSort();
+    }
+
+    private void SaveSort()
+    {
+        _store.Changed();
+        foreach (var property in new[] { nameof(SortByName), nameof(SortByDateModified), nameof(SortByType), nameof(SortBySize), nameof(SortDescending) })
+            OnPropertyChanged(property);
+        Refresh();
+    }
+
     /// <summary>Short-lived note, e.g. files that could not be moved into the fence.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNotice))]
@@ -67,12 +96,23 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(TintOpacity))]
     private double _glassOpacity;
 
-    /// <summary>
-    /// How strong the plot's tint is. A flat plot has no blur behind it, so at a low Background opacity it would
-    /// vanish, and the theme's text (dark on a light theme) would sit on bare wallpaper and be unreadable. It never
-    /// goes below 70%, which keeps the text readable on any wallpaper.
-    /// </summary>
-    public double TintOpacity => Model.Flat ? Math.Max(GlassOpacity, 0.7) : GlassOpacity;
+    /// <summary>The background tint follows the full opacity range, including zero.</summary>
+    public double TintOpacity => GlassOpacity;
+
+    /// <summary>Use true alpha transparency below full opacity; acrylic adds its own opaque tint.</summary>
+    public bool UsesTransparentBackground => IsFlat || GlassOpacity < 1;
+
+    [ObservableProperty]
+    private bool _showDateModified;
+
+    partial void OnShowDateModifiedChanged(bool value)
+    {
+        Model.ShowDateModified = value;
+        _store.Changed();
+    }
+
+    [RelayCommand]
+    private void ToggleDateModified() => ShowDateModified = !ShowDateModified;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LockMenuText))]
@@ -143,9 +183,10 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _syncingText = false;
         _title = model.Title;
         _isRolledUp = model.IsRolledUp;
-        _glassOpacity = settings.Current.OpacityPercent / 100.0;
+        _glassOpacity = settings.Current.PlotOpacityPercent / 100.0;
         _isLocked = model.IsLocked;
         _layout = model.Layout;
+        _showDateModified = model.ShowDateModified;
 
         // Fences saved before tabs existed get one tab for their folder.
         model.EnsureTabs();
@@ -888,7 +929,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         : SnapCorner(Model.CornerSize) switch { 0 => "Square", 4 => "Soft", _ => "Round" };
 
     /// <summary>The flat card's own corners. Glass windows are rounded by Windows instead.</summary>
-    public System.Windows.CornerRadius FlatCornerRadius => IsFlat ? new(Fit(Model.CornerSize)) : new(0);
+    public System.Windows.CornerRadius FlatCornerRadius => IsFlat ? new(Fit(Model.CornerSize)) : UsesTransparentBackground ? new(SnapCorner(Model.CornerSize)) : new(0);
 
     public static int SnapCorner(double size) => size < 2 ? 0 : size < 6 ? 4 : 8;
     public System.Windows.HorizontalAlignment TitleHorizontalAlignment => TitleAlign switch
@@ -1065,7 +1106,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
-        GlassOpacity = _settings.Current.OpacityPercent / 100.0;
+        var wasTransparent = UsesTransparentBackground;
+        GlassOpacity = _settings.Current.PlotOpacityPercent / 100.0;
+        if (wasTransparent != UsesTransparentBackground)
+        {
+            _windows.ReopenFence(this);
+            return;
+        }
         IconSize = _settings.Current.FenceIconSize;
     }
 
@@ -1080,7 +1127,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
         _watcher = new FileSystemWatcher(CurrentPath)
         {
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
             IncludeSubdirectories = false,
             EnableRaisingEvents = true,
         };
@@ -1092,6 +1139,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
             _refreshDelay.Start();
         });
 
+        _watcher.Changed += Schedule;
         _watcher.Created += Schedule;
         _watcher.Deleted += Schedule;
         _watcher.Renamed += Schedule;
@@ -1111,14 +1159,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         try
         {
             var dir = new DirectoryInfo(CurrentPath);
-            var entries = dir.EnumerateFileSystemInfos()
-                .Where(e => (e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)
-                .OrderBy(e => e is FileInfo)
-                .ThenBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase);
+            var entries = FenceSorting.Sort(dir.EnumerateFileSystemInfos()
+                .Where(e => (e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0),
+                Model.SortBy, Model.SortDescending);
 
             foreach (var entry in entries)
             {
-                Items.Add(new FenceItemViewModel(entry.FullName, entry is DirectoryInfo));
+                Items.Add(new FenceItemViewModel(entry.FullName, entry is DirectoryInfo, entry.LastWriteTime));
             }
 
             Message = Items.Count == 0 ? "Empty folder" : string.Empty;

@@ -48,6 +48,7 @@ appsettings.*.local.json
 *.backup-v*
 settings.json
 fences.json
+notes.json
 moves.log
 
 # Operating system

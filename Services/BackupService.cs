@@ -25,7 +25,7 @@ public sealed class BackupService
     private const long MaxSmallFileBytes = 50L * 1024 * 1024;
 
     /// <summary>The only entries ever read from a backup. Names inside the zip are never used as paths.</summary>
-    private static readonly string[] DataFiles = [DatabaseName, "settings.json", "fences.json"];
+    private static readonly string[] DataFiles = [DatabaseName, "settings.json", "fences.json", "notes.json"];
 
     private readonly string _dataDirectory;
     private readonly Action _flush;
@@ -144,7 +144,7 @@ public sealed class BackupService
             TryDeleteFolder(PendingFolder);
             Directory.CreateDirectory(PendingFolder);
 
-            // Only these three names are ever extracted, always to a fixed place.
+            // Only these known names are ever extracted, always to a fixed place.
             foreach (var name in DataFiles)
             {
                 if (zip.GetEntry(name) is { } entry)

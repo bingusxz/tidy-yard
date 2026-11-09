@@ -105,6 +105,7 @@ public sealed class SettingsService
     {
         settings.OpacityPercent = Math.Clamp(
             settings.OpacityPercent, AppSettings.MinOpacityPercent, AppSettings.MaxOpacityPercent);
+        settings.PlotOpacityPercent = Math.Clamp(settings.PlotOpacityPercent, AppSettings.MinOpacityPercent, AppSettings.MaxOpacityPercent);
         settings.Theme = ThemeService.Resolve(settings.Theme).Key;
         settings.DefaultReminderMinutes = ReminderOption.For(settings.DefaultReminderMinutes).Minutes;
         settings.FenceIconSize = settings.FenceIconSize switch { <= 40 => 32, >= 56 => 64, _ => 48 };

@@ -20,6 +20,12 @@ public sealed partial class TrayViewModel : ObservableObject
         };
     }
 
+    [RelayCommand]
+    private void NewStickyNote() => _windows.NewStickyNote();
+
+    [RelayCommand]
+    private void RestoreLastStickyNote() => _windows.RestoreLastStickyNote();
+
     public string UndoText => _moves.CanUndo ? _moves.UndoLabel : "Undo last move";
 
     [RelayCommand]

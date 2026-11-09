@@ -11,6 +11,8 @@
                     LeftClickCommand="{Binding OpenCalendarCommand}">
         <tb:TaskbarIcon.ContextMenu>
             <ContextMenu>
+                <MenuItem Header="New sticky note" Command="{Binding NewStickyNoteCommand}" />
+                <MenuItem Header="Restore last removed note" Command="{Binding RestoreLastStickyNoteCommand}" />
                 <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
                 <Separator />
                 <MenuItem Header="New plot">

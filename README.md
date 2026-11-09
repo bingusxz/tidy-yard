@@ -45,6 +45,12 @@ You need Windows 10 (version 1809 or later) or Windows 11. If the .NET 8 desktop
 - Right-click a day for New event or Open day. Hover a day for a moment to see all of its events in a small card. Month cells show as many events as fit before saying "N more".
 - Resizable, and it can be locked in place so it sits behind your windows.
 
+## Sticky notes
+
+Right-click the tray icon and choose **New sticky note**. Type or paste text, drag the title strip to move the note, and resize it from the edges. Notes save automatically and return after restarting. **Pin** keeps a note on the desktop behind other windows; **Unpin** lets it come forward. **Colour** opens a palette: White, Cream, Yellow, Blue or Rose. New pads start with white paper.
+
+Drag **either bottom corner** to control the paper curl; the left corner mirrors the right. Pull far enough to release the sheet, carry it to the desired spot, and let go. A partial pull or Escape returns the sheet without clearing its text. Detached notes can be moved normally by their title strip. The pad stays behind with a fresh blank sheet; the detached note saves separately. The trash button crumples the sheet into a small paper ball before removing it. **Restore last removed note** in the tray recovers removed notes, including after restarting. Animations respect Windows' animation preference. Notes are included in Back up / Restore.
+
 ## Plots
 
 A plot is a box on the desktop backed by a real folder. Drag files in, drag them out, double-click to open.
@@ -53,9 +59,10 @@ A plot is a box on the desktop backed by a real folder. Drag files in, drag them
 - **Roll up.** A rolled-up plot is a bare title strip. Hover it and it drops open to fit its contents, then rolls back up when you move away.
 - **Fits its contents.** A plot grows or shrinks to show everything in it, up to three quarters of the screen, then it scrolls. Turn this off per plot if you prefer to set the height yourself.
 - **Right-click** anywhere on a plot for its options: roll up, lock, layout, colour, text and more.
-- **Three layouts:** grid, a single row, or a list.
+- **Sorting.** Right-click a plot, then **Sort by**: Name, Date modified, File type or Size, with a Descending toggle. Folders stay first in either direction; each plot remembers its choice. Size sorts files by their own size, without scanning folder contents.
+- **Three layouts:** grid, a single row, or a list. Right-click a plot, then **Look, Show date modified** to show each file and folder's last modified date and time. Each plot remembers its own choice.
 - **Make one fast.** Tray icon, New plot gives you a blank plot or a template (Documents, Images, Programs, Archives) that adds a sort rule for its file types. **Win+Alt+N** makes a plot right where the pointer is. Settings, Plots lists every plot with lock, roll up and remove.
-- **Corners and style.** The default is Windows' blurred glass, whose corners can be square, soft or round (a slider with three stops). Switch a plot to **Flat style** and it draws its own translucent card with no blur, and the slider then goes from 0 to 24 px in single steps. Plots can also be made small, down to a narrow title strip.
+- **Corners and style.** The default is Windows' blurred glass, whose corners can be square, soft or round (a slider with three stops). Switch a plot to **Flat style** and it draws its own translucent card with no blur, and the slider then goes from 0 to 24 px in single steps. Plots can also be made small, down to a narrow title strip. **Settings, Appearance, Plot opacity** controls plot tint from 0 to 100% for both styles, independently of **Calendar opacity**. At 0%, plots and the calendar turn off the acrylic backdrop so the wallpaper shows through clearly; text, icons and input controls stay visible.
 - **Make each one yours.** Every plot has its own glass colour, and its own font, size and colour for the title and for the file names, set separately. The font list has search. The title can sit left, centre or right.
 - **Rename it, the folder follows.** Renaming a plot also renames its folder, when Tidy Yard created that folder. A folder you picked yourself is never renamed.
 - **Lock to the desktop** so a plot sits behind your windows and cannot be moved by accident.
@@ -68,9 +75,17 @@ Files are only ever moved, never deleted or overwritten.
 
 ## Themes and settings
 
-Nine themes. Light, paper-like ones: **Paper** (warm off-white, muted green), **Linen** (warm greige, terracotta), **Sage** (soft green, deep green), **Blush** (pale pink, plum) and **Fog** (cool grey-blue, navy). Dark ones: **Night Shift** (near-black, amber), **Moss** (deep green, brass), **Ink** (warm charcoal, sage) and **Slate** (blue-grey, sky). Every theme's text meets WCAG AA contrast. Pick your own accent colour and background tint on top, and set how much of your wallpaper shows through the glass.
+Nine themes. Light, paper-like ones: **Paper** (warm off-white, muted green), **Linen** (warm greige, terracotta), **Sage** (soft green, deep green), **Blush** (pale pink, plum) and **Fog** (cool grey-blue, navy). Dark ones: **Night Shift** (near-black, amber), **Moss** (deep green, brass), **Ink** (warm charcoal, sage) and **Slate** (blue-grey, sky). Bundled text colours are checked against normal, hover, pressed and selected opaque theme surfaces. Paper notes keep their own readable ink across app themes. Pick your own accent colour and background tint on top, and set how much of your wallpaper shows through the glass.
 
 Settings has a sidebar with a page each for Appearance, Calendar, Plots, Auto-sort and General. You can hide the desktop icons, start Tidy Yard with Windows, and back up or restore everything.
+
+For colour roles and verification, see [the colour review](docs/COLOR-REVIEW.md). Run `python scripts/check-theme-colors.py` after changing a theme.
+
+## Moving to another PC
+
+Use **Settings, General, Back up**, copy the ZIP to the other PC, then **Restore** and restart. This transfers a snapshot; ongoing two-way sync is not implemented yet. Plot folders and their contents are not included: copy those separately and use **Change folder** to reconnect any paths that differ. Calendar subscription links must be added again because their encryption belongs to the original Windows account.
+
+See [the proposed sync design](docs/SYNC-PLAN.md) for automatic PC-to-PC updates.
 
 ## Your data
 
@@ -81,6 +96,7 @@ Everything lives in `%APPDATA%\TidyYard`:
 | `tidyyard.db` | Events, reminders and checklists (SQLite) |
 | `settings.json` | Settings and window positions |
 | `fences.json` | Plot layout and look |
+| `notes.json` | Sticky notes, positions and recoverable removed notes |
 | `moves.log` | Every file move made by plots or cleanup |
 | `error.log` | Errors, if any |
 

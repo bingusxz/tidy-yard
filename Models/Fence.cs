@@ -72,6 +72,13 @@ public sealed class Fence
 
     public FenceLayout Layout { get; set; } = FenceLayout.Grid;
 
+    /// <summary>Show each file or folder's last modified date below its name.</summary>
+    public bool ShowDateModified { get; set; }
+
+    public FenceSort SortBy { get; set; } = FenceSort.Name;
+
+    public bool SortDescending { get; set; }
+
     /// <summary>The fence's own glass colour as #RRGGBB, or null for the theme tint.</summary>
     public string? TintColor { get; set; }
 

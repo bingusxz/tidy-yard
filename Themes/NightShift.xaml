@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Night Shift: near-black glass, amber accent.
-         At full background opacity: Text 15.1:1, Muted 7.7:1, Dim 5.4:1, OnAccent on Accent 8.4:1. -->
+         Text roles are checked against opaque theme surfaces and interactive overlays. -->
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="/TidyYard;component/Themes/Typography.xaml" />
     </ResourceDictionary.MergedDictionaries>
@@ -20,10 +20,16 @@
     <SolidColorBrush x:Key="Brush.RuleStrong" Color="#2EFFFFFF" />
 
     <SolidColorBrush x:Key="Brush.Text" Color="#EDE8DC" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#ADA799" />
-    <SolidColorBrush x:Key="Brush.TextDim" Color="#8F8A7F" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#D1CEC6" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#BEBBB3" />
     <SolidColorBrush x:Key="Brush.Accent" Color="#E0A44A" />
     <SolidColorBrush x:Key="Brush.AccentSoft" Color="#33E0A44A" />
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#17130C" />
+
+
+    <!-- Readable foreground colours are separate from filled accent surfaces. -->
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#E5B367" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#FFB0AB" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#F1C65C" />
 
 </ResourceDictionary>

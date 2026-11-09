@@ -19,10 +19,16 @@
     <SolidColorBrush x:Key="Brush.Rule" Color="#17FFFFFF" />
     <SolidColorBrush x:Key="Brush.RuleStrong" Color="#2EFFFFFF" />
     <SolidColorBrush x:Key="Brush.Text" Color="#E4E9F0" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#A3AEBD" />
-    <SolidColorBrush x:Key="Brush.TextDim" Color="#95A1B2" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#D2D7DF" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#BCC4CE" />
     <SolidColorBrush x:Key="Brush.Accent" Color="#7FB0E8" />
     <SolidColorBrush x:Key="Brush.AccentSoft" Color="#337FB0E8" />
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#0C1624" />
+
+
+    <!-- Readable foreground colours are separate from filled accent surfaces. -->
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#A4C7EF" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#FFB0AB" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#F1C65C" />
 
 </ResourceDictionary>

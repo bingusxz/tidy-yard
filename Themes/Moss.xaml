@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Moss: deep green glass, cream text, brass accent.
-         At full background opacity: Text 11.8:1, Muted 8.0:1, Dim 5.8:1, OnAccent on Accent 6.4:1. -->
+         Text roles are checked against opaque theme surfaces and interactive overlays. -->
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="/TidyYard;component/Themes/Typography.xaml" />
     </ResourceDictionary.MergedDictionaries>
@@ -12,7 +12,7 @@
 
     <SolidColorBrush x:Key="Brush.Card" Color="#14FFFFFF" />
     <SolidColorBrush x:Key="Brush.Surface" Color="#0AFFFFFF" />
-    <SolidColorBrush x:Key="Brush.Raised" Color="#2D4537" />
+    <SolidColorBrush x:Key="Brush.Raised" Color="#2B4234" />
     <SolidColorBrush x:Key="Brush.Hover" Color="#17FFFFFF" />
     <SolidColorBrush x:Key="Brush.Pressed" Color="#26FFFFFF" />
     <SolidColorBrush x:Key="Brush.Input" Color="#40000000" />
@@ -20,10 +20,16 @@
     <SolidColorBrush x:Key="Brush.RuleStrong" Color="#30FFFFFF" />
 
     <SolidColorBrush x:Key="Brush.Text" Color="#F2EBD8" />
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#CBC4AE" />
-    <SolidColorBrush x:Key="Brush.TextDim" Color="#ABA793" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#E8E5DB" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#D4D2C7" />
     <SolidColorBrush x:Key="Brush.Accent" Color="#C9A45A" />
     <SolidColorBrush x:Key="Brush.AccentSoft" Color="#33C9A45A" />
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#1A2A20" />
+
+
+    <!-- Readable foreground colours are separate from filled accent surfaces. -->
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#E3D0A9" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#FFC3BF" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#F3CD70" />
 
 </ResourceDictionary>

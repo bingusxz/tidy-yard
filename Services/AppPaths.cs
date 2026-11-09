@@ -13,6 +13,8 @@ public static class AppPaths
 
     public static string ErrorLogFile { get; } = Path.Combine(DataDirectory, "error.log");
 
+    public static string NotesFile { get; } = Path.Combine(DataDirectory, "notes.json");
+
     public static string FencesFile { get; } = Path.Combine(DataDirectory, "fences.json");
 
     /// <summary>Every file move Tidy Yard makes, one JSON object per line.</summary>

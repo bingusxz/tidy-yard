@@ -55,7 +55,7 @@ public sealed class ThemeService
         var theme = Resolve(key);
         _base = new ResourceDictionary
         {
-            Source = new Uri($"pack://application:,,,/Themes/{theme.Key}.xaml", UriKind.Absolute),
+            Source = new Uri($"pack://application:,,,/TidyYard;component/Themes/{theme.Key}.xaml", UriKind.Absolute),
         };
 
         // Overrides live in a wrapper so the theme file's own values stay readable by ThemeColor.
@@ -75,6 +75,11 @@ public sealed class ThemeService
             dictionary["Brush.Glass"] = Freeze(new SolidColorBrush(tint));
             dictionary["Brush.Window"] = Freeze(new SolidColorBrush(tint));
         }
+
+        // Custom accents can be beautiful fills but unreadable small text. Keep their fill colour and
+        // derive a readable foreground against the actual theme surfaces and interactive overlays.
+        var accentColor = ((SolidColorBrush)dictionary["Brush.Accent"]).Color;
+        dictionary["Brush.AccentText"] = Freeze(new SolidColorBrush(ColorRules.Readable(accentColor, ColorRules.ThemeSurfaces(dictionary), 4.55)));
 
         var merged = Application.Current.Resources.MergedDictionaries;
         if (_current is not null)

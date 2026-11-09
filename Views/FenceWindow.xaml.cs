@@ -25,10 +25,12 @@ public partial class FenceWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        ApplyPlotColors();
+        Services.ThemeService.Applied += OnPlotThemeApplied;
 
-        if (viewModel.IsFlat)
+        if (viewModel.UsesTransparentBackground)
         {
-            // Flat style: the plot draws its own rounded card, so no Windows glass. A window can only be made
+            // Flat style or zero opacity: draw without Windows glass. A window can only be made
             // see-through before it is shown, which is why changing style reopens the plot.
             AllowsTransparency = true;
             Background = System.Windows.Media.Brushes.Transparent;
@@ -161,14 +163,21 @@ public partial class FenceWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Services.ThemeService.Applied -= OnPlotThemeApplied;
         _hoverTimer.Stop();
         _viewModel.Items.CollectionChanged -= OnItemsChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         base.OnClosed(e);
     }
 
+    private void OnPlotThemeApplied(object? sender, EventArgs e) => ApplyPlotColors();
+
+    private void ApplyPlotColors() => Services.PlotAppearance.Apply(Resources, _viewModel.GlassOpacity, _viewModel.Model.TintColor);
+
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(FenceViewModel.GlassOpacity) or nameof(FenceViewModel.TintColor) or nameof(FenceViewModel.HasCustomTint))
+            ApplyPlotColors();
         switch (e.PropertyName)
         {
             case nameof(FenceViewModel.IsLocked):
@@ -188,7 +197,7 @@ public partial class FenceWindow : Window
                 ApplyCorners();
                 break;
             case nameof(FenceViewModel.Layout) or nameof(FenceViewModel.HasTabBar) or nameof(FenceViewModel.CanGoBack)
-                or nameof(FenceViewModel.LabelMaxHeight) or nameof(FenceViewModel.IconSize)
+                or nameof(FenceViewModel.LabelMaxHeight) or nameof(FenceViewModel.IconSize) or nameof(FenceViewModel.ShowDateModified)
                 or nameof(FenceViewModel.HasNotice) or nameof(FenceViewModel.HasMessage) or nameof(FenceViewModel.FitHeight):
                 QueueFit();
                 break;
@@ -198,7 +207,7 @@ public partial class FenceWindow : Window
     /// <summary>Square, slightly round or round: the three corner sizes Windows 11 draws on a glass window.</summary>
     private void ApplyCorners()
     {
-        if (!_viewModel.IsFlat)
+        if (!_viewModel.UsesTransparentBackground)
         {
             Interop.NativeMethods.SetCornerPreference(
                 _widget.Handle, FenceViewModel.SnapCorner(_viewModel.CornerSize) switch { 0 => 1, 4 => 3, _ => 2 });
@@ -400,7 +409,7 @@ public partial class FenceWindow : Window
         var wasLocked = _widget.IsLocked;
         _widget.IsLocked = false;
         // Plus the tab bar (34) and the back bar (32) when they are showing. 24 + the name's height = 56 at the theme size.
-        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 24 + _viewModel.LabelMaxHeight + 10
+        Height = RolledUpHeight + 1 + 12 + _viewModel.IconSize + 24 + _viewModel.LabelMaxHeight + (_viewModel.ShowDateModified ? 34 : 0) + 10
             + (_viewModel.HasTabBar ? 34 : 0) + (_viewModel.CanGoBack ? 32 : 0);
         _widget.IsLocked = wasLocked;
     }
@@ -428,7 +437,7 @@ public partial class FenceWindow : Window
     {
         // Only when the user starts renaming: during startup the box is briefly visible
         // before its binding hides it, and the window is not shown yet.
-        if (e.NewValue is true && _viewModel.IsRenaming && IsVisible)
+        if (e.NewValue is true && IsVisible && _viewModel is { IsRenaming: true })
         {
             Activate();
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>

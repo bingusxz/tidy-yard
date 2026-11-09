@@ -128,6 +128,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     private int _opacityPercent;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlotOpacityText))]
+    private int _plotOpacityPercent;
+
+    public string PlotOpacityText => $"{PlotOpacityPercent}%";
+
+    partial void OnPlotOpacityPercentChanged(int value) => _settings.Update(s => s.PlotOpacityPercent = value);
+
+    [ObservableProperty]
     private ClockOption _selectedClock;
 
     [ObservableProperty]
@@ -173,6 +181,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _selectedReminder = ReminderOption.For(settings.Current.DefaultReminderMinutes);
         _selectedTheme = ThemeService.Resolve(settings.Current.Theme);
         _opacityPercent = settings.Current.OpacityPercent;
+        _plotOpacityPercent = settings.Current.PlotOpacityPercent;
         _isLocked = settings.Current.IsLocked;
         _startWithWindows = StartupService.IsEnabled;
 

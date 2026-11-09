@@ -237,12 +237,15 @@ public sealed partial class DayEditorViewModel : ObservableObject
         ? "Add event, like Dentist 15:00"
         : "Add event, like Dentist 3pm";
 
-    public string TimeHint => _clock.InputHint;
+    public bool Uses24Hour => _clock.Uses24Hour;
+
+    public string TimeHint => "Leave empty for an all-day event.";
 
     /// <summary>Call after the 12/24-hour setting changes.</summary>
     public void OnClockFormatChanged()
     {
         OnPropertyChanged(nameof(TimeHint));
+        OnPropertyChanged(nameof(Uses24Hour));
         OnPropertyChanged(nameof(QuickAddHint));
     }
 
@@ -372,9 +375,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
         {
             if (!TimeFormatService.TryParse(timeText, out var parsed))
             {
-                Error = _clock.Uses24Hour
-                    ? "Enter a time like 14:30."
-                    : "Enter a time like 2:30 PM.";
+                Error = "Check the start hour and minute.";
                 return;
             }
 
@@ -400,7 +401,7 @@ public sealed partial class DayEditorViewModel : ObservableObject
 
             if (!TimeFormatService.TryParse(endTimeText, out var parsedEnd))
             {
-                Error = _clock.Uses24Hour ? "Enter an end time like 15:30." : "Enter an end time like 3:30 PM.";
+                Error = "Check the end hour and minute.";
                 return;
             }
 

@@ -20,13 +20,26 @@ public partial class CalendarWindow : Window
     private readonly CalendarViewModel _viewModel;
     private readonly DesktopWidget _widget;
     private bool _closingForExit;
+    public bool UsesTransparency { get; }
+    public CalendarViewModel ViewModel => _viewModel;
+    public event EventHandler? TransparencyModeChanged;
 
     public CalendarWindow(CalendarViewModel viewModel, SettingsService settings)
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
 
-        GlassWindow.Attach(this);
+        ApplyCalendarAppearance();
+        ThemeService.Applied += OnCalendarThemeApplied;
+        UsesTransparency = viewModel.GlassOpacity < 1;
+        if (UsesTransparency)
+        {
+            AllowsTransparency = true;
+            Background = System.Windows.Media.Brushes.Transparent;
+            if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+                chrome.GlassFrameThickness = new Thickness(0);
+        }
+        else GlassWindow.Attach(this);
         _widget = new DesktopWidget(
             this,
             DefaultWidth,
@@ -38,19 +51,58 @@ public partial class CalendarWindow : Window
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         // Smaller screens: a narrower day card leaves room for the calendar.
-        SizeChanged += (_, _) => CardColumn.Width = new GridLength(ActualWidth < CompactWidth ? 220 : 264);
+        SizeChanged += (_, _) =>
+        {
+            // Render glyphs at their final size rather than scaling a bitmap of the whole calendar.
+            var scale = Math.Clamp(Math.Min(ActualWidth / DefaultWidth, ActualHeight / DefaultHeight), 1.0, 1.5);
+            Resources["Size.Body"] = Math.Round(13 * scale);
+            Resources["Size.Small"] = Math.Round(11 * scale);
+            Resources["Size.Title"] = Math.Round(18 * scale);
+            Resources["Size.Display"] = Math.Round(56 * scale);
+            Resources["Size.EditorDate"] = Math.Round(28 * scale);
+            Resources["Size.MonthBadge"] = Math.Max(26, Math.Ceiling(13 * scale * 1.4) + 4);
+            Resources["Size.MonthHeader"] = (double)Resources["Size.MonthBadge"] + 6;
+            Resources["Size.MonthEventLine"] = Math.Ceiling(11 * scale * 1.5) + 2;
+            SearchPanel.MaxHeight = Math.Max(100, ActualHeight - 100);
+            var compact = ActualWidth / scale < CompactWidth;
+            CardColumn.Width = new GridLength(Math.Round((compact ? 248 : 288) * scale));
+            SearchPanel.MaxWidth = Math.Max(180, ActualWidth - CardColumn.Width.Value - 56);
+            DayCardContent.Margin = compact ? new Thickness(12) : new Thickness(20, 16, 20, 16);
+            UpdateMonthLineCapacity();
+        };
+        viewModel.Editor.PropertyChanged += OnEditorPropertyChanged;
+        PreviewMouseDown += (_, e) =>
+        {
+            if (_viewModel.IsSearchOpen && !SearchPanel.IsMouseOver && !SearchButton.IsMouseOver)
+                _viewModel.CloseSearchCommand.Execute(null);
+        };
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Escape && _viewModel.IsSearchOpen)
+            {
+                _viewModel.CloseSearchCommand.Execute(null);
+                e.Handled = true;
+            }
+        };
+        Deactivated += (_, _) => _viewModel.CloseSearchCommand.Execute(null);
     }
 
     /// <summary>
-    /// Works out how many event lines a month cell has room for, from the cell height: 46 for the margins, the
-    /// day number and the gap under it, and about 18 per line of text.
+    /// Works out how many event lines a month cell has room for, from the cell height: 54 for the margins, the
+    /// day number and the gap under it, and 20 per line of text.
     /// </summary>
-    private void OnMonthGridSizeChanged(object sender, SizeChangedEventArgs e)
+    private void OnCalendarToolbarSizeChanged(object sender, SizeChangedEventArgs e) =>
+        SearchPanel.Margin = new Thickness(20, e.NewSize.Height + 8, 0, 0);
+
+    private void OnMonthGridSizeChanged(object sender, SizeChangedEventArgs e) => UpdateMonthLineCapacity();
+
+    private void UpdateMonthLineCapacity()
     {
-        const double ChromeHeight = 46;
-        const double LineHeight = 18;
-        var cellHeight = e.NewSize.Height / 6;
-        _viewModel.SetMonthLineCapacity((int)Math.Floor((cellHeight - ChromeHeight) / LineHeight));
+        if (_viewModel is null) return;
+        var chromeHeight = (Resources["Size.MonthHeader"] is double header ? header : 32) + 22;
+        var lineHeight = Resources["Size.MonthEventLine"] is double line ? line : 20;
+        var cellHeight = MonthDaysGrid.ActualHeight / _viewModel.MonthWeekCount;
+        _viewModel.SetMonthLineCapacity((int)Math.Floor((cellHeight - chromeHeight) / lineHeight));
     }
 
     public void ShowAndFocus()
@@ -103,12 +155,37 @@ public partial class CalendarWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        ThemeService.Applied -= OnCalendarThemeApplied;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.Editor.PropertyChanged -= OnEditorPropertyChanged;
         base.OnClosed(e);
+    }
+
+    private void OnEditorPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DayEditorViewModel.IsFormOpen) && _viewModel.Editor.IsFormOpen)
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
+            {
+                EventTitleBox.Focus();
+                EventTitleBox.SelectAll();
+                EventFormScroller.ScrollToTop();
+            });
+    }
+
+    private void OnCalendarThemeApplied(object? sender, EventArgs e) => ApplyCalendarAppearance();
+
+    private void ApplyCalendarAppearance()
+    {
+        CalendarAppearance.Apply(Resources, _viewModel.GlassOpacity);
+        CalendarContent.Effect = null;
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(CalendarViewModel.MonthWeekCount)) UpdateMonthLineCapacity();
+        if (e.PropertyName == nameof(CalendarViewModel.GlassOpacity)) ApplyCalendarAppearance();
+        if (e.PropertyName == nameof(CalendarViewModel.GlassOpacity) && UsesTransparency != (_viewModel.GlassOpacity < 1))
+            TransparencyModeChanged?.Invoke(this, EventArgs.Empty);
         if (e.PropertyName == nameof(CalendarViewModel.IsLocked))
         {
             ApplyLock(_viewModel.IsLocked);

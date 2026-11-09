@@ -12,6 +12,9 @@ public sealed class AppSettings
     /// <summary>Strength of the theme tint over the blurred desktop (100 = solid).</summary>
     public int OpacityPercent { get; set; } = 85;
 
+    /// <summary>Plot background strength, independent of calendar opacity.</summary>
+    public int PlotOpacityPercent { get; set; } = 85;
+
     /// <summary>Custom accent as #RRGGBB, or null for the theme's own accent.</summary>
     public string? AccentColor { get; set; }
 

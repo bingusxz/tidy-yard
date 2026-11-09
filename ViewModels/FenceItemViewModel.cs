@@ -15,10 +15,11 @@ public sealed partial class FenceItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDropTarget;
 
-    public FenceItemViewModel(string path, bool isFolder)
+    public FenceItemViewModel(string path, bool isFolder, DateTime lastModified)
     {
         Path = path;
         IsFolder = isFolder;
+        DateModified = lastModified.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 
         // Shortcuts show without ".lnk"/".url", like on the desktop.
         var extension = System.IO.Path.GetExtension(path);
@@ -35,4 +36,6 @@ public sealed partial class FenceItemViewModel : ObservableObject
     public bool IsFolder { get; }
 
     public string Name { get; }
+
+    public string DateModified { get; }
 }

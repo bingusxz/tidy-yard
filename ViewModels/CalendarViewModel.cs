@@ -122,6 +122,18 @@ public sealed partial class CalendarViewModel : ObservableObject
 
     public ObservableCollection<DayCellViewModel> Days { get; } = [];
 
+    public int MonthWeekCount
+    {
+        get
+        {
+            var first = new DateOnly(SelectedDate.Year, SelectedDate.Month, 1);
+            var offset = first.DayNumber - WeekStart(first).DayNumber;
+            return Math.Clamp((offset + DateTime.DaysInMonth(first.Year, first.Month) + 6) / 7, 4, 6);
+        }
+    }
+
+    public IReadOnlyList<DayCellViewModel> MonthDays => Days.Take(MonthWeekCount * 7).ToArray();
+
     public ObservableCollection<DayCellViewModel> WeekDays { get; } = [];
 
     public IReadOnlyList<string> WeekdayNames { get; }
@@ -428,6 +440,8 @@ public sealed partial class CalendarViewModel : ObservableObject
             Fill(Days[i], gridStart.AddDays(i), month);
         }
 
+        OnPropertyChanged(nameof(MonthWeekCount));
+        OnPropertyChanged(nameof(MonthDays));
         var weekStart = WeekStart(SelectedDate);
         for (var i = 0; i < 7; i++)
         {

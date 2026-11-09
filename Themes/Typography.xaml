@@ -15,6 +15,11 @@
     <sys:Double x:Key="Size.Title">18</sys:Double>
     <sys:Double x:Key="Size.Display">56</sys:Double>
 
+    <sys:Double x:Key="Size.EditorDate">28</sys:Double>
+    <sys:Double x:Key="Size.MonthBadge">26</sys:Double>
+    <sys:Double x:Key="Size.MonthHeader">32</sys:Double>
+    <sys:Double x:Key="Size.MonthEventLine">20</sys:Double>
+
     <!-- Icon glyph size (Segoe Fluent Icons), not part of the type scale. -->
     <sys:Double x:Key="Size.Icon">12</sys:Double>
 

@@ -128,7 +128,7 @@
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsLocked}" Value="True">
                                     <Setter Property="Content" Value="{DynamicResource Glyph.Lock}" />
-                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -207,7 +207,16 @@
                                 <Separator />
                                 <MenuItem Header="Grid layout" Command="{Binding SetLayoutCommand}" CommandParameter="Grid" IsChecked="{Binding IsGridLayout, Mode=OneWay}" />
                                 <MenuItem Header="Row layout" Command="{Binding SetLayoutCommand}" CommandParameter="Row" IsChecked="{Binding IsRowLayout, Mode=OneWay}" />
+                                <MenuItem Header="Show date modified" Command="{Binding ToggleDateModifiedCommand}" IsChecked="{Binding ShowDateModified, Mode=OneWay}" />
                                 <MenuItem Header="List layout" Command="{Binding SetLayoutCommand}" CommandParameter="List" IsChecked="{Binding IsListLayout, Mode=OneWay}" />
+                            </MenuItem>
+                            <MenuItem Header="Sort by">
+                                <MenuItem Header="Name" Command="{Binding SetSortCommand}" CommandParameter="Name" IsChecked="{Binding SortByName, Mode=OneWay}" />
+                                <MenuItem Header="Date modified" Command="{Binding SetSortCommand}" CommandParameter="DateModified" IsChecked="{Binding SortByDateModified, Mode=OneWay}" />
+                                <MenuItem Header="File type" Command="{Binding SetSortCommand}" CommandParameter="Type" IsChecked="{Binding SortByType, Mode=OneWay}" />
+                                <MenuItem Header="Size" Command="{Binding SetSortCommand}" CommandParameter="Size" IsChecked="{Binding SortBySize, Mode=OneWay}" />
+                                <Separator />
+                                <MenuItem Header="Descending" Command="{Binding ToggleSortDescendingCommand}" IsChecked="{Binding SortDescending, Mode=OneWay}" />
                             </MenuItem>
                             <MenuItem Header="Behaviour">
                                 <MenuItem Header="Open on hover when rolled up" Command="{Binding TogglePeekOnHoverCommand}" IsChecked="{Binding PeekOnHover, Mode=OneWay}" />
@@ -595,7 +604,7 @@
             <TextBlock DockPanel.Dock="Bottom"
                        Margin="14,4,14,10"
                        Style="{DynamicResource Text.Muted}"
-                       Foreground="{DynamicResource Brush.Accent}"
+                       Foreground="{DynamicResource Brush.AccentText}"
                        Text="{Binding Notice}"
                        Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibility}}" />
 
@@ -687,6 +696,19 @@
                                 </Style.Triggers>
                             </Style>
 
+                            <Style x:Key="FenceDateLabel" TargetType="TextBlock" BasedOn="{StaticResource FenceLabelBase}">
+                                <Setter Property="FontSize" Value="10" />
+                                <Setter Property="Margin" Value="0,3,0,0" />
+                                <Setter Property="TextAlignment" Value="Center" />
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.ShowDateModified, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+
                             <!-- Grid and Row: icon above a two-line name. -->
                             <DataTemplate x:Key="TileItem" DataType="{x:Type vm:FenceItemViewModel}">
                                 <Button Width="{Binding DataContext.ItemWidth, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -705,6 +727,7 @@
                                                    TextWrapping="Wrap"
                                                    TextTrimming="CharacterEllipsis"
                                                    Text="{Binding Name}" />
+                                        <TextBlock Style="{StaticResource FenceDateLabel}" Text="{Binding DateModified}" ToolTip="Date modified" />
                                     </StackPanel>
                                 </Button>
                             </DataTemplate>
@@ -714,7 +737,10 @@
                                 <Button Padding="8,4" HorizontalContentAlignment="Stretch" Style="{StaticResource FenceItem}">
                                     <DockPanel>
                                         <Image DockPanel.Dock="Left" Width="24" Height="24" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
-                                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource FenceListLabel}" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource FenceListLabel}" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                            <TextBlock Style="{StaticResource FenceDateLabel}" TextAlignment="Left" Text="{Binding DateModified}" ToolTip="Date modified" />
+                                        </StackPanel>
                                     </DockPanel>
                                 </Button>
                             </DataTemplate>

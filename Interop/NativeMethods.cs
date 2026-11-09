@@ -121,6 +121,7 @@ internal static class NativeMethods
 
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_NOOWNERZORDER = 0x0200;
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -165,14 +166,21 @@ internal static class NativeMethods
     public static (int X, int Y)? GetCursorPosition() => GetCursorPos(out var p) ? (p.X, p.Y) : null;
 
     /// <summary>
-    /// True when the mouse pointer is inside the window's rectangle. Works for the title bar too, which a
-    /// draggable (non-client) caption area does not report through WPF mouse events.
+    /// True when the pointer is over an exposed part of this window, including its non-client title bar.
+    /// A covered plot must not expand behind another plot or application.
     /// </summary>
     public static bool IsCursorOverWindow(IntPtr hwnd) =>
         hwnd != IntPtr.Zero
         && GetCursorPos(out var p)
         && GetWindowRect(hwnd, out var r)
-        && p.X >= r.Left && p.X < r.Right && p.Y >= r.Top && p.Y < r.Bottom;
+        && p.X >= r.Left && p.X < r.Right && p.Y >= r.Top && p.Y < r.Bottom
+        && GetAncestor(WindowFromPoint(p), 2 /* GA_ROOT */) == hwnd;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
     /// <summary>Moves and sizes a window in physical screen pixels without activating it.</summary>
     public static void SetWindowBounds(IntPtr hwnd, int x, int y, int width, int height)
@@ -200,10 +208,11 @@ internal static class NativeMethods
             pos.flags |= SWP_NOMOVE | SWP_NOSIZE;
         }
 
-        if (keepAtBottom)
+        // Hover expansion is a size-only change. Preserve its existing layer instead of turning
+        // every resize into a reorder, which can put the plot behind Explorer's desktop host.
+        if (keepAtBottom && (pos.flags & SWP_NOZORDER) == 0)
         {
             pos.hwndInsertAfter = HWND_BOTTOM;
-            pos.flags &= ~SWP_NOZORDER;
         }
 
         Marshal.StructureToPtr(pos, windowPosPtr, fDeleteOld: false);
@@ -330,7 +339,7 @@ internal static class NativeMethods
     {
         if (hwnd != IntPtr.Zero)
         {
-            SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
         }
     }
 

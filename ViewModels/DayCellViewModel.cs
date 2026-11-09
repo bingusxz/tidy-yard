@@ -54,6 +54,7 @@ public sealed partial class DayCellViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     [NotifyPropertyChangedFor(nameof(HasEvents))]
+    [NotifyPropertyChangedFor(nameof(ShowCompactEventIndicator))]
     private int _eventCount;
 
     public DayCellViewModel(Action<DayCellViewModel> select) => _select = select;
@@ -67,6 +68,8 @@ public sealed partial class DayCellViewModel : ObservableObject
         CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(Date.DayOfWeek).ToUpperInvariant();
 
     public bool HasEvents => EventCount > 0;
+
+    public bool ShowCompactEventIndicator => _capacity == 0 && HasEvents;
 
     public bool HasMore => MoreText.Length > 0;
 
@@ -95,13 +98,14 @@ public sealed partial class DayCellViewModel : ObservableObject
     /// <summary>Tells the cell how many lines fit, so it shows as many events as there is room for.</summary>
     public void ApplyCapacity(int capacity)
     {
-        capacity = Math.Max(2, capacity);
+        capacity = Math.Max(0, capacity);
         if (capacity == _capacity)
         {
             return;
         }
 
         _capacity = capacity;
+        OnPropertyChanged(nameof(ShowCompactEventIndicator));
         FitToCapacity();
     }
 
@@ -112,6 +116,12 @@ public sealed partial class DayCellViewModel : ObservableObject
     private void FitToCapacity()
     {
         var count = Events.Count;
+        if (_capacity == 0)
+        {
+            CellEvents = [];
+            MoreText = string.Empty;
+            return;
+        }
         if (count <= _capacity)
         {
             CellEvents = Events;
@@ -119,9 +129,9 @@ public sealed partial class DayCellViewModel : ObservableObject
             return;
         }
 
-        var shown = Math.Max(1, _capacity - 1);
+        var shown = Math.Max(0, _capacity - 1);
         CellEvents = Events.Take(shown).ToList();
-        MoreText = $"{count - shown} more";
+        MoreText = shown == 0 ? $"{count} events" : $"{count - shown} more";
     }
 
     [RelayCommand]

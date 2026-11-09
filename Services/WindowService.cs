@@ -12,6 +12,8 @@ public sealed class WindowService : IWindowService
     private readonly SettingsService _settings;
     private readonly StorageService _storage;
     private readonly ThemeService _themes;
+    private readonly StickyNoteStore _notes;
+    private readonly Dictionary<Guid, StickyNoteWindow> _noteWindows = [];
     private readonly FenceStore _fences;
     private readonly FileMoveService _moves;
     private readonly TimeFormatService _clock;
@@ -27,7 +29,7 @@ public sealed class WindowService : IWindowService
     private readonly BackupService _backup;
 
     public WindowService(
-        SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, FileMoveService moves,
+        SettingsService settings, StorageService storage, ThemeService themes, FenceStore fences, StickyNoteStore notes, FileMoveService moves,
         UpdateService updates, CalendarSyncService sync, BackupService backup, Action quit)
     {
         _updates = updates;
@@ -37,9 +39,47 @@ public sealed class WindowService : IWindowService
         _storage = storage;
         _themes = themes;
         _fences = fences;
+        _notes = notes;
         _moves = moves;
         _clock = new TimeFormatService(settings);
         _quit = quit;
+    }
+
+    public void NewStickyNote()
+    {
+        var note = new StickyNote { IsPinned = false, Bounds = ScreenService.AtPointer(280, 280) };
+        _notes.Add(note);
+        OpenStickyNote(note, true);
+    }
+
+    public void RestoreLastStickyNote()
+    {
+        var note = _notes.Notes.Where(n => n.DeletedAt is not null).OrderByDescending(n => n.DeletedAt).FirstOrDefault();
+        if (note is null) return;
+        note.DeletedAt = null; _notes.Changed();
+        if (_noteWindows.TryGetValue(note.Id, out var old)) old.Close();
+        OpenStickyNote(note, true);
+    }
+
+    public void ShowStickyNotes()
+    {
+        foreach (var note in _notes.Notes.Where(n => n.DeletedAt is null)) OpenStickyNote(note, false);
+    }
+
+    private void OpenStickyNote(StickyNote note, bool focus)
+    {
+        var window = new StickyNoteWindow(note, _notes);
+        window.SheetDetached += bounds =>
+        {
+            var sheet = new StickyNote { Text = note.Text, ColorIndex = note.ColorIndex, IsPad = false, IsPinned = false, Bounds = bounds };
+            _notes.Add(sheet);
+            try { OpenStickyNote(sheet, true); }
+            catch { _notes.Remove(sheet); throw; }
+        };
+        _noteWindows.Add(note.Id, window);
+        window.Closed += (_, _) => _noteWindows.Remove(note.Id);
+        window.Show();
+        if (focus) window.FocusForEditing();
     }
 
     public void ShowCalendar() => ShowCalendar(activate: true);
@@ -47,7 +87,7 @@ public sealed class WindowService : IWindowService
     /// <summary>At Windows sign-in the widget appears in place without stealing focus.</summary>
     public void ShowCalendar(bool activate)
     {
-        _calendar ??= new CalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this, _sync), _settings);
+        _calendar ??= CreateCalendarWindow(new CalendarViewModel(_storage, _settings, _clock, this, _sync));
         if (activate)
         {
             _calendar.ShowAndFocus();
@@ -56,6 +96,25 @@ public sealed class WindowService : IWindowService
         {
             _calendar.ShowInPlace();
         }
+    }
+
+    private CalendarWindow CreateCalendarWindow(CalendarViewModel viewModel)
+    {
+        var window = new CalendarWindow(viewModel, _settings);
+        window.TransparencyModeChanged += (_, _) => window.Dispatcher.BeginInvoke(() =>
+        {
+            if (!ReferenceEquals(_calendar, window) || window.UsesTransparency == (_settings.Current.OpacityPercent < 100)) return;
+            var visible = window.IsVisible;
+            var active = window.IsActive;
+            _calendar = CreateCalendarWindow(viewModel);
+            if (visible)
+            {
+                if (active) _calendar.ShowAndFocus();
+                else _calendar.ShowInPlace();
+            }
+            window.CloseForExit();
+        });
+        return window;
     }
 
     public void SetCalendarVisible(bool visible)

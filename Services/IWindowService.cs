@@ -5,6 +5,10 @@ namespace TidyYard.Services;
 /// <summary>Opens and closes app windows so view models never touch views.</summary>
 public interface IWindowService
 {
+    void NewStickyNote();
+
+    void RestoreLastStickyNote();
+
     void ShowCalendar();
 
     void ShowSettings();

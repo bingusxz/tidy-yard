@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -16,6 +16,7 @@ public partial class App : Application
     private SingleInstanceService? _singleInstance;
     private SettingsService? _settings;
     private FenceStore? _fences;
+    private StickyNoteStore? _notes;
     private ReminderService? _reminders;
     private UpdateService? _updates;
     private HotkeyService? _hotkeys;
@@ -66,6 +67,7 @@ public partial class App : Application
             // Events deleted more than 30 days ago are removed for good; newer ones can still be undone.
             storage.PurgeDeleted(DateTime.UtcNow.AddDays(-30));
             fences = new FenceStore(AppPaths.FencesFile);
+            _notes = new StickyNoteStore(AppPaths.NotesFile);
         }
         catch (Exception ex)
         {
@@ -96,8 +98,9 @@ public partial class App : Application
         {
             _settings.Flush();
             fences.Flush();
+            _notes!.Flush();
         });
-        var windows = new WindowService(_settings, storage, themes, fences, moves, _updates, sync, backup, Shutdown);
+        var windows = new WindowService(_settings, storage, themes, fences, _notes!, moves, _updates, sync, backup, Shutdown);
 
         _reminders = new ReminderService(storage, new TimeFormatService(_settings), windows.ShowCalendar);
         _reminders.Start();
@@ -126,6 +129,7 @@ public partial class App : Application
 
         var launchedAtSignIn = e.Args.Contains(StartupService.StartupArgument, StringComparer.OrdinalIgnoreCase);
         windows.ShowFences();
+        windows.ShowStickyNotes();
         if (_settings.Current.ShowCalendar)
         {
             windows.ShowCalendar(activate: !launchedAtSignIn);
@@ -137,6 +141,7 @@ public partial class App : Application
     {
         _settings?.Flush();
         _fences?.Flush();
+        _notes?.Flush();
         _reminders?.Dispose();
         _tray?.Dispose();
         _singleInstance?.Dispose();
@@ -153,6 +158,7 @@ public partial class App : Application
         _reminders?.Dispose();
         _settings?.Flush();
         _fences?.Flush();
+        _notes?.Flush();
         _tray?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);

@@ -316,7 +316,7 @@
                             <TextBlock Style="{DynamicResource Text.Muted}" Text="The colour of the glass." />
                             <TextBlock Margin="0,2,0,0"
                                        Style="{DynamicResource Text.Muted}"
-                                       Foreground="{DynamicResource Brush.Accent}"
+                                       Foreground="{DynamicResource Brush.Warning}"
                                        Text="{Binding TintWarning}"
                                        Visibility="{Binding HasTintWarning, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
@@ -353,8 +353,8 @@
                     <Grid Style="{StaticResource Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
-                            <TextBlock FontWeight="Medium" Text="Background opacity" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lower shows more of your wallpaper through the glass." />
+                            <TextBlock FontWeight="Medium" Text="Calendar opacity" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Only the calendar. At 0%, its background is transparent." />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                             <Slider Width="140"
@@ -366,8 +366,29 @@
                                     TickFrequency="1"
                                     IsSnapToTickEnabled="True"
                                     Value="{Binding OpacityPercent}"
-                                    AutomationProperties.Name="Background opacity" />
+                                    AutomationProperties.Name="Calendar opacity" />
                             <TextBlock Width="44" VerticalAlignment="Center" TextAlignment="Right" FontWeight="Medium" Text="{Binding OpacityText}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Plot opacity" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Only plots. Keep their backgrounds visible while the calendar is transparent." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Slider Width="140"
+                                    VerticalAlignment="Center"
+                                    Minimum="{Binding MinOpacity}"
+                                    Maximum="{Binding MaxOpacity}"
+                                    SmallChange="1"
+                                    LargeChange="5"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding PlotOpacityPercent}"
+                                    AutomationProperties.Name="Plot opacity" />
+                            <TextBlock Width="44" VerticalAlignment="Center" TextAlignment="Right" FontWeight="Medium" Text="{Binding PlotOpacityText}" />
                         </StackPanel>
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Brush.Rule}" />
@@ -444,7 +465,7 @@
                             <TextBlock FontWeight="Medium" Text="Start with Windows" />
                             <TextBlock Style="{DynamicResource Text.Muted}" Text="Starts Tidy Yard when you sign in, with plots and calendar where you left them." />
                             <TextBlock Style="{DynamicResource Text.Muted}"
-                                       Foreground="{DynamicResource Brush.Accent}"
+                                       Foreground="{DynamicResource Brush.Danger}"
                                        Text="{Binding StartupError}"
                                        Visibility="{Binding HasStartupError, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
@@ -523,7 +544,7 @@
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsLocked}" Value="True">
                                                             <Setter Property="Content" Value="{DynamicResource Glyph.Lock}" />
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -701,7 +722,7 @@
                                   AutomationProperties.Name="Destination plot" />
                         <TextBlock Margin="2,8,0,0"
                                    FontWeight="Medium"
-                                   Foreground="{DynamicResource Brush.Accent}"
+                                   Foreground="{DynamicResource Brush.Danger}"
                                    TextWrapping="Wrap"
                                    Text="{Binding Error}"
                                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
@@ -754,7 +775,7 @@
                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding HasError}" Value="True">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -785,7 +806,7 @@
                                Text="Google: open Calendar on the web, then Settings, your calendar, Integrate calendar, Secret address in iCal format. Anyone with this link can read that calendar, so keep it private." />
                     <TextBlock Margin="2,8,0,0"
                                FontWeight="Medium"
-                               Foreground="{DynamicResource Brush.Accent}"
+                               Foreground="{DynamicResource Brush.Danger}"
                                TextWrapping="Wrap"
                                Text="{Binding Error}"
                                Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
@@ -912,7 +933,7 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Muted}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsError}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
                                         <Setter Property="FontWeight" Value="Medium" />
                                     </DataTrigger>
                                 </Style.Triggers>

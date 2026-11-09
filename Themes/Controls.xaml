@@ -14,7 +14,7 @@
         <Setter Property="Control.Template">
             <Setter.Value>
                 <ControlTemplate>
-                    <Border Margin="-2" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" CornerRadius="8" SnapsToDevicePixels="True" />
+                    <Border Margin="-2" BorderBrush="{DynamicResource Brush.AccentText}" BorderThickness="2" CornerRadius="8" SnapsToDevicePixels="True" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -229,7 +229,7 @@
                             <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -277,7 +277,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Line" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Line" Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -313,13 +313,13 @@
                                        Text="{DynamicResource Glyph.Add}" />
                             <TextBlock x:Name="Placeholder"
                                        Grid.Column="1"
-                                       Margin="2,0,0,0"
+                                       Margin="0"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource Brush.TextDim}"
                                        Text="{TemplateBinding Tag}"
                                        TextTrimming="CharacterEllipsis"
                                        IsHitTestVisible="False"
-                                       Visibility="Collapsed" />
+                                       Visibility="Collapsed" Padding="0" />
                             <ScrollViewer x:Name="PART_ContentHost" Grid.Column="1" VerticalAlignment="Center" Focusable="False" />
                         </Grid>
                     </Border>
@@ -331,7 +331,7 @@
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush.Rule}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
                             <Setter TargetName="Plus" Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -464,7 +464,7 @@
                         </DockPanel>
                         <Border x:Name="Ring"
                                 Margin="-2"
-                                BorderBrush="{DynamicResource Brush.Accent}"
+                                BorderBrush="{DynamicResource Brush.AccentText}"
                                 BorderThickness="2"
                                 CornerRadius="10"
                                 IsHitTestVisible="False"
@@ -534,11 +534,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}" />
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.AccentText}" />
                             <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
                         </Trigger>
                     </ControlTemplate.Triggers>
