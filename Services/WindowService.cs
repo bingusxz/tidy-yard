@@ -101,8 +101,13 @@ public sealed class WindowService : IWindowService
     private CalendarWindow CreateCalendarWindow(CalendarViewModel viewModel)
     {
         var window = new CalendarWindow(viewModel, _settings);
-        window.TransparencyModeChanged += (_, _) => window.Dispatcher.BeginInvoke(() =>
+
+        // Crossing 100% means rebuilding the window (only a new window can change between see-through and
+        // acrylic). Wait until the slider stops, so dragging across 100% rebuilds at most once.
+        var settle = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        settle.Tick += (_, _) =>
         {
+            settle.Stop();
             if (!ReferenceEquals(_calendar, window) || window.UsesTransparency == (_settings.Current.OpacityPercent < 100)) return;
             var visible = window.IsVisible;
             var active = window.IsActive;
@@ -113,7 +118,9 @@ public sealed class WindowService : IWindowService
                 else _calendar.ShowInPlace();
             }
             window.CloseForExit();
-        });
+        };
+        window.TransparencyModeChanged += (_, _) => { settle.Stop(); settle.Start(); };
+        window.Closed += (_, _) => settle.Stop();
         return window;
     }
 
