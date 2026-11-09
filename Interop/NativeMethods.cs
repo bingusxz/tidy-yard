@@ -162,6 +162,21 @@ internal static class NativeMethods
         EmptyWorkingSet(self.Handle);
     }
 
+    private const uint SPI_GETDESKWALLPAPER = 0x0073;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SystemParametersInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SystemParametersInfo(uint action, int param, System.Text.StringBuilder value, uint winIni);
+
+    /// <summary>The current desktop wallpaper file, or null when the desktop is a solid colour.</summary>
+    public static string? GetWallpaperPath()
+    {
+        var buffer = new System.Text.StringBuilder(520);
+        return SystemParametersInfo(SPI_GETDESKWALLPAPER, buffer.Capacity, buffer, 0) && buffer.Length > 0
+            ? buffer.ToString()
+            : null;
+    }
+
     /// <summary>The mouse pointer in physical screen pixels, or null if Windows will not say.</summary>
     public static (int X, int Y)? GetCursorPosition() => GetCursorPos(out var p) ? (p.X, p.Y) : null;
 
