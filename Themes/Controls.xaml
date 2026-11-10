@@ -28,6 +28,8 @@
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <!-- A see-through window is a layered window, where WPF falls back to soft greyscale text unless asked for ClearType. -->
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
         <!-- Inherited by all text: equal-width digits so times and dates align in columns. -->
         <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
     </Style>
