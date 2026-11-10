@@ -82,6 +82,9 @@ public sealed class Fence
     /// <summary>The fence's own glass colour as #RRGGBB, or null for the theme tint.</summary>
     public string? TintColor { get; set; }
 
+    /// <summary>This plot's own background strength (0 to 100), or null to follow the Plot opacity setting.</summary>
+    public int? OpacityPercent { get; set; }
+
     public FenceTitleAlign TitleAlign { get; set; } = FenceTitleAlign.Center;
 
     /// <summary>Corner size in pixels: 0 is square, 8 is what Windows 11 draws by default.</summary>

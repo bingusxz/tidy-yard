@@ -183,7 +183,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _syncingText = false;
         _title = model.Title;
         _isRolledUp = model.IsRolledUp;
-        _glassOpacity = settings.Current.PlotOpacityPercent / 100.0;
+        _glassOpacity = (model.OpacityPercent ?? settings.Current.PlotOpacityPercent) / 100.0;
         _isLocked = model.IsLocked;
         _layout = model.Layout;
         _showDateModified = model.ShowDateModified;
@@ -482,6 +482,79 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasCustomTint));
         OnPropertyChanged(nameof(TintBrush));
         ForOtherPlots(p => p.TintColor = value);
+    }
+
+    // ---- Opacity: this plot's own, or the Plot opacity setting ----------------------------------
+
+    private int EffectiveOpacityPercent => Model.OpacityPercent ?? _settings.Current.PlotOpacityPercent;
+
+    public double MinOpacity => AppSettings.MinOpacityPercent;
+
+    public double MaxOpacity => AppSettings.MaxOpacityPercent;
+
+    public bool HasCustomOpacity => Model.OpacityPercent is not null;
+
+    public string OpacityText => $"{EffectiveOpacityPercent}%";
+
+    private DispatcherTimer? _opacityReopen;
+    private bool _wasTransparentAtStart;
+
+    public double OpacityPercentValue
+    {
+        get => EffectiveOpacityPercent;
+        set
+        {
+            var percent = (int)Math.Clamp(Math.Round(value), AppSettings.MinOpacityPercent, AppSettings.MaxOpacityPercent);
+            if (percent == EffectiveOpacityPercent)
+            {
+                return;
+            }
+
+            Model.OpacityPercent = percent;
+            _store.Changed();
+            ApplyOwnOpacity();
+            ForOtherPlots(p => p.OpacityPercentValue = percent);
+        }
+    }
+
+    [RelayCommand]
+    private void ResetOpacity()
+    {
+        Model.OpacityPercent = null;
+        _store.Changed();
+        ApplyOwnOpacity();
+        ForOtherPlots(p => p.ResetOpacity());
+    }
+
+    private void ApplyOwnOpacity()
+    {
+        if (_opacityReopen is null)
+        {
+            _wasTransparentAtStart = UsesTransparentBackground;
+        }
+
+        GlassOpacity = EffectiveOpacityPercent / 100.0;
+        OnPropertyChanged(nameof(OpacityPercentValue));
+        OnPropertyChanged(nameof(OpacityText));
+        OnPropertyChanged(nameof(HasCustomOpacity));
+
+        // Only a new window can switch between acrylic and see-through. Wait until the slider stops, so dragging
+        // across 100% reopens the plot once and does not pull the slider away mid-drag.
+        _opacityReopen ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _opacityReopen.Tick -= OnOpacitySettled;
+        _opacityReopen.Tick += OnOpacitySettled;
+        _opacityReopen.Stop();
+        _opacityReopen.Start();
+    }
+
+    private void OnOpacitySettled(object? sender, EventArgs e)
+    {
+        _opacityReopen?.Stop();
+        _opacityReopen = null;
+        if (_wasTransparentAtStart != UsesTransparentBackground)
+        {
+            _windows.ReopenFence(this);
+        }
     }
 
     // ---- Scope: change this plot only, or every plot ---------------------------------------------
@@ -1173,7 +1246,9 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
     private void OnSettingsChanged(object? sender, EventArgs e)
     {
         var wasTransparent = UsesTransparentBackground;
-        GlassOpacity = _settings.Current.PlotOpacityPercent / 100.0;
+        GlassOpacity = EffectiveOpacityPercent / 100.0;
+        OnPropertyChanged(nameof(OpacityPercentValue));
+        OnPropertyChanged(nameof(OpacityText));
         if (wasTransparent != UsesTransparentBackground)
         {
             _windows.ReopenFence(this);

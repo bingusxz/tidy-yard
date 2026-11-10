@@ -275,6 +275,25 @@
                             </ListBox>
                             <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
 
+                            <!-- Background strength for this plot; follows Settings until changed. -->
+                            <DockPanel Margin="0,16,0,0">
+                                <TextBlock DockPanel.Dock="Right"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                           Text="{Binding OpacityText}" />
+                                <TextBlock Style="{DynamicResource Text.Label}" Text="Opacity" />
+                                <Button Margin="8,0,0,0" Padding="0"
+                                        HorizontalAlignment="Left"
+                                        Style="{DynamicResource Button.Text}"
+                                        Content="Use default"
+                                        Command="{Binding ResetOpacityCommand}"
+                                        Visibility="{Binding HasCustomOpacity, Converter={StaticResource BoolToVisibility}}" />
+                            </DockPanel>
+                            <Slider Margin="0,4,0,0"
+                                    Minimum="{Binding MinOpacity}" Maximum="{Binding MaxOpacity}"
+                                    SmallChange="1" LargeChange="5" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding OpacityPercentValue}"
+                                    AutomationProperties.Name="Plot opacity" />
+
                             <!-- Glass: three stops, the only sizes Windows can round it to. Flat: any size from 0 to 24. -->
                             <DockPanel Margin="0,16,0,0">
                                 <TextBlock DockPanel.Dock="Right"
