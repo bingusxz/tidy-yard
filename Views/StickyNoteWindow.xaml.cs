@@ -42,6 +42,7 @@ public partial class StickyNoteWindow : Window
         ApplyPin();
         ApplyLock();
         ApplyRollButton();
+        StartHover();
         Interop.NativeMethods.HideFromAltTab(_widget.Handle);
         Loaded += (_, _) =>
         {
@@ -204,6 +205,8 @@ public partial class StickyNoteWindow : Window
             item.Click += (_, _) => { _note.ColorIndex = index; ApplyLook(); _store.Changed(); };
             menu.Items.Add(item);
         }
+        menu.Opened += (_, _) => _menuOpen = true;
+        menu.Closed += (_, _) => _menuOpen = false;
         menu.IsOpen = true;
     }
     private static Color PaperColor(int index)
@@ -311,8 +314,15 @@ public partial class StickyNoteWindow : Window
     // ---- Roll up ----------------------------------------------------------------------------------
 
     private const double HeaderHeight = 38, RootMargin = 6;
-    private bool _rolling;
+
+    // The page is wound up by a spring: it speeds up, overshoots a little, and bounces off the ends before it settles.
+    private const double RollStiffness = 170, RollDamping = 17, RollBounce = 0.35, RollStep = 1.0 / 240;
     private PaperAnimation? _roll;
+    private bool _bodyHidden, _rollLoop, _peeking, _mustLeaveFirst, _menuOpen;
+    private double _rollP, _rollV, _rollTarget;     // 0 = open, 1 = rolled up
+    private TimeSpan _rollLast;
+    private int _insideTicks, _outsideTicks;
+    private readonly System.Diagnostics.Stopwatch _rollClock = System.Diagnostics.Stopwatch.StartNew();
 
     private void ApplyRollButton()
     {
@@ -321,40 +331,26 @@ public partial class StickyNoteWindow : Window
         System.Windows.Automation.AutomationProperties.SetName(RollButton, _note.IsRolledUp ? "Unroll" : "Roll up");
     }
 
-    private async void OnRoll(object sender, RoutedEventArgs e)
+    private void OnRoll(object sender, RoutedEventArgs e)
     {
-        if (_rolling || _peeling || _tearing) return;
-        _rolling = true;
-        try
+        if (_peeling || _tearing) return;
+        _peeking = false;
+        if (_note.IsRolledUp)
         {
-            if (_note.IsRolledUp) await Unroll(); else await RollUp();
+            // Unroll for good (a rolled note also opens by itself while the pointer is over it).
+            _note.IsRolledUp = false;
+            SetRollTarget(0);
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => Editor.Focus());
         }
-        finally { _rolling = false; ApplyRollButton(); ApplyLock(); }
-    }
+        else
+        {
+            _note.IsRolledUp = true;
+            _mustLeaveFirst = true;   // the pointer is on the button: stay rolled until it has left once
+            SetRollTarget(1);
+        }
 
-    private async Task RollUp()
-    {
-        _note.ExpandedHeight = ActualHeight;
-        var width = Paper.ActualWidth;
-        var bodyHeight = Math.Max(40, Paper.ActualHeight - HeaderHeight);
-        _roll = NewRoll(width, bodyHeight);
-        HideBody(true);
-        await Animate(560, t => SetWindowHeight(RollHeight(_roll.Roll(Smooth(t)))));
-        _note.IsRolledUp = true;
-        _store.Changed();
-    }
-
-    private async Task Unroll()
-    {
-        var width = Paper.ActualWidth;
-        var bodyHeight = Math.Max(40, ExpandedBodyHeight());
-        _roll ??= NewRoll(width, bodyHeight);
-        _note.IsRolledUp = false;
-        await Animate(560, t => SetWindowHeight(RollHeight(_roll.Roll(Smooth(1 - t)))));
-        ((System.Windows.Controls.Grid)Content).Children.Remove(_roll);
-        _roll = null;
-        HideBody(false);
-        SetWindowHeight(_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280);
+        ApplyRollButton();
+        ApplyLock();
         _store.Changed();
     }
 
@@ -363,6 +359,7 @@ public partial class StickyNoteWindow : Window
     {
         _roll = NewRoll(Paper.ActualWidth, Math.Max(40, ExpandedBodyHeight()));
         HideBody(true);
+        _rollP = _rollTarget = 1; _rollV = 0;
         SetWindowHeight(RollHeight(_roll.Roll(1)));
         ApplyLock();
     }
@@ -371,6 +368,111 @@ public partial class StickyNoteWindow : Window
         (_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280) - 2 * RootMargin - HeaderHeight;
 
     private static double RollHeight(double lowest) => 2 * RootMargin + HeaderHeight + lowest + 8;
+
+    /// <summary>Sends the page toward open (0) or rolled (1). Changing your mind mid-roll just reverses the motion.</summary>
+    private void SetRollTarget(double target)
+    {
+        _rollTarget = target;
+        if (!SystemParameters.ClientAreaAnimation) { FinishRollInstantly(); return; }
+        if (_rollLoop) return;
+        if (_roll is null)
+        {
+            // Starting from an open page: remember its height, then swap the live page for a picture to wind up.
+            if (!_bodyHidden) _note.ExpandedHeight = ActualHeight;
+            _roll = NewRoll(Paper.ActualWidth, Math.Max(40, Paper.ActualHeight - HeaderHeight));
+            HideBody(true);
+            _rollP = 0; _rollV = 0;
+        }
+
+        _rollLoop = true;
+        _rollLast = _rollClock.Elapsed;
+        CompositionTarget.Rendering += OnRollFrame;
+    }
+
+    private void FinishRollInstantly()
+    {
+        if (_roll is null && _rollTarget > 0.5)
+        {
+            if (!_bodyHidden) _note.ExpandedHeight = ActualHeight;
+            _roll = NewRoll(Paper.ActualWidth, Math.Max(40, Paper.ActualHeight - HeaderHeight));
+            HideBody(true);
+        }
+
+        _rollP = _rollTarget; _rollV = 0;
+        SettleRoll();
+    }
+
+    private void OnRollFrame(object? sender, EventArgs e)
+    {
+        var now = _rollClock.Elapsed;
+        var elapsed = Math.Min((now - _rollLast).TotalSeconds, 0.05);
+        _rollLast = now;
+        for (var t = 0.0; t < elapsed; t += RollStep)
+        {
+            var a = -RollStiffness * (_rollP - _rollTarget) - RollDamping * _rollV;
+            _rollV += a * RollStep;
+            _rollP += _rollV * RollStep;
+            // Hitting either end throws the paper back a little: flat paper springs into a small curl, a full roll rebounds.
+            if (_rollP < 0) { _rollP = -_rollP * RollBounce; _rollV = -_rollV * RollBounce; }
+            else if (_rollP > 1) { _rollP = 1 - (_rollP - 1) * RollBounce; _rollV = -_rollV * RollBounce; }
+        }
+
+        if (Math.Abs(_rollP - _rollTarget) < 0.002 && Math.Abs(_rollV) < 0.02)
+        {
+            _rollP = _rollTarget; _rollV = 0;
+            CompositionTarget.Rendering -= OnRollFrame;
+            _rollLoop = false;
+            SettleRoll();
+            return;
+        }
+
+        if (_roll is not null) SetWindowHeight(RollHeight(_roll.Roll(_rollP)));
+    }
+
+    /// <summary>The motion has stopped: an open page goes back to being the live page, a rolled one stays as the scroll.</summary>
+    private void SettleRoll()
+    {
+        if (_rollTarget < 0.5)
+        {
+            if (_roll is not null) ((System.Windows.Controls.Grid)Content).Children.Remove(_roll);
+            _roll = null;
+            HideBody(false);
+            SetWindowHeight(_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280);
+        }
+        else if (_roll is not null)
+        {
+            SetWindowHeight(RollHeight(_roll.Roll(1)));
+        }
+    }
+
+    // ---- Opens while the pointer is over a rolled note, like a rolled-up plot -------------------------
+
+    private readonly System.Windows.Threading.DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+
+    private void StartHover()
+    {
+        _hoverTimer.Tick += OnHoverTick;
+        _hoverTimer.Start();
+        Closed += (_, _) => { _hoverTimer.Stop(); CompositionTarget.Rendering -= OnRollFrame; };
+    }
+
+    private void OnHoverTick(object? sender, EventArgs e)
+    {
+        if (!_note.IsRolledUp || _peeling || _tearing) { _insideTicks = 0; _peeking = false; return; }
+        var over = IsVisible && Interop.NativeMethods.IsCursorOverWindow(_widget.Handle);
+        if (!_peeking)
+        {
+            if (!over) _mustLeaveFirst = false;
+            _insideTicks = over && !_mustLeaveFirst ? _insideTicks + 1 : 0;
+            if (_insideTicks >= 2) { _insideTicks = 0; _peeking = true; SetRollTarget(0); }
+            return;
+        }
+
+        // Stay open while the pointer is over it, a menu is up, or the page or its name is being edited.
+        var keepOpen = over || _menuOpen || Editor.IsKeyboardFocusWithin || HeadingEditor.Visibility == Visibility.Visible;
+        _outsideTicks = keepOpen ? 0 : _outsideTicks + 1;
+        if (_outsideTicks >= 4) { _outsideTicks = 0; _peeking = false; SetRollTarget(1); }
+    }
 
     /// <summary>The page body as a picture the roll is wound from: paper, ruled lines and writing.</summary>
     private PaperAnimation NewRoll(double width, double height)
@@ -420,7 +522,7 @@ public partial class StickyNoteWindow : Window
         BackSheetOne.Visibility = BackSheetTwo.Visibility = !hide && _note.IsPad ? Visibility.Visible : Visibility.Collapsed;
         MinHeight = hide ? 0 : 170;
         ResizeMode = hide || _note.IsLocked ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
-        if (!hide) Editor.Focus();
+        _bodyHidden = hide;
     }
 
     /// <summary>Changes the height even when locked (a locked note can still roll up and down).</summary>
@@ -430,25 +532,6 @@ public partial class StickyNoteWindow : Window
         _widget.IsLocked = false;
         Height = height;
         _widget.IsLocked = wasLocked;
-    }
-
-    private static double Smooth(double t) => t * t * (3 - 2 * t);
-
-    private static Task Animate(int milliseconds, Action<double> update)
-    {
-        if (!SystemParameters.ClientAreaAnimation) { update(1); return Task.CompletedTask; }
-        var done = new TaskCompletionSource();
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        EventHandler? frame = null;
-        frame = (_, _) =>
-        {
-            var t = Math.Min(1, watch.Elapsed.TotalMilliseconds / milliseconds);
-            try { update(t); }
-            catch (Exception error) { CompositionTarget.Rendering -= frame; done.TrySetException(error); return; }
-            if (t >= 1) { CompositionTarget.Rendering -= frame; done.TrySetResult(); }
-        };
-        CompositionTarget.Rendering += frame;
-        return done.Task;
     }
 
     private void OnPin(object sender, RoutedEventArgs e)
@@ -467,7 +550,7 @@ public partial class StickyNoteWindow : Window
         _tearing = true;
         _note.DeletedAt = DateTime.UtcNow; _store.Changed(); _store.Flush();
         Editor.IsReadOnly = true;
-        if (!SystemParameters.ClientAreaAnimation) { Close(); return; }
+        if (!SystemParameters.ClientAreaAnimation || _bodyHidden) { Close(); return; }
         var bitmap = CaptureSheet();
         var crumple = new PaperAnimation(bitmap,((SolidColorBrush)Paper.Background).Color,Paper.ActualWidth,Paper.ActualHeight);
         var root = (System.Windows.Controls.Grid)Content;
