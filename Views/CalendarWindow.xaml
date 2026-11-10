@@ -602,18 +602,31 @@
 
                     <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Style="{DynamicResource Button.Icon}"
+                                Width="36" Height="36"
                                 Content="{DynamicResource Glyph.ChevronLeft}"
                                 Command="{Binding PreviousCommand}"
                                 ToolTip="Previous (Ctrl+Left)"
                                 AutomationProperties.Name="Previous"
                                 WindowChrome.IsHitTestVisibleInChrome="True" />
-                        <Button Style="{DynamicResource Button.Text}"
-                                Padding="8,0"
+                        <!-- Hidden, not collapsed, so the arrows stay put when it comes and goes. -->
+                        <Button Padding="8,0"
+                                FontWeight="Medium"
                                 Content="Today"
                                 Command="{Binding GoToTodayCommand}"
                                 ToolTip="Ctrl+T"
-                                WindowChrome.IsHitTestVisibleInChrome="True" />
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsNotToday}" Value="False">
+                                            <Setter Property="Visibility" Value="Hidden" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <Button Style="{DynamicResource Button.Icon}"
+                                Width="36" Height="36"
                                 Content="{DynamicResource Glyph.ChevronRight}"
                                 Command="{Binding NextCommand}"
                                 ToolTip="Next (Ctrl+Right)"

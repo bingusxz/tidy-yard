@@ -28,6 +28,7 @@ public sealed partial class CalendarViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
     [NotifyPropertyChangedFor(nameof(TitleYear))]
+    [NotifyPropertyChangedFor(nameof(IsNotToday))]
     private DateOnly _selectedDate;
 
     [ObservableProperty]
@@ -119,6 +120,9 @@ public sealed partial class CalendarViewModel : ObservableObject
         };
         _tick.Start();
     }
+
+    /// <summary>False while today is the selected day, so the "Today" button has nothing to do and hides.</summary>
+    public bool IsNotToday => SelectedDate != _today;
 
     public ObservableCollection<DayCellViewModel> Days { get; } = [];
 
@@ -424,6 +428,7 @@ public sealed partial class CalendarViewModel : ObservableObject
     {
         _today = DateOnly.FromDateTime(DateTime.Today);
         _lastHour = DateTime.Now.Hour;
+        OnPropertyChanged(nameof(IsNotToday));
 
         var month = new DateOnly(SelectedDate.Year, SelectedDate.Month, 1);
         var gridStart = WeekStart(month);
