@@ -641,7 +641,8 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            if (EditingHeader)
+            var header = EditingHeader;
+            if (header)
             {
                 Model.TitleFontFamilyName = value;
             }
@@ -652,6 +653,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
             _store.Changed();
             NotifyTextChanged();
+            TextToOtherPlots(m => { if (header) m.TitleFontFamilyName = value; else m.FontFamilyName = value; });
         }
     }
 
@@ -668,17 +670,20 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            if (EditingHeader)
+            var header = EditingHeader;
+            var size = value;
+            if (header)
             {
-                Model.TitleTextSize = value;
+                Model.TitleTextSize = size;
             }
             else
             {
-                Model.TextSize = value;
+                Model.TextSize = size;
             }
 
             _store.Changed();
             NotifyTextChanged();
+            TextToOtherPlots(m => { if (header) m.TitleTextSize = size; else m.TextSize = size; });
         }
     }
 
@@ -690,7 +695,8 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         }
 
         var hex = ThemeService.ToHex(value);
-        if (EditingHeader)
+        var header = EditingHeader;
+        if (header)
         {
             Model.TitleTextColor = hex;
         }
@@ -701,7 +707,19 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
 
         _store.Changed();
         NotifyTextChanged();
+        TextToOtherPlots(m => { if (header) m.TitleTextColor = hex; else m.TextColor = hex; });
     }
+
+    /// <summary>Applies a text change (to the header or the files, as chosen) to every other plot when "All plots" is on.</summary>
+    private void TextToOtherPlots(Action<Fence> change) => ForOtherPlots(p =>
+    {
+        change(p.Model);
+        p._store.Changed();
+        p._syncingText = true;
+        p.TextColor = ColorOrBlack(p.EditingHeader ? p.Model.TitleTextColor : p.Model.TextColor);
+        p._syncingText = false;
+        p.NotifyTextChanged();
+    });
 
     private void NotifyTextChanged()
     {
@@ -754,6 +772,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         TextColor = ColorOrBlack(null);
         _syncingText = false;
         NotifyTextChanged();
+
+        var header = EditingHeader;
+        TextToOtherPlots(m =>
+        {
+            if (header) { m.TitleTextColor = null; m.TitleFontFamilyName = null; m.TitleTextSize = null; }
+            else { m.TextColor = null; m.FontFamilyName = null; m.TextSize = null; }
+        });
     }
 
     [RelayCommand]

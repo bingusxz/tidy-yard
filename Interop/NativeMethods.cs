@@ -242,6 +242,7 @@ internal static class NativeMethods
     // ---- Desktop layer -------------------------------------------------------------------
 
     private static readonly IntPtr HWND_BOTTOM = new(1);
+    private static readonly IntPtr HWND_TOP = IntPtr.Zero;
     private const int GWLP_HWNDPARENT = -8;
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -375,10 +376,14 @@ internal static class NativeMethods
     /// <summary>Puts a window directly above another one without activating it or changing its owner order.</summary>
     public static void PlaceAbove(IntPtr hwnd, IntPtr other)
     {
-        if (hwnd != IntPtr.Zero && other != IntPtr.Zero)
+        if (hwnd == IntPtr.Zero || other == IntPtr.Zero)
         {
-            SetWindowPos(hwnd, other, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+            return;
         }
+
+        // SetWindowPos puts a window *behind* the one it is given, so give it the window that is above the target.
+        var above = GetWindow(other, GW_HWNDPREV);
+        SetWindowPos(hwnd, above == IntPtr.Zero ? HWND_TOP : above, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     }
 
     // ---- Shell icons and thumbnails ------------------------------------------------------
