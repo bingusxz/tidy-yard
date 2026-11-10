@@ -7,7 +7,7 @@ public static class PlotAppearance
     private static readonly string[] OverrideKeys =
     {
         "Brush.Text", "Brush.TextMuted", "Brush.TextDim", "Brush.Window", "Brush.AccentText", "Brush.Danger", "Brush.Warning",
-        "Brush.PlotItemText", "Brush.PlotTitleText",
+        "Brush.PlotItemText", "Brush.PlotTitleText", "Brush.Raised",
     };
 
     /// <param name="screenArea">The plot's bounds in physical pixels, when known.</param>
@@ -29,6 +29,11 @@ public static class PlotAppearance
 
         var result = GlassReadability.Resolve(surfaces, custom ? tint : GlassReadability.Theme("Window"), adjustAccent: false);
         foreach (var (key, color) in result.Colors) resources[key] = Frozen(color);
+
+        // The selected tab and switch knob sit on a raised fill. When the text flips, that fill must flip with it,
+        // or white text lands on a white pill: a soft light lift on dark glass, a near-white pill on light glass.
+        if (result.UsesAlternative)
+            resources["Brush.Raised"] = Frozen(result.TextIsLight ? Color.FromArgb(0x38, 255, 255, 255) : Color.FromArgb(0xE6, 255, 255, 255));
 
         // A colour chosen for the plot's names or title is kept, unless it cannot be read on this glass.
         if (ThemeService.TryParseHex(textHex, out var text))
