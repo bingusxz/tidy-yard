@@ -128,6 +128,50 @@ public sealed class PaperAnimation : Viewport3D
         _shadow.Positions=shade;
     }
 
+    private const double RollCore = 3.0;        // radius of the very first turn, px
+    private const double RollThickness = 0.11;  // how much the radius grows per radian: the paper's thickness
+
+    /// <summary>
+    /// Rolls the sheet up from its bottom edge into a scroll, like paper wound round a pencil. The outer turn
+    /// stays tangent to the flat sheet; each turn inside it is smaller. Returns the lowest y (down) the sheet reaches.
+    /// The finished scroll sits just below the sheet's top edge, so a header above it stays visible.
+    /// </summary>
+    public double Roll(double progress)
+    {
+        progress=Math.Clamp(progress,0,1);
+        var rolled=progress*_height;                 // length of paper wound up
+        double Turn(double u)=>(-RollCore+Math.Sqrt(RollCore*RollCore+2*RollThickness*u))/RollThickness;
+        double Radius(double u)=>RollCore+RollThickness*Turn(u);
+        var turnOuter=Turn(rolled);var radiusOuter=Radius(rolled);
+        var flatEnd=_height-rolled;
+        // Eases the finished scroll down so it hangs under the header instead of overlapping it.
+        var push=progress*progress*(3-2*progress)*(radiusOuter+1);
+        var centreY=flatEnd+push;
+        var points=new Point3DCollection();var shade=new Point3DCollection();var lowest=0.0;
+        var rowY=new double[Rows+1];var rowZ=new double[Rows+1];
+        for(var row=0;row<=Rows;row++)
+        {
+            var y=row*_height/Rows;var u=_height-y;
+            if(u>rolled&&flatEnd>1e-6){rowY[row]=y*(flatEnd+push)/flatEnd;rowZ[row]=0;}
+            else
+            {
+                // Counter-clockwise round the scroll's axis, starting at the bottom of the outer turn.
+                var angle=-Math.PI/2+(turnOuter-Turn(u));var radius=Radius(u);
+                rowY[row]=centreY+radius*Math.Cos(angle);
+                rowZ[row]=radiusOuter+radius*Math.Sin(angle);
+            }
+            lowest=Math.Max(lowest,rowY[row]);
+        }
+        for(var row=0;row<=Rows;row++) for(var col=0;col<=Columns;col++)
+        {
+            var x=col*_width/Columns;var py=_height-rowY[row];var pz=Math.Max(0,rowZ[row]);
+            points.Add(new Point3D(x,py,pz));
+            shade.Add(new Point3D(x+pz*0.35,py-pz*0.35,-2));
+        }
+        _mesh.Positions=points;_shadow.Positions=shade;
+        return lowest;
+    }
+
     public void Curl(double progress, bool fromLeft = false)
     {
         progress=Math.Clamp(progress,0,1);

@@ -10,4 +10,16 @@ public sealed class StickyNote
     public bool IsTorn { get; set; }
     public int ColorIndex { get; set; }
     public DateTime? DeletedAt { get; set; }
+
+    /// <summary>Name shown in the header; null shows "Notepad" or "Note".</summary>
+    public string? Title { get; set; }
+
+    /// <summary>Locked in place: cannot be moved or resized.</summary>
+    public bool IsLocked { get; set; }
+
+    /// <summary>The page is rolled up under its header.</summary>
+    public bool IsRolledUp { get; set; }
+
+    /// <summary>Window height in DIPs before it was rolled up, so unrolling restores it.</summary>
+    public double ExpandedHeight { get; set; }
 }

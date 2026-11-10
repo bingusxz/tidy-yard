@@ -53,7 +53,15 @@
      </Button>
      <Button DockPanel.Dock="Right" x:Name="PinButton" Width="40" Click="OnPin" WindowChrome.IsHitTestVisibleInChrome="True" />
      <Button DockPanel.Dock="Right" Content="Colour" Width="48" Click="OnColor" ToolTip="Change paper colour" AutomationProperties.Name="Change paper colour" WindowChrome.IsHitTestVisibleInChrome="True" />
-     <TextBlock x:Name="SheetHeading" Text="NOTEPAD" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource Brush.PaperMuted}" />
+     <Button DockPanel.Dock="Right" x:Name="RollButton" Width="26" Click="OnRoll" FontFamily="{DynamicResource Font.Icons}" FontSize="11" WindowChrome.IsHitTestVisibleInChrome="True" />
+     <Button DockPanel.Dock="Right" x:Name="LockButton" Width="26" Click="OnLock" FontFamily="{DynamicResource Font.Icons}" FontSize="11" WindowChrome.IsHitTestVisibleInChrome="True" />
+     <Grid>
+      <TextBlock x:Name="SheetHeading" Text="NOTEPAD" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.PaperMuted}"
+        ToolTip="Double-click to rename" MouseLeftButtonDown="OnHeadingClick" WindowChrome.IsHitTestVisibleInChrome="True" Background="Transparent" />
+      <TextBox x:Name="HeadingEditor" Visibility="Collapsed" FontSize="10" VerticalAlignment="Center" MaxLength="40" BorderThickness="0" Padding="0" Background="Transparent"
+        Foreground="{DynamicResource Brush.PaperText}" CaretBrush="{DynamicResource Brush.PaperText}" AutomationProperties.Name="Notepad name"
+        KeyDown="OnHeadingKey" LostKeyboardFocus="OnHeadingLostFocus" WindowChrome.IsHitTestVisibleInChrome="True" />
+     </Grid>
     </DockPanel>
     <Rectangle x:Name="Rules" Grid.Row="1" Margin="14,12,14,4" IsHitTestVisible="False" Opacity="0.12">
      <Rectangle.Fill>

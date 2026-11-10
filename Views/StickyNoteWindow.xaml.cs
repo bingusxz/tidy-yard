@@ -37,12 +37,15 @@ public partial class StickyNoteWindow : Window
         EventHandler onSettings = (_, _) => Dispatcher.BeginInvoke(ApplyLook);
         settings.Changed += onSettings;
         BackSheetOne.Visibility = BackSheetTwo.Visibility = PeelGrip.Visibility = LeftPeelGrip.Visibility = note.IsPad ? Visibility.Visible : Visibility.Collapsed;
-        SheetHeading.Text = note.IsPad ? "NOTEPAD" : "NOTE";
+        ApplyHeading();
         _widget = new DesktopWidget(this, 280, 280, () => note.Bounds, bounds => { note.Bounds = bounds; store.Changed(); });
         ApplyPin();
+        ApplyLock();
+        ApplyRollButton();
         Interop.NativeMethods.HideFromAltTab(_widget.Handle);
         Loaded += (_, _) =>
         {
+            if (note.IsRolledUp) ShowRolledAtOnce();
             _widget.SettleAtBottom();
             if (SystemParameters.ClientAreaAnimation)
             {
@@ -243,6 +246,211 @@ public partial class StickyNoteWindow : Window
         };
         Rules.Fill = ruleBrush;
     }
+    // ---- Name -------------------------------------------------------------------------------------
+
+    private string DefaultHeading => _note.IsPad ? "NOTEPAD" : "NOTE";
+
+    private void ApplyHeading() =>
+        SheetHeading.Text = string.IsNullOrWhiteSpace(_note.Title) ? DefaultHeading : _note.Title;
+
+    private void OnHeadingClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || _peeling || _tearing) return;
+        HeadingEditor.Text = _note.Title ?? string.Empty;
+        SheetHeading.Visibility = Visibility.Collapsed;
+        HeadingEditor.Visibility = Visibility.Visible;
+        HeadingEditor.Focus();
+        HeadingEditor.SelectAll();
+        e.Handled = true;
+    }
+
+    private void OnHeadingKey(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) { EndRename(save: true); e.Handled = true; }
+        else if (e.Key == System.Windows.Input.Key.Escape) { EndRename(save: false); e.Handled = true; }
+    }
+
+    private void OnHeadingLostFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => EndRename(save: true);
+
+    private void EndRename(bool save)
+    {
+        if (HeadingEditor.Visibility != Visibility.Visible) return;
+        if (save)
+        {
+            // Leaving it empty goes back to the default name.
+            var name = HeadingEditor.Text.Trim();
+            _note.Title = name.Length == 0 ? null : name;
+            _store.Changed();
+        }
+
+        HeadingEditor.Visibility = Visibility.Collapsed;
+        SheetHeading.Visibility = Visibility.Visible;
+        ApplyHeading();
+    }
+
+    // ---- Lock -------------------------------------------------------------------------------------
+
+    private void OnLock(object sender, RoutedEventArgs e)
+    {
+        _note.IsLocked = !_note.IsLocked;
+        ApplyLock();
+        _store.Changed();
+    }
+
+    private void ApplyLock()
+    {
+        _widget.IsLocked = _note.IsLocked;
+        LockButton.Content = Glyph(_note.IsLocked ? "Glyph.Lock" : "Glyph.Unlock");
+        LockButton.ToolTip = _note.IsLocked ? "Locked in place; click to unlock" : "Lock in place";
+        System.Windows.Automation.AutomationProperties.SetName(LockButton, _note.IsLocked ? "Unlock" : "Lock in place");
+        ResizeMode = _note.IsLocked || _note.IsRolledUp ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
+    }
+
+    private string Glyph(string key) => TryFindResource(key) as string ?? string.Empty;
+
+    // ---- Roll up ----------------------------------------------------------------------------------
+
+    private const double HeaderHeight = 38, RootMargin = 6;
+    private bool _rolling;
+    private PaperAnimation? _roll;
+
+    private void ApplyRollButton()
+    {
+        RollButton.Content = Glyph(_note.IsRolledUp ? "Glyph.ChevronDown" : "Glyph.ChevronUp");
+        RollButton.ToolTip = _note.IsRolledUp ? "Unroll" : "Roll up";
+        System.Windows.Automation.AutomationProperties.SetName(RollButton, _note.IsRolledUp ? "Unroll" : "Roll up");
+    }
+
+    private async void OnRoll(object sender, RoutedEventArgs e)
+    {
+        if (_rolling || _peeling || _tearing) return;
+        _rolling = true;
+        try
+        {
+            if (_note.IsRolledUp) await Unroll(); else await RollUp();
+        }
+        finally { _rolling = false; ApplyRollButton(); ApplyLock(); }
+    }
+
+    private async Task RollUp()
+    {
+        _note.ExpandedHeight = ActualHeight;
+        var width = Paper.ActualWidth;
+        var bodyHeight = Math.Max(40, Paper.ActualHeight - HeaderHeight);
+        _roll = NewRoll(width, bodyHeight);
+        HideBody(true);
+        await Animate(560, t => SetWindowHeight(RollHeight(_roll.Roll(Smooth(t)))));
+        _note.IsRolledUp = true;
+        _store.Changed();
+    }
+
+    private async Task Unroll()
+    {
+        var width = Paper.ActualWidth;
+        var bodyHeight = Math.Max(40, ExpandedBodyHeight());
+        _roll ??= NewRoll(width, bodyHeight);
+        _note.IsRolledUp = false;
+        await Animate(560, t => SetWindowHeight(RollHeight(_roll.Roll(Smooth(1 - t)))));
+        ((System.Windows.Controls.Grid)Content).Children.Remove(_roll);
+        _roll = null;
+        HideBody(false);
+        SetWindowHeight(_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280);
+        _store.Changed();
+    }
+
+    /// <summary>A note that was left rolled up opens rolled up, without the animation.</summary>
+    private void ShowRolledAtOnce()
+    {
+        _roll = NewRoll(Paper.ActualWidth, Math.Max(40, ExpandedBodyHeight()));
+        HideBody(true);
+        SetWindowHeight(RollHeight(_roll.Roll(1)));
+        ApplyLock();
+    }
+
+    private double ExpandedBodyHeight() =>
+        (_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280) - 2 * RootMargin - HeaderHeight;
+
+    private static double RollHeight(double lowest) => 2 * RootMargin + HeaderHeight + lowest + 8;
+
+    /// <summary>The page body as a picture the roll is wound from: paper, ruled lines and writing.</summary>
+    private PaperAnimation NewRoll(double width, double height)
+    {
+        var roll = new PaperAnimation(CaptureBody(width, height), _look.Paper, width, height)
+        {
+            Width = width, Height = height, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, HeaderHeight, 0, 0),
+        };
+        ((System.Windows.Controls.Grid)Content).Children.Add(roll);
+        return roll;
+    }
+
+    private System.Windows.Media.Imaging.RenderTargetBitmap CaptureBody(double width, double height)
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var visual = new DrawingVisual();
+        using (var drawing = visual.RenderOpen())
+        {
+            drawing.DrawRectangle(new SolidColorBrush(_look.Paper), null, new Rect(0, 0, width, height));
+            if (_look.Ruled)
+            {
+                var pen = new Pen(new SolidColorBrush(Color.FromArgb(40, _look.Rule.R, _look.Rule.G, _look.Rule.B)), 0.6);
+                for (var y = 12 + _look.LinePitch; y < height - 16; y += _look.LinePitch) drawing.DrawLine(pen, new Point(14, y), new Point(width - 14, y));
+            }
+
+            var text = new FormattedText(Editor.Text, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                new Typeface(_look.Font, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), _look.FontSize, Solid(_look.Ink), dpi.PixelsPerDip)
+            { MaxTextWidth = Math.Max(10, width - 28), MaxTextHeight = Math.Max(10, height - 28), LineHeight = _look.LinePitch };
+            drawing.DrawText(text, new Point(14, 12));
+        }
+
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            Math.Max(1, (int)Math.Ceiling(width * dpi.DpiScaleX)), Math.Max(1, (int)Math.Ceiling(height * dpi.DpiScaleY)),
+            96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
+    /// <summary>Hides the page body (leaving the header and the roll) or brings it back.</summary>
+    private void HideBody(bool hide)
+    {
+        Paper.Height = hide ? HeaderHeight : double.NaN;
+        Paper.VerticalAlignment = hide ? VerticalAlignment.Top : VerticalAlignment.Stretch;
+        Editor.Visibility = hide ? Visibility.Collapsed : Visibility.Visible;
+        BackSheetOne.Visibility = BackSheetTwo.Visibility = !hide && _note.IsPad ? Visibility.Visible : Visibility.Collapsed;
+        MinHeight = hide ? 0 : 170;
+        ResizeMode = hide || _note.IsLocked ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
+        if (!hide) Editor.Focus();
+    }
+
+    /// <summary>Changes the height even when locked (a locked note can still roll up and down).</summary>
+    private void SetWindowHeight(double height)
+    {
+        var wasLocked = _widget.IsLocked;
+        _widget.IsLocked = false;
+        Height = height;
+        _widget.IsLocked = wasLocked;
+    }
+
+    private static double Smooth(double t) => t * t * (3 - 2 * t);
+
+    private static Task Animate(int milliseconds, Action<double> update)
+    {
+        if (!SystemParameters.ClientAreaAnimation) { update(1); return Task.CompletedTask; }
+        var done = new TaskCompletionSource();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        EventHandler? frame = null;
+        frame = (_, _) =>
+        {
+            var t = Math.Min(1, watch.Elapsed.TotalMilliseconds / milliseconds);
+            try { update(t); }
+            catch (Exception error) { CompositionTarget.Rendering -= frame; done.TrySetException(error); return; }
+            if (t >= 1) { CompositionTarget.Rendering -= frame; done.TrySetResult(); }
+        };
+        CompositionTarget.Rendering += frame;
+        return done.Task;
+    }
+
     private void OnPin(object sender, RoutedEventArgs e)
     {
         _note.IsPinned = !_note.IsPinned; ApplyPin(); _store.Changed();
