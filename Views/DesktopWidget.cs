@@ -61,6 +61,9 @@ internal sealed class DesktopWidget
         window.Closed += (_, _) => SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
     }
 
+    /// <summary>Raised when this widget has just been put in front of another one it overlaps.</summary>
+    public event Action? Raised;
+
     public IntPtr Handle => new WindowInteropHelper(_window).Handle;
 
     public bool IsLocked { get; set; }
@@ -119,6 +122,11 @@ internal sealed class DesktopWidget
             {
                 other._raising = false;
             }
+        }
+
+        if (covering.Count > 0)
+        {
+            Raised?.Invoke();
         }
 
     }

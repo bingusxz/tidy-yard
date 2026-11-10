@@ -184,9 +184,21 @@ public sealed class WindowService : IWindowService
     /// <summary>Shows every saved fence on the desktop.</summary>
     public void ShowFences()
     {
-        foreach (var fence in _fences.Fences)
+        // Plots come back stacked the way they were left: the one last put in front is shown last (on top).
+        var ordered = _fences.Fences.OrderBy(f => f.LastRaised).ToList();
+        foreach (var fence in ordered)
         {
             OpenFence(fence);
+        }
+
+        // Locked plots sit at the bottom, where each one sent down goes under the ones already there. So send
+        // the most recent first and the oldest last.
+        foreach (var fence in ordered.AsEnumerable().Reverse())
+        {
+            if (_fenceWindows.TryGetValue(fence.Id, out var window))
+            {
+                window.SettleAtBottom();
+            }
         }
     }
 

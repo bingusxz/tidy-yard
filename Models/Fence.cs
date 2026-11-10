@@ -85,6 +85,9 @@ public sealed class Fence
     /// <summary>This plot's own background strength (0 to 100), or null to follow the Plot opacity setting.</summary>
     public int? OpacityPercent { get; set; }
 
+    /// <summary>When this plot was last brought in front of another (UTC ticks). Plots start up stacked in this order.</summary>
+    public long LastRaised { get; set; }
+
     public FenceTitleAlign TitleAlign { get; set; } = FenceTitleAlign.Center;
 
     /// <summary>Corner size in pixels: 0 is square, 8 is what Windows 11 draws by default.</summary>

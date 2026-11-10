@@ -871,6 +871,13 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         ForOtherPlots(p => p.ResetColor());
     }
 
+    /// <summary>Remembers that this plot was just put in front, so it comes back in front after a restart.</summary>
+    public void MarkRaised()
+    {
+        Model.LastRaised = DateTime.UtcNow.Ticks;
+        _store.Changed();
+    }
+
     public void SaveBounds(WindowBounds bounds)
     {
         Model.Bounds = bounds;

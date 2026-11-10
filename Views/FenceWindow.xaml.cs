@@ -53,6 +53,8 @@ public partial class FenceWindow : Window
             IsPinned = viewModel.IsLocked,
             IsLocked = viewModel.IsLocked,
         };
+        _widget.Raised += viewModel.MarkRaised;
+        Activated += (_, _) => viewModel.MarkRaised();
 
         // Fences never show in Alt+Tab, whether locked or not.
         Interop.NativeMethods.HideFromAltTab(_widget.Handle);
@@ -122,6 +124,9 @@ public partial class FenceWindow : Window
     }
 
     public FenceViewModel ViewModel => _viewModel;
+
+    /// <summary>Sends a locked plot back to the bottom of the desktop layer; used to restore the stacking order.</summary>
+    public void SettleAtBottom() => _widget.SettleAtBottom();
 
     public void ShowOnDesktop()
     {
