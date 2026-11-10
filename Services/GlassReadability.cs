@@ -13,8 +13,8 @@ public static class GlassReadability
 
     private static readonly Color[] LightText = { Colors.White, Color.FromRgb(0xE2, 0xE8, 0xF0), Color.FromRgb(0xCB, 0xD5, 0xE1) };
     private static readonly Color[] DarkText = { Color.FromRgb(0x1E, 0x1C, 0x19), Color.FromRgb(0x51, 0x4C, 0x45), Color.FromRgb(0x5E, 0x58, 0x50) };
-    private static readonly Color DarkPopup = Color.FromRgb(0x1A, 0x20, 0x29);
-    private static readonly Color LightPopup = Color.FromRgb(0xF3, 0xEF, 0xE6);
+    public static readonly Color DarkPopup = Color.FromRgb(0x1A, 0x20, 0x29);
+    public static readonly Color LightPopup = Color.FromRgb(0xF3, 0xEF, 0xE6);
 
     /// <summary>The result: brush overrides keyed "Brush.X", and whether the opposite text set was chosen.</summary>
     public sealed record Result(Dictionary<string, Color> Colors, bool UsesAlternative, bool TextIsLight);

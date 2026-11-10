@@ -21,7 +21,7 @@
     <sys:Double x:Key="Size.MonthEventLine">20</sys:Double>
 
     <!-- Icon glyph size (Segoe Fluent Icons), not part of the type scale. -->
-    <sys:Double x:Key="Size.Icon">12</sys:Double>
+    <sys:Double x:Key="Size.Icon">14</sys:Double>
 
     <!-- Icon glyphs, single stroke weight. -->
     <sys:String x:Key="Glyph.ChevronLeft">&#xE76B;</sys:String>

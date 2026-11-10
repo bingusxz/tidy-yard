@@ -20,7 +20,7 @@
     <SolidColorBrush x:Key="Brush.RuleStrong" Color="#33000000" />
     <SolidColorBrush x:Key="Brush.Text" Color="#1B2230" />
     <SolidColorBrush x:Key="Brush.TextMuted" Color="#404A5A" />
-    <SolidColorBrush x:Key="Brush.TextDim" Color="#4C5564" />
+    <SolidColorBrush x:Key="Brush.TextDim" Color="#404A5A" />
     <SolidColorBrush x:Key="Brush.Accent" Color="#2D4F8A" />
     <SolidColorBrush x:Key="Brush.AccentSoft" Color="#262D4F8A" />
     <SolidColorBrush x:Key="Brush.OnAccent" Color="#F2F6FC" />

@@ -38,6 +38,7 @@
         <Border Background="{DynamicResource Brush.HitArea}" CornerRadius="12" />
         <!-- True alpha tint throughout the opacity range; controls share calendar-local brushes. -->
         <Border Background="{DynamicResource Brush.Glass}" Opacity="{Binding GlassOpacity}" CornerRadius="12" />
+        <Border Background="{DynamicResource Brush.Scrim}" CornerRadius="12" IsHitTestVisible="False" />
 
         <Grid x:Name="CalendarContent" Margin="12">
             <Grid.ColumnDefinitions>
@@ -586,7 +587,7 @@
                     <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap">
                         <Run FontSize="{DynamicResource Size.Title}" FontWeight="SemiBold" Text="{Binding Title, Mode=OneWay}" />
                         <Run Text=" " />
-                        <Run FontSize="{DynamicResource Size.Title}" Foreground="{DynamicResource Brush.TextDim}" Text="{Binding TitleYear, Mode=OneWay}" />
+                        <Run FontSize="{DynamicResource Size.Title}" FontWeight="Normal" Text="{Binding TitleYear, Mode=OneWay}" />
                     </TextBlock>
 
                     <ListBox Grid.Row="1" Grid.Column="0"
@@ -772,7 +773,7 @@
                                     </Border>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsInMonth}" Value="False">
-                                            <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.TextDim}" />
+                                            <Setter TargetName="Number" Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
                                             <Setter TargetName="Number" Property="FontWeight" Value="Normal" />
                                             <Setter TargetName="Lines" Property="Opacity" Value="0.6" />
                                         </DataTrigger>

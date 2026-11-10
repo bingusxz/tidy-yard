@@ -13,7 +13,7 @@ public static class CalendarAppearance
     private static readonly string[] OverrideKeys =
     {
         "Brush.Text", "Brush.TextMuted", "Brush.TextDim", "Brush.Window", "Brush.Rule", "Brush.RuleStrong",
-        "Brush.Accent", "Brush.OnAccent", "Brush.AccentText", "Brush.Danger", "Brush.Warning",
+        "Brush.Accent", "Brush.OnAccent", "Brush.AccentText", "Brush.Danger", "Brush.Warning", "Brush.Scrim",
     };
 
     /// <param name="screenArea">The calendar's bounds in physical pixels, when known.</param>
@@ -34,21 +34,50 @@ public static class CalendarAppearance
         // At 100% the window is solid or acrylic and the theme's own text is checked against it.
         if (opacity >= 1) return;
 
-        var surfaces = new List<Color>();
-        foreach (var glass in GlassReadability.GlassOver(GlassReadability.Theme("Glass"), opacity, screenArea))
+        var glassOverBackdrop = GlassReadability.GlassOver(GlassReadability.Theme("Glass"), opacity, screenArea);
+
+        // Every colour text can sit on, with an optional scrim (colour + strength) laid over the glass.
+        List<Color> Surfaces(Color scrim, double strength)
         {
-            surfaces.Add(glass);
-            foreach (var key in new[] { "Card", "Surface", "Input", "Raised" })
+            var list = new List<Color>();
+            foreach (var backdrop in glassOverBackdrop)
             {
-                if (!layers.TryGetValue(key, out var layer)) continue;
-                var surface = ColorRules.Over(layer, glass);
-                surfaces.Add(surface);
-                foreach (var state in new[] { "Hover", "Pressed", "AccentSoft" })
-                    if (layers.TryGetValue(state, out var overlay)) surfaces.Add(ColorRules.Over(overlay, surface));
+                var glass = strength > 0 ? ColorRules.Over(Color.FromArgb((byte)Math.Round(255 * strength), scrim.R, scrim.G, scrim.B), backdrop) : backdrop;
+                list.Add(glass);
+                foreach (var key in new[] { "Card", "Surface", "Input", "Raised" })
+                {
+                    if (!layers.TryGetValue(key, out var layer)) continue;
+                    var surface = ColorRules.Over(layer, glass);
+                    list.Add(surface);
+                    foreach (var state in new[] { "Hover", "Pressed", "AccentSoft" })
+                        if (layers.TryGetValue(state, out var overlay)) list.Add(ColorRules.Over(overlay, surface));
+                }
             }
+
+            return list;
         }
 
+        var surfaces = Surfaces(Colors.Transparent, 0);
         var result = GlassReadability.Resolve(surfaces, GlassReadability.Theme("Window"), adjustAccent: true);
+
+        // Near the point where text switches between light and dark, neither reads well on the bare glass. Add the
+        // thinnest backing in the text's opposite colour that reaches 4.5:1 (none at 0%, where the glass is meant to vanish).
+        var text = result.Colors.TryGetValue("Brush.Text", out var chosen) ? chosen : GlassReadability.Theme("Text");
+        if (opacity >= 0.02 && surfaces.Min(s => ThemeService.ContrastRatio(text, s)) < 4.5)
+        {
+            var scrim = result.TextIsLight ? GlassReadability.DarkPopup : GlassReadability.LightPopup;
+            double low = 0, high = 0.7;
+            for (var i = 0; i < 10; i++)
+            {
+                var mid = (low + high) / 2;
+                if (Surfaces(scrim, mid).Min(s => ThemeService.ContrastRatio(text, s)) >= 4.5) high = mid; else low = mid;
+            }
+
+            resources["Brush.Scrim"] = Frozen(Color.FromArgb((byte)Math.Round(255 * high), scrim.R, scrim.G, scrim.B));
+            surfaces = Surfaces(scrim, high);
+            result = GlassReadability.Resolve(surfaces, GlassReadability.Theme("Window"), adjustAccent: true);
+        }
+
         foreach (var (key, color) in result.Colors) resources[key] = Frozen(color);
         if (result.UsesAlternative)
         {

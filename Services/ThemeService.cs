@@ -12,6 +12,9 @@ public sealed record ThemeOption(string Key, string Name, bool IsDark, string Sw
 
     public Brush DotBrush => ThemeService.TryParseHex(Dot, out var c) ? new SolidColorBrush(c) : Brushes.Gray;
 
+    /// <summary>Text colour in the chip's calendar sketch: the theme's own text, softened.</summary>
+    public Brush InkBrush => new SolidColorBrush(IsDark ? Color.FromArgb(0xB0, 0xEC, 0xE7, 0xDB) : Color.FromArgb(0xA0, 0x1E, 0x1C, 0x19));
+
     /// <summary>Screen readers and list items read this.</summary>
     public override string ToString() => Name;
 }

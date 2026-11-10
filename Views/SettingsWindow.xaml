@@ -245,10 +245,18 @@
                                                 <Border x:Name="Ring" Width="92" Margin="4" Padding="4" CornerRadius="12"
                                                         BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
                                                     <StackPanel>
+                                                        <!-- A tiny calendar in the theme: a month title, a row of days, today in the accent. -->
                                                         <Border Height="40" CornerRadius="8" Background="{Binding SwatchBrush}"
                                                                 BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1">
-                                                            <Ellipse Width="14" Height="14" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                                                     Fill="{Binding DotBrush}" />
+                                                            <Grid Margin="8,7,8,7">
+                                                                <Border Width="30" Height="4" CornerRadius="2" HorizontalAlignment="Left" VerticalAlignment="Top" Background="{Binding InkBrush}" />
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                                                                    <Ellipse Width="12" Height="12" Margin="0,0,6,0" Fill="{Binding DotBrush}" />
+                                                                    <Border Width="9" Height="3" CornerRadius="1.5" Margin="0,0,6,0" VerticalAlignment="Center" Background="{Binding InkBrush}" />
+                                                                    <Border Width="9" Height="3" CornerRadius="1.5" Margin="0,0,6,0" VerticalAlignment="Center" Background="{Binding InkBrush}" />
+                                                                    <Border Width="9" Height="3" CornerRadius="1.5" VerticalAlignment="Center" Background="{Binding InkBrush}" />
+                                                                </StackPanel>
+                                                            </Grid>
                                                         </Border>
                                                         <TextBlock Margin="0,6,0,2" HorizontalAlignment="Center"
                                                                    FontSize="{DynamicResource Size.Small}"
@@ -281,7 +289,6 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Accent colour" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Today, buttons and highlights." />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                             <Button Margin="0,0,8,0"
@@ -322,7 +329,6 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Background tint" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="The colour of the glass." />
                             <TextBlock Margin="0,2,0,0"
                                        Style="{DynamicResource Text.Muted}"
                                        Foreground="{DynamicResource Brush.Warning}"
@@ -721,7 +727,6 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Ink colour" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lightened or darkened where it cannot be read on the paper." />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                             <ToggleButton x:Name="InkSwatch" Style="{StaticResource Swatch}"
@@ -743,7 +748,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Paper colour" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="A note can still pick its own colour from its Colour button." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Each note can pick its own." />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                             <ToggleButton x:Name="PaperSwatch" Style="{StaticResource Swatch}"
@@ -765,7 +770,6 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Ruled lines" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Lines under each line of writing." />
                         </StackPanel>
                         <CheckBox Grid.Column="1" VerticalAlignment="Center" Style="{DynamicResource CheckBox.Switch}"
                                   IsChecked="{Binding NotepadRuled}" AutomationProperties.Name="Ruled lines" />

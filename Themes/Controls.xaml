@@ -137,7 +137,7 @@
     <Style x:Key="Button.Icon" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Ring}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="FontFamily" Value="{DynamicResource Font.Icons}" />
         <Setter Property="FontSize" Value="{DynamicResource Size.Icon}" />
         <Setter Property="Width" Value="32" />
@@ -239,6 +239,8 @@
 
     <!-- Almost invisible, but not transparent: lets a see-through window still receive the mouse. -->
     <SolidColorBrush x:Key="Brush.HitArea" Color="#01000000" />
+    <!-- A thin backing the calendar adds behind its text only where the glass is too see-through to read on. -->
+    <SolidColorBrush x:Key="Brush.Scrim" Color="Transparent" />
 
     <!-- Hover card: a flat rounded card in the theme's colours. -->
     <Style x:Key="ToolTip.Card" TargetType="ToolTip">
