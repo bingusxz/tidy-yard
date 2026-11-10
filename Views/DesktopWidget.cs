@@ -84,50 +84,56 @@ internal sealed class DesktopWidget
     /// </summary>
     public void RaiseOverOverlapping()
     {
+        Log($"enter handle={Handle} pinned={_pinned} visible={_window.IsVisible} widgets={All.Count}");
         if (!_window.IsVisible || NativeMethods.GetWindowBounds(Handle) is not { } mine)
         {
             return;
         }
 
-        var highest = IntPtr.Zero;
+        var covering = new List<DesktopWidget>();
         for (var h = NativeMethods.GetWindowAbove(Handle); h != IntPtr.Zero; h = NativeMethods.GetWindowAbove(h))
         {
             var other = All.FirstOrDefault(w => w.Handle == h);
-            if (other is null || other._pinned != _pinned || !other._window.IsVisible
-                || NativeMethods.GetWindowBounds(h) is not { } r)
+            if (other is null)
             {
                 continue;
             }
 
-            if (r.X < mine.X + mine.Width && mine.X < r.X + r.Width && r.Y < mine.Y + mine.Height && mine.Y < r.Y + r.Height)
+            var overlaps = NativeMethods.GetWindowBounds(h) is { } r
+                && r.X < mine.X + mine.Width && mine.X < r.X + r.Width && r.Y < mine.Y + mine.Height && mine.Y < r.Y + r.Height;
+            Log($"  above widget={h} pinned={other._pinned} visible={other._window.IsVisible} overlaps={overlaps}");
+            if (other._pinned == _pinned && other._window.IsVisible && overlaps)
             {
-                highest = h;
+                covering.Add(other);
             }
         }
 
-        if (highest == IntPtr.Zero)
+        // Each covering widget goes directly behind this one. Pinned ones would otherwise be sent to the bottom by
+        // their own hook, which is also behind this one, so either way this ends up in front of them.
+        foreach (var other in covering)
         {
-            return;
+            other._raising = true;
+            try
+            {
+                NativeMethods.PlaceBehind(other.Handle, Handle);
+            }
+            finally
+            {
+                other._raising = false;
+            }
         }
 
-        // The pinned-window hook would otherwise send this straight back to the bottom.
-        _raising = true;
-        try
-        {
-            NativeMethods.PlaceAbove(Handle, highest);
-        }
-        finally
-        {
-            _raising = false;
-        }
+        Log($"  moved {covering.Count} widget(s) behind {Handle}");
     }
 
-    /// <summary>Puts a pinned window back at the bottom after it was shown.</summary>
-    public void SettleAtBottom()
+    private static void Log(string line)
     {
-        if (_pinned)
+        try
         {
-            NativeMethods.SendToBottom(Handle);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "tidyyard-raise.log"), $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
+        }
+        catch (System.IO.IOException)
+        {
         }
     }
 

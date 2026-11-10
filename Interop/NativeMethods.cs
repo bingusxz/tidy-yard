@@ -373,6 +373,15 @@ internal static class NativeMethods
     /// <summary>The window just above this one in the z-order, or zero when it is the top one.</summary>
     public static IntPtr GetWindowAbove(IntPtr hwnd) => hwnd == IntPtr.Zero ? IntPtr.Zero : GetWindow(hwnd, GW_HWNDPREV);
 
+    /// <summary>Puts a window directly behind another one without activating it or changing its owner order.</summary>
+    public static void PlaceBehind(IntPtr hwnd, IntPtr front)
+    {
+        if (hwnd != IntPtr.Zero && front != IntPtr.Zero)
+        {
+            SetWindowPos(hwnd, front, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        }
+    }
+
     /// <summary>Puts a window directly above another one without activating it or changing its owner order.</summary>
     public static void PlaceAbove(IntPtr hwnd, IntPtr other)
     {
