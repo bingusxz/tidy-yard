@@ -772,6 +772,17 @@
                         <CheckBox Grid.Column="1" VerticalAlignment="Center" Style="{DynamicResource CheckBox.Switch}"
                                   IsChecked="{Binding NotepadRuled}" AutomationProperties.Name="Ruled lines" />
                     </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+
+                    <Grid Style="{StaticResource Row}">
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Roll-up style" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="How a note closes under its header." />
+                        </StackPanel>
+                        <ListBox HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ListBox.Segmented}"
+                                 ItemsSource="{Binding RollStyleOptions}" SelectedItem="{Binding SelectedRollStyle}" DisplayMemberPath="Name"
+                                 AutomationProperties.Name="Roll-up style" />
+                    </Grid>
                 </StackPanel>
             </Border>
             </StackPanel>

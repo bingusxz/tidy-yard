@@ -14,6 +14,11 @@ public sealed record ClockOption(ClockFormat Format, string Name)
     public override string ToString() => Name;
 }
 
+public sealed record RollStyleOption(string Key, string Name)
+{
+    public override string ToString() => Name;
+}
+
 public sealed record IconSizeOption(int Size, string Name)
 {
     public override string ToString() => Name;
@@ -181,6 +186,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _notepadRuled;
 
+    public IReadOnlyList<RollStyleOption> RollStyleOptions { get; } = [new("Roll", "Roll"), new("Fold", "Fold")];
+
+    [ObservableProperty]
+    private RollStyleOption _selectedRollStyle;
+
+    partial void OnSelectedRollStyleChanged(RollStyleOption value) => _settings.Update(s => s.Notepad.RollStyle = value.Key);
+
     public IReadOnlyList<NotepadDesign> NotepadDesignOptions => NotepadDesigns.All;
 
     public IReadOnlyList<string> AvailableFonts => InstalledFonts.Names;
@@ -319,6 +331,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _notepadInk = ThemeService.TryParseHex(notepad.InkColor, out var ink) ? ink : Colors.Black;
         _notepadPaper = ThemeService.TryParseHex(notepad.PaperColor, out var paper) ? paper : Colors.White;
         _notepadRuled = notepad.RuledLines;
+        _selectedRollStyle = RollStyleOptions.FirstOrDefault(o => o.Key == notepad.RollStyle) ?? RollStyleOptions[0];
         _selectedNotepadDesign = NotepadDesigns.All.First(d => d.Key == NotepadDesigns.Match(notepad).Key);
         _syncingNotepad = false;
     }

@@ -147,7 +147,7 @@ public sealed class PaperAnimation : Viewport3D
         // Eases the finished scroll down so it hangs under the header instead of overlapping it.
         var push=progress*progress*(3-2*progress)*(radiusOuter+1);
         var centreY=flatEnd+push;
-        var points=new Point3DCollection();var shade=new Point3DCollection();var lowest=0.0;
+        var lowest=0.0;
         var rowY=new double[Rows+1];var rowZ=new double[Rows+1];
         for(var row=0;row<=Rows;row++)
         {
@@ -162,6 +162,14 @@ public sealed class PaperAnimation : Viewport3D
             }
             lowest=Math.Max(lowest,rowY[row]);
         }
+        ApplyRows(rowY,rowZ);
+        return lowest;
+    }
+
+    /// <summary>Puts the sheet at the given height (row y, down) and lift (row z, up) for every mesh row, and moves its shadow.</summary>
+    private void ApplyRows(double[] rowY,double[] rowZ)
+    {
+        var points=new Point3DCollection();var shade=new Point3DCollection();
         for(var row=0;row<=Rows;row++) for(var col=0;col<=Columns;col++)
         {
             var x=col*_width/Columns;var py=_height-rowY[row];var pz=Math.Max(0,rowZ[row]);
@@ -169,6 +177,41 @@ public sealed class PaperAnimation : Viewport3D
             shade.Add(new Point3D(x+pz*0.35,py-pz*0.35,-2));
         }
         _mesh.Positions=points;_shadow.Positions=shade;
+    }
+
+    /// <summary>
+    /// Folds the sheet up like an accordion under its top edge, bottom panel first. Each fold is a smooth hinge, not a
+    /// sharp crease, and the finished pleats are left slightly open. Returns the lowest y (down) the sheet reaches.
+    /// </summary>
+    public double Fold(double progress,int panels=4)
+    {
+        progress=Math.Clamp(progress,0,1);
+        var open=Math.PI*0.93;                        // a finished fold stops just short of lying flat
+        var panelLength=_height/panels;const double hinge=10;
+        var stage=new double[panels];
+        for(var k=1;k<panels;k++)
+        {
+            var start=(panels-1-k)*0.5/(panels-1);   // the hinge nearest the free edge folds first
+            var t=Math.Clamp((progress-start)/0.5,0,1);stage[k]=t*t*(3-2*t);
+        }
+        double Heading(double s)
+        {
+            double angle=0;
+            for(var k=1;k<panels;k++)
+            {
+                var x=Math.Clamp((s-k*panelLength)/hinge+0.5,0,1);
+                angle+=(k%2==1?1:-1)*open*stage[k]*(x*x*(3-2*x));
+            }
+            return angle;
+        }
+        var rowY=new double[Rows+1];var rowZ=new double[Rows+1];
+        const int sub=6;var step=_height/Rows/sub;double y=0,z=0,along=0,lowest=0;
+        for(var row=1;row<=Rows;row++)
+        {
+            for(var i=0;i<sub;i++){var angle=Heading(along+step/2);along+=step;y+=Math.Cos(angle)*step;z+=Math.Sin(angle)*step;}
+            rowY[row]=y;rowZ[row]=z;lowest=Math.Max(lowest,y);
+        }
+        ApplyRows(rowY,rowZ);
         return lowest;
     }
 

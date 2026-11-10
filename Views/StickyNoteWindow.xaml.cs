@@ -258,6 +258,13 @@ public partial class StickyNoteWindow : Window
 
     private void OnHeadingClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        if (e.ClickCount == 1 && e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+        {
+            // The title is clickable (to rename), so it has to start the drag itself.
+            try { DragMove(); } catch (InvalidOperationException) { }
+            return;
+        }
+
         if (e.ClickCount != 2 || _peeling || _tearing) return;
         HeadingEditor.Text = _note.Title ?? string.Empty;
         SheetHeading.Visibility = Visibility.Collapsed;
@@ -318,6 +325,7 @@ public partial class StickyNoteWindow : Window
     // The page is wound up by a spring: it speeds up, overshoots a little, and bounces off the ends before it settles.
     private const double RollStiffness = 170, RollDamping = 17, RollBounce = 0.35, RollStep = 1.0 / 240;
     private PaperAnimation? _roll;
+    private bool _rollFold;   // the style the current picture was wound with
     private bool _bodyHidden, _rollLoop, _peeking, _mustLeaveFirst, _menuOpen;
     private double _rollP, _rollV, _rollTarget;     // 0 = open, 1 = rolled up
     private TimeSpan _rollLast;
@@ -360,12 +368,15 @@ public partial class StickyNoteWindow : Window
         _roll = NewRoll(Paper.ActualWidth, Math.Max(40, ExpandedBodyHeight()));
         HideBody(true);
         _rollP = _rollTarget = 1; _rollV = 0;
-        SetWindowHeight(RollHeight(_roll.Roll(1)));
+        SetWindowHeight(RollHeight(Shape(1)));
         ApplyLock();
     }
 
     private double ExpandedBodyHeight() =>
         (_note.ExpandedHeight > 0 ? _note.ExpandedHeight : 280) - 2 * RootMargin - HeaderHeight;
+
+    /// <summary>Winds or folds the picture to the given progress in the chosen style; returns how far down it reaches.</summary>
+    private double Shape(double progress) => _roll is null ? 0 : _rollFold ? _roll.Fold(progress) : _roll.Roll(progress);
 
     private static double RollHeight(double lowest) => 2 * RootMargin + HeaderHeight + lowest + 8;
 
@@ -426,7 +437,7 @@ public partial class StickyNoteWindow : Window
             return;
         }
 
-        if (_roll is not null) SetWindowHeight(RollHeight(_roll.Roll(_rollP)));
+        if (_roll is not null) SetWindowHeight(RollHeight(Shape(_rollP)));
     }
 
     /// <summary>The motion has stopped: an open page goes back to being the live page, a rolled one stays as the scroll.</summary>
@@ -441,7 +452,7 @@ public partial class StickyNoteWindow : Window
         }
         else if (_roll is not null)
         {
-            SetWindowHeight(RollHeight(_roll.Roll(1)));
+            SetWindowHeight(RollHeight(Shape(1)));
         }
     }
 
@@ -483,6 +494,7 @@ public partial class StickyNoteWindow : Window
             Margin = new Thickness(0, HeaderHeight, 0, 0),
         };
         ((System.Windows.Controls.Grid)Content).Children.Add(roll);
+        _rollFold = _settings.Current.Notepad.RollStyle == "Fold";
         return roll;
     }
 

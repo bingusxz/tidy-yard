@@ -76,6 +76,9 @@ public sealed class NotepadSettings
     public string PaperColor { get; set; } = "#FAF9F6";
 
     public bool RuledLines { get; set; } = true;
+
+    /// <summary>How a note rolls up under its header: "Roll" (a scroll) or "Fold" (an accordion).</summary>
+    public string RollStyle { get; set; } = "Roll";
 }
 
 /// <summary>
