@@ -22,4 +22,7 @@ public sealed class StickyNote
 
     /// <summary>Window height in DIPs before it was rolled up, so unrolling restores it.</summary>
     public double ExpandedHeight { get; set; }
+
+    /// <summary>A rolled-up note opens while the pointer is over it.</summary>
+    public bool PeekOnHover { get; set; } = true;
 }

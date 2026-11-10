@@ -14,4 +14,7 @@ public partial class SettingsWindow : Window
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Shows one page of the sidebar (0 Appearance, 1 Calendar, 2 Plots, 3 Notepad, ...).</summary>
+    public void ShowPage(int index) => Nav.SelectedIndex = index;
 }

@@ -69,6 +69,7 @@ public sealed class WindowService : IWindowService
     private void OpenStickyNote(StickyNote note, bool focus)
     {
         var window = new StickyNoteWindow(note, _notes, _settings);
+        window.SettingsRequested += () => { ShowSettings(); _settingsWindow?.ShowPage(3); };
         window.SheetDetached += bounds =>
         {
             var sheet = new StickyNote { Text = note.Text, ColorIndex = note.ColorIndex, IsPad = false, IsPinned = false, Bounds = bounds };

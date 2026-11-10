@@ -1,6 +1,7 @@
 <Window x:Class="TidyYard.Views.StickyNoteWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:views="clr-namespace:TidyYard.Views"
  Title="Sticky note - Tidy Yard" Style="{DynamicResource Style.Window}"
  WindowStyle="None" AllowsTransparency="True" Background="Transparent"
  ShowInTaskbar="False" ShowActivated="False" Width="280" Height="280" MinWidth="240" MinHeight="170" ResizeMode="CanResizeWithGrip">
@@ -76,6 +77,7 @@
       TextChanged="OnTextChanged" AutomationProperties.Name="Note text" WindowChrome.IsHitTestVisibleInChrome="True">
       <TextBox.Template><ControlTemplate TargetType="TextBox"><ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Stretch" VerticalContentAlignment="Top" Padding="0" /></ControlTemplate></TextBox.Template>
     </TextBox>
+    <views:ScratchLayer x:Name="Scratch" Grid.Row="1" Margin="14,12,14,4" IsHitTestVisible="False" />
     <Thumb x:Name="PeelGrip" Grid.Row="1" Grid.RowSpan="2" Width="36" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="Hand"
       DragStarted="OnPeelStarted" DragDelta="OnPeelDelta" DragCompleted="OnPeelCompleted" ToolTip="Pull this corner to curl and release the sheet, then drag it into place. Escape cancels." AutomationProperties.Name="Peel from bottom right" WindowChrome.IsHitTestVisibleInChrome="True">
      <Thumb.Template><ControlTemplate TargetType="Thumb"><Grid Background="Transparent"><Path Fill="{DynamicResource Brush.PaperFold}" Data="M0,36 Q24,34 36,0 L36,36 Z"/><Path Stroke="{DynamicResource Brush.PaperRule}" StrokeThickness="0.7" Data="M0,36 Q24,34 36,0" /></Grid></ControlTemplate></Thumb.Template>

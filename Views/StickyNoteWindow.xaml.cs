@@ -25,6 +25,7 @@ public partial class StickyNoteWindow : Window
     private Point _sheetHome;      // where the sheet's top-left is on screen, in DIPs
     private Point _paperOffset;    // paper's top-left relative to this window, in pixels
     public event Action<WindowBounds>? SheetDetached;
+    public event Action? SettingsRequested;
     private readonly SettingsService _settings;
     private NotepadLook _look;
     public StickyNoteWindow(StickyNote note, StickyNoteStore store, SettingsService settings)
@@ -43,10 +44,17 @@ public partial class StickyNoteWindow : Window
         ApplyLock();
         ApplyRollButton();
         StartHover();
+        Editor.PreviewKeyDown += OnEditorKey;
+        Editor.PreviewMouseLeftButtonDown += OnEditorMouseDown;
+        Editor.SizeChanged += (_, _) => QueueScratchRefresh();
+        Editor.AddHandler(System.Windows.Controls.ScrollViewer.ScrollChangedEvent, new System.Windows.Controls.ScrollChangedEventHandler((_, _) => QueueScratchRefresh()));
+        SheetHeading.MouseRightButtonUp += (_, e) => { e.Handled = true; ShowNoteMenu(); };
         Interop.NativeMethods.HideFromAltTab(_widget.Handle);
         Loaded += (_, _) =>
         {
+            System.Windows.Interop.HwndSource.FromHwnd(_widget.Handle)?.AddHook(OnWindowMessage);
             if (note.IsRolledUp) ShowRolledAtOnce();
+            QueueScratchRefresh();
             _widget.SettleAtBottom();
             if (SystemParameters.ClientAreaAnimation)
             {
@@ -91,6 +99,7 @@ public partial class StickyNoteWindow : Window
             }
             // Capture writing only. Toolbar controls and pad labels never become part of the sheet.
             drawing.DrawRectangle(new VisualBrush(Editor),null,new Rect(14,50,Editor.ActualWidth,Editor.ActualHeight));
+            drawing.DrawRectangle(new VisualBrush(Scratch),null,new Rect(14,50,Editor.ActualWidth,Editor.ActualHeight));
         }
         var dpi = VisualTreeHelper.GetDpi(Paper);
         var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
@@ -189,6 +198,7 @@ public partial class StickyNoteWindow : Window
     {
         if (_note is null) return;
         _note.Text = Editor.Text; _store.Changed();
+        QueueScratchRefresh();
     }
     private void OnColor(object sender, RoutedEventArgs e)
     {
@@ -233,6 +243,8 @@ public partial class StickyNoteWindow : Window
         Resources["Brush.PaperHover"] = Solid(look.Hover);
         Resources["Brush.PaperPressed"] = Solid(look.Pressed);
         HeaderBand.Background = Solid(look.Band);
+        Scratch.Ink = Solid(Color.FromArgb(0xE0, look.Ink.R, look.Ink.G, look.Ink.B));
+        QueueScratchRefresh();
         Editor.FontFamily = look.Font;
         Editor.FontSize = look.FontSize;
         Editor.SelectionBrush = Solid(Color.FromArgb(0x55, look.Ink.R, look.Ink.G, look.Ink.B));
@@ -249,6 +261,197 @@ public partial class StickyNoteWindow : Window
         };
         Rules.Fill = ruleBrush;
     }
+    // ---- Checklist: circles to tick, and a scribble through what is done ----------------------------
+
+    private const string Open = "○ ", Done = "● ";   // an empty circle, a filled one
+    private bool _scratchQueued;
+
+    private static bool HasMarker(string line) => line.StartsWith(Open, StringComparison.Ordinal) || line.StartsWith(Done, StringComparison.Ordinal);
+
+    /// <summary>Recomputes where the scribbles go once layout has caught up with the text.</summary>
+    private void QueueScratchRefresh()
+    {
+        if (_scratchQueued) return;
+        _scratchQueued = true;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => { _scratchQueued = false; RefreshScratches(); });
+    }
+
+    private void RefreshScratches()
+    {
+        var lines = new List<ScratchLayer.Line>();
+        var count = Editor.IsVisible ? Editor.LineCount : 0;
+        var done = false;
+        var startsLine = true;
+        for (var i = 0; i < count; i++)
+        {
+            var text = Editor.GetLineText(i);
+            var first = startsLine;
+            if (first) done = text.StartsWith(Done, StringComparison.Ordinal);
+            startsLine = text.EndsWith('\n') || text.EndsWith('\r');
+            if (!done) continue;
+            var visible = text.TrimEnd('\r', '\n').TrimEnd();
+            var skip = first ? Done.Length : 0;
+            if (visible.Length <= skip) continue;
+            var begin = Editor.GetCharacterIndexFromLineIndex(i);
+            var left = Editor.GetRectFromCharacterIndex(begin + skip);
+            var right = Editor.GetRectFromCharacterIndex(begin + visible.Length - 1, trailingEdge: true);
+            if (left.IsEmpty || right.IsEmpty || double.IsInfinity(left.Top)) continue;
+            lines.Add(new ScratchLayer.Line(left.Left, right.Right, left.Top + left.Height * 0.6));
+        }
+
+        Scratch.SetLines(lines);
+    }
+
+    /// <summary>Whole lines covered by the selection (or the caret's line), as start and end positions.</summary>
+    private (int Start, int End) SelectedLines()
+    {
+        var text = Editor.Text;
+        var from = Editor.SelectionStart;
+        var to = from + Editor.SelectionLength;
+        var start = from == 0 ? 0 : text.LastIndexOf('\n', from - 1) + 1;
+        var end = text.IndexOf('\n', to);
+        if (end < 0) end = text.Length;
+        if (end > start && text[end - 1] == '\r') end--;
+        return (start, end);
+    }
+
+    private void ReplaceRange(int start, int end, string replacement)
+    {
+        Editor.Select(start, end - start);
+        Editor.SelectedText = replacement;
+    }
+
+    /// <summary>Turns the selected lines into checklist items, or back into plain lines if they all are items already.</summary>
+    private void ToggleChecklist()
+    {
+        var (start, end) = SelectedLines();
+        var lines = Editor.Text[start..end].Split('\n');
+        var allItems = lines.Where(l => l.Trim().Length > 0).All(HasMarker);
+        var result = lines.Select(l => l.Trim().Length == 0 ? l : allItems ? l[Open.Length..] : HasMarker(l) ? l : Open + l);
+        ReplaceRange(start, end, string.Join("\n", result));
+        Editor.Focus();
+    }
+
+    private void RemoveCheckedItems()
+    {
+        var kept = Editor.Text.Split('\n').Where(l => !l.StartsWith(Done, StringComparison.Ordinal));
+        Editor.Text = string.Join("\n", kept);
+    }
+
+    private void UncheckAll()
+    {
+        var lines = Editor.Text.Split('\n').Select(l => l.StartsWith(Done, StringComparison.Ordinal) ? Open + l[Done.Length..] : l);
+        Editor.Text = string.Join("\n", lines);
+    }
+
+    private void OnEditorKey(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        var modifiers = System.Windows.Input.Keyboard.Modifiers;
+        if (modifiers == System.Windows.Input.ModifierKeys.Control && e.Key == System.Windows.Input.Key.L) { ToggleChecklist(); e.Handled = true; return; }
+        if (e.Key != System.Windows.Input.Key.Enter || modifiers != System.Windows.Input.ModifierKeys.None) return;
+
+        // Enter on an item starts the next item; Enter on an empty one ends the list.
+        var text = Editor.Text;
+        var caret = Editor.CaretIndex;
+        var start = caret == 0 ? 0 : text.LastIndexOf('\n', caret - 1) + 1;
+        var end = text.IndexOf('\n', start);
+        var line = text[start..(end < 0 ? text.Length : end)].TrimEnd('\r');
+        if (!HasMarker(line) || caret < start + Open.Length) return;
+        e.Handled = true;
+        if (line[Open.Length..].Trim().Length == 0) ReplaceRange(start, start + line.Length, string.Empty);
+        else { Editor.SelectedText = "\n" + Open; Editor.CaretIndex = Editor.SelectionStart + Editor.SelectionLength; }
+    }
+
+    /// <summary>Clicking a circle ticks or unticks the item.</summary>
+    private void OnEditorMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_peeling || Editor.IsReadOnly) return;
+        var point = e.GetPosition(Editor);
+        var index = Editor.GetCharacterIndexFromPoint(point, false);
+        var text = Editor.Text;
+        if (index < 0 || index >= text.Length || (text[index] != '○' && text[index] != '●')) return;
+        if (index > 0 && text[index - 1] != '\n') return;
+        var left = Editor.GetRectFromCharacterIndex(index);
+        var right = Editor.GetRectFromCharacterIndex(index, trailingEdge: true);
+        if (point.X < left.Left - 4 || point.X > right.Right + 6) return;
+        Editor.Select(index, 1);
+        Editor.SelectedText = text[index] == '○' ? "●" : "○";
+        Editor.CaretIndex = index + 2;
+        e.Handled = true;
+    }
+
+    // ---- Header menu (right-click the header, as on a plot) ---------------------------------------
+
+    private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == Interop.NativeMethods.WM_NCRBUTTONUP && wParam.ToInt64() == Interop.NativeMethods.HTCAPTION)
+        {
+            handled = true;
+            Dispatcher.BeginInvoke(ShowNoteMenu);
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void ShowNoteMenu()
+    {
+        if (_peeling || _tearing) return;
+        var menu = new System.Windows.Controls.ContextMenu { PlacementTarget = this, Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+        System.Windows.Controls.MenuItem Item(string header, Action action, bool? check = null)
+        {
+            var item = new System.Windows.Controls.MenuItem { Header = header, IsCheckable = check is not null, IsChecked = check ?? false };
+            item.Click += (_, _) => action();
+            return item;
+        }
+
+        menu.Items.Add(Item(_note.IsRolledUp ? "Unroll" : "Roll up", () => OnRoll(this, new RoutedEventArgs())));
+        menu.Items.Add(Item("Rename", BeginRename));
+        menu.Items.Add(new System.Windows.Controls.Separator());
+
+        var checklist = new System.Windows.Controls.MenuItem { Header = "Checklist" };
+        checklist.Items.Add(Item("Make checklist (Ctrl+L)", () => { if (!_note.IsRolledUp) ToggleChecklist(); }));
+        checklist.Items.Add(Item("Uncheck all", UncheckAll));
+        checklist.Items.Add(Item("Remove checked items", RemoveCheckedItems));
+        menu.Items.Add(checklist);
+
+        var look = new System.Windows.Controls.MenuItem { Header = "Look" };
+        foreach (var item in ColourItems()) look.Items.Add(item);
+        look.Items.Add(new System.Windows.Controls.Separator());
+        look.Items.Add(Item("Font, ink and designs…", () => SettingsRequested?.Invoke()));
+        menu.Items.Add(look);
+
+        var behaviour = new System.Windows.Controls.MenuItem { Header = "Behaviour" };
+        void SetStyle(string style) => _settings.Update(s => s.Notepad.RollStyle = style);
+        behaviour.Items.Add(Item("Roll up like a scroll", () => SetStyle("Roll"), _settings.Current.Notepad.RollStyle != "Fold"));
+        behaviour.Items.Add(Item("Fold up like an accordion", () => SetStyle("Fold"), _settings.Current.Notepad.RollStyle == "Fold"));
+        behaviour.Items.Add(new System.Windows.Controls.Separator());
+        behaviour.Items.Add(Item("Open on hover when rolled up", () => { _note.PeekOnHover = !_note.PeekOnHover; _store.Changed(); }, _note.PeekOnHover));
+        menu.Items.Add(behaviour);
+
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(Item(_note.IsPinned ? "Unpin" : "Pin to desktop", () => OnPin(this, new RoutedEventArgs())));
+        menu.Items.Add(Item(_note.IsLocked ? "Unlock" : "Lock in place", () => OnLock(this, new RoutedEventArgs())));
+        menu.Items.Add(Item("Delete note (recoverable from tray)", () => OnTear(this, new RoutedEventArgs())));
+        menu.Opened += (_, _) => _menuOpen = true;
+        menu.Closed += (_, _) => _menuOpen = false;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>The paper colour choices: Default follows Settings, the rest are fixed colours for this note only.</summary>
+    private IEnumerable<System.Windows.Controls.MenuItem> ColourItems()
+    {
+        string[] names = ["Default", "Cream", "Yellow", "Blue", "Rose"];
+        var designPaper = NotepadLook.From(_settings.Current.Notepad).Paper;
+        for (var i = 0; i < names.Length; i++)
+        {
+            var index = i;
+            var item = new System.Windows.Controls.MenuItem { Header = names[i], IsCheckable = true, IsChecked = _note.ColorIndex == i };
+            item.Icon = new System.Windows.Shapes.Rectangle { Width = 14, Height = 14, Fill = new SolidColorBrush(i == 0 ? designPaper : PaperColor(i)), Stroke = Brushes.Gray, StrokeThickness = 0.5 };
+            item.Click += (_, _) => { _note.ColorIndex = index; ApplyLook(); _store.Changed(); };
+            yield return item;
+        }
+    }
+
     // ---- Name -------------------------------------------------------------------------------------
 
     private string DefaultHeading => _note.IsPad ? "NOTEPAD" : "NOTE";
@@ -266,12 +469,17 @@ public partial class StickyNoteWindow : Window
         }
 
         if (e.ClickCount != 2 || _peeling || _tearing) return;
+        BeginRename();
+        e.Handled = true;
+    }
+
+    private void BeginRename()
+    {
         HeadingEditor.Text = _note.Title ?? string.Empty;
         SheetHeading.Visibility = Visibility.Collapsed;
         HeadingEditor.Visibility = Visibility.Visible;
         HeadingEditor.Focus();
         HeadingEditor.SelectAll();
-        e.Handled = true;
     }
 
     private void OnHeadingKey(object sender, System.Windows.Input.KeyEventArgs e)
@@ -469,7 +677,7 @@ public partial class StickyNoteWindow : Window
 
     private void OnHoverTick(object? sender, EventArgs e)
     {
-        if (!_note.IsRolledUp || _peeling || _tearing) { _insideTicks = 0; _peeking = false; return; }
+        if (!_note.IsRolledUp || !_note.PeekOnHover || _peeling || _tearing) { _insideTicks = 0; _peeking = false; return; }
         var over = IsVisible && Interop.NativeMethods.IsCursorOverWindow(_widget.Handle);
         if (!_peeking)
         {
