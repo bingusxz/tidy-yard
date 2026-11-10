@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -15,7 +15,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Program.Main runs Velopack's install/update hooks before WPF starts. -->
     <StartupObject>TidyYard.Program</StartupObject>
-    <Version>1.0.7</Version>
+    <Version>1.0.8</Version>
   </PropertyGroup>
 
   <ItemGroup>
