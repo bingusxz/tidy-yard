@@ -433,7 +433,6 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Default reminder" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Given to new events that have a time. You can change it per event." />
                         </StackPanel>
                         <ComboBox Grid.Column="1"
                                   Width="176"
@@ -452,7 +451,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Show calendar" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Turn off to use Tidy Yard for plots only. Open Calendar in the tray still works." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Off for plots only. Open Calendar in the tray still works." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"
@@ -465,7 +464,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Lock position" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Pins the calendar to the desktop: behind your windows, still there on Show desktop, no dragging." />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Stays behind your windows and cannot be dragged." />
                         </StackPanel>
                         <CheckBox Grid.Column="1"
                                   VerticalAlignment="Center"
@@ -478,7 +477,6 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Start with Windows" />
-                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Starts Tidy Yard when you sign in, with plots and calendar where you left them." />
                             <TextBlock Style="{DynamicResource Text.Muted}"
                                        Foreground="{DynamicResource Brush.Danger}"
                                        Text="{Binding StartupError}"
@@ -890,7 +888,7 @@
                         <StackPanel Margin="0,0,16,0">
                             <TextBlock FontWeight="Medium" Text="Show events from another calendar" />
                             <TextBlock Margin="0,2,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
-                                       Text="Works with Google Calendar, Outlook and iCloud. Events appear here but are edited in the original calendar. Nothing is sent anywhere: this PC reads the link directly." />
+                                       Text="Google, Outlook or iCloud. Read-only here; this PC reads the link directly." />
                         </StackPanel>
                         <Button Grid.Column="1"
                                 VerticalAlignment="Top"
@@ -944,7 +942,7 @@
                              Text="{Binding NewLink, UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Calendar link" />
                     <TextBlock Margin="2,6,0,0" Style="{DynamicResource Text.Muted}" TextWrapping="Wrap"
-                               Text="Google: open Calendar on the web, then Settings, your calendar, Integrate calendar, Secret address in iCal format. Anyone with this link can read that calendar, so keep it private." />
+                               Text="Google: Settings, your calendar, Integrate calendar, Secret address in iCal format. Anyone with the link can read it." />
                     <TextBlock Margin="2,8,0,0"
                                FontWeight="Medium"
                                Foreground="{DynamicResource Brush.Danger}"

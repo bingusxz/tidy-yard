@@ -9,7 +9,7 @@ namespace TidyYard.Services;
 /// </summary>
 public sealed class ClothSimulation
 {
-    private readonly record struct Link(int A, int B, double Rest, double Stiffness);
+    private readonly record struct Link(int A, int B, double Rest, double Stiffness, bool Bend);
 
     private readonly Link[] _links;
     private readonly bool[] _anchored;
@@ -30,12 +30,12 @@ public sealed class ClothSimulation
         _normalX = new double[Count]; _normalY = new double[Count]; _normalZ = new double[Count];
 
         var links = new List<Link>();
-        void Add(int c1, int r1, int c2, int r2, double stiffness)
+        void Add(int c1, int r1, int c2, int r2, double stiffness, bool bend = false)
         {
             if (c2 > columns || r2 > rows || c1 < 0 || c2 < 0) return;
             var dx = (c2 - c1) * cellWidth;
             var dy = (r2 - r1) * cellHeight;
-            links.Add(new Link(Index(c1, r1), Index(c2, r2), Math.Sqrt(dx * dx + dy * dy), stiffness));
+            links.Add(new Link(Index(c1, r1), Index(c2, r2), Math.Sqrt(dx * dx + dy * dy), stiffness, bend));
         }
 
         for (var r = 0; r <= rows; r++)
@@ -46,12 +46,14 @@ public sealed class ClothSimulation
                 Add(c, r, c, r + 1, 1.0);
                 Add(c, r, c + 1, r + 1, 0.9);  // shear
                 Add(c, r, c - 1, r + 1, 0.9);
-                Add(c, r, c + 2, r, 0.95);      // bend (stiffness of paper)
-                Add(c, r, c, r + 2, 0.95);
-                Add(c, r, c + 4, r, 0.85);
-                Add(c, r, c, r + 4, 0.85);
-                Add(c, r, c + 8, r, 0.6);
-                Add(c, r, c, r + 8, 0.6);
+                Add(c, r, c + 2, r, 1.0, true);      // bend: how stiff the paper is
+                Add(c, r, c, r + 2, 1.0, true);
+                Add(c, r, c + 4, r, 1.0, true);
+                Add(c, r, c, r + 4, 1.0, true);
+                Add(c, r, c + 8, r, 0.9, true);
+                Add(c, r, c + 16, r, 0.7, true);
+                Add(c, r, c, r + 8, 0.9, true);
+                Add(c, r, c, r + 16, 0.7, true);
             }
         }
 
@@ -89,7 +91,10 @@ public sealed class ClothSimulation
     /// <summary>How quickly sliding stops while touching the desk, per second.</summary>
     public double DeskFriction { get; set; } = 3.0;
 
-    public int Iterations { get; set; } = 10;
+    public int Iterations { get; set; } = 14;
+
+    /// <summary>Multiplies the bend stiffness: 1 is paper, lower is softer (a crumpling sheet creases sharply).</summary>
+    public double BendScale { get; set; } = 1.0;
 
     private int _tether = -1;
     private double[]? _tetherReach;
@@ -233,7 +238,7 @@ public sealed class ClothSimulation
             var wb = _anchored[b] ? 0.0 : 1.0;
             var weight = wa + wb;
             if (weight == 0) continue;
-            var scale = link.Stiffness * (distance - link.Rest) / distance / weight;
+            var scale = link.Stiffness * (link.Bend ? BendScale : 1.0) * (distance - link.Rest) / distance / weight;
             X[a] += wa * scale * dx; Y[a] += wa * scale * dy; Z[a] += wa * scale * dz;
             X[b] -= wb * scale * dx; Y[b] -= wb * scale * dy; Z[b] -= wb * scale * dz;
         }

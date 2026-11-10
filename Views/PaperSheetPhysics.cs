@@ -124,9 +124,10 @@ internal sealed class PaperSheetPhysics
         physics.LoadShape(true);
         var cloth = physics._cloth;
         cloth.GravityZ = 0; cloth.Floor = -1e9; cloth.DeskFriction = 0;
+        cloth.BendScale = 0; // a screwed-up sheet creases anywhere; stiffness would make it fold once instead
         // A flat sheet only buckles if something nudges it out of the plane, as fingers do.
         var random = new Random(7);
-        for (var i = 0; i < cloth.Count; i++) { cloth.Z[i] = (random.NextDouble() - 0.5) * 6; cloth.PZ[i] = cloth.Z[i]; }
+        for (var i = 0; i < cloth.Count; i++) { cloth.Z[i] = (random.NextDouble() - 0.5) * 14; cloth.PZ[i] = cloth.Z[i]; }
         physics._mode = Mode.Crumple;
         physics.Start();
         return physics;
@@ -321,15 +322,20 @@ internal sealed class PaperSheetPhysics
         Render();
     }
 
-    /// <summary>The hand closing: everything is pulled toward the middle, harder as the fist tightens.</summary>
+    /// <summary>The hand closing: everything is pulled toward the middle, unevenly and with a wring, harder as the fist tightens.</summary>
     private void SqueezeStep()
     {
-        var pull = 9 * Math.Min(1, _modeTime / CrumpleSeconds);
+        var tighten = Math.Min(1, _modeTime / CrumpleSeconds);
+        var pull = 9 * tighten;
+        var twist = 1.4 * tighten;
         var cx = _cloth.X.Average(); var cy = _cloth.Y.Average();
         for (var i = 0; i < _cloth.Count; i++)
         {
-            _cloth.X[i] += (cx - _cloth.X[i]) * pull * Step;
-            _cloth.Y[i] += (cy - _cloth.Y[i]) * pull * Step;
+            // Fingers do not squeeze evenly: some points are pulled in harder than others.
+            var uneven = 0.6 + 0.8 * (((i * 2654435761u) >> 8) % 1000 / 1000.0);
+            var dx = _cloth.X[i] - cx; var dy = _cloth.Y[i] - cy;
+            _cloth.X[i] += (-dx * pull * uneven - dy * twist) * Step;
+            _cloth.Y[i] += (-dy * pull * uneven + dx * twist) * Step;
         }
     }
 
