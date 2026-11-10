@@ -84,7 +84,6 @@ internal sealed class DesktopWidget
     /// </summary>
     public void RaiseOverOverlapping()
     {
-        Log($"enter handle={Handle} pinned={_pinned} visible={_window.IsVisible} widgets={All.Count}");
         if (!_window.IsVisible || NativeMethods.GetWindowBounds(Handle) is not { } mine)
         {
             return;
@@ -101,7 +100,6 @@ internal sealed class DesktopWidget
 
             var overlaps = NativeMethods.GetWindowBounds(h) is { } r
                 && r.X < mine.X + mine.Width && mine.X < r.X + r.Width && r.Y < mine.Y + mine.Height && mine.Y < r.Y + r.Height;
-            Log($"  above widget={h} pinned={other._pinned} visible={other._window.IsVisible} overlaps={overlaps}");
             if (other._pinned == _pinned && other._window.IsVisible && overlaps)
             {
                 covering.Add(other);
@@ -123,18 +121,6 @@ internal sealed class DesktopWidget
             }
         }
 
-        Log($"  moved {covering.Count} widget(s) behind {Handle}");
-    }
-
-    private static void Log(string line)
-    {
-        try
-        {
-            System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "tidyyard-raise.log"), $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
-        }
-        catch (System.IO.IOException)
-        {
-        }
     }
 
     /// <summary>Puts a pinned window back at the bottom after it was shown.</summary>
