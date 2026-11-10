@@ -137,6 +137,15 @@ internal sealed class DesktopWidget
         }
     }
 
+    /// <summary>Puts a pinned window back at the bottom after it was shown.</summary>
+    public void SettleAtBottom()
+    {
+        if (_pinned)
+        {
+            NativeMethods.SendToBottom(Handle);
+        }
+    }
+
     private void ApplyPin()
     {
         if (_pinned)
