@@ -52,6 +52,20 @@ internal sealed class PaperSheetPhysics
     private double[] _fromX = [], _fromY = [], _fromZ = [];
     private double _flatLeft, _flatTop;
 
+    // A carried sheet is a stiff plate, not cloth: it keeps its shape, swings about the corner it is held by, and
+    // only its peel curl bends (and relaxes like a spring). Paper in the hand behaves like this.
+    private const double PlateDrag = 6.0;        // desk drag on the plate, per second
+    private const double PlateSpin = 2.0;        // rotational damping, per second
+    private const double CurlSpring = 7.0;       // how fast the curl relaxes, per second
+    private const double InitialCurl = 0.8;      // the curl the sheet had when it came free
+    private bool _plate, _fromLeft, _free;
+    private double _curlAge, _freeTime, _lift, _liftAtRelease;
+    private double _px, _py, _vx, _vy;           // the held corner: position and velocity
+    private double _theta, _omega;               // plate angle and spin about the held corner
+    private double _r0x, _r0y, _inertia;         // plate middle relative to the held corner (flat), and its inertia
+    private double _cx, _cy, _cvx, _cvy;         // the plate's middle once let go
+    private double _handStartX, _handStartY;
+
     public event Action<Outcome>? Finished;
 
     public Window? Host => _host;
@@ -86,8 +100,8 @@ internal sealed class PaperSheetPhysics
         surface.HorizontalAlignment = HorizontalAlignment.Left; surface.VerticalAlignment = VerticalAlignment.Top;
         surface.SetViewport(host.Width, host.Height);
         host.Content = surface;
-        physics.LoadShape(true);
-        physics.GrabCorner(fromLeft, hand);
+        if (reduced) { physics.LoadShape(true); physics.GrabCorner(fromLeft, hand); }
+        else physics.InitPlate(fromLeft, hand);
         physics._mode = Mode.Carry;
         // Opens exactly over the pad, so there is no flash at the default window position.
         var (originX, originY) = physics.HostOrigin();
@@ -220,7 +234,100 @@ internal sealed class PaperSheetPhysics
         _cloth.ReleaseAll();
         _cloth.ClearTether();
         _mode = Mode.Released; _modeTime = 0; _calmTime = 0;
+        if (_plate)
+        {
+            // From here the plate is a free body: it keeps the velocity of its middle and the spin it had.
+            var (rx, ry) = PlateArm();
+            _cx = _px + rx; _cy = _py + ry;
+            _cvx = _vx - _omega * ry; _cvy = _vy + _omega * rx;
+            _free = true; _freeTime = 0; _liftAtRelease = _lift;
+        }
     }
+
+    // ---- The plate ---------------------------------------------------------------------------------
+
+    private void InitPlate(bool fromLeft, Point hand)
+    {
+        _plate = true; _fromLeft = fromLeft;
+        var cornerX = fromLeft ? 0 : _width; var cornerY = _height;
+        _r0x = _width / 2 - cornerX; _r0y = _height / 2 - cornerY;
+        _inertia = (_width * _width + _height * _height) / 3;
+        _handStart = _handTarget = _hand = hand;
+        _handStartX = hand.X; _handStartY = hand.Y;
+        var (cx, cy) = PlateCorner(InitialCurl);
+        _px = _home.X + cx; _py = _home.Y + cy;
+        BuildPlateShape();
+    }
+
+    /// <summary>The held corner's position in the sheet, for the current curl.</summary>
+    private (double X, double Y) PlateCorner(double curl)
+    {
+        _surface.Curl(curl, _fromLeft);
+        var (x, y, _) = _surface.Snapshot();
+        var corner = _cloth.Index(_fromLeft ? 0 : _cloth.Columns, _cloth.Rows);
+        return (x[corner], y[corner]);
+    }
+
+    private (double X, double Y) PlateArm() =>
+        (Math.Cos(_theta) * _r0x - Math.Sin(_theta) * _r0y, Math.Sin(_theta) * _r0x + Math.Cos(_theta) * _r0y);
+
+    private void PlateStep()
+    {
+        _curlAge += Step;
+        if (!_free)
+        {
+            var tx = _home.X + (_cornerAtStartX) + (_handTarget.X - _handStartX) * _handScale;
+            var ty = _home.Y + (_cornerAtStartY) + (_handTarget.Y - _handStartY) * _handScale;
+            // The held corner follows the hand through a critically damped spring, so the plate feels a smooth push.
+            const double wn = 40;
+            var ax = wn * wn * (tx - _px) - 2 * wn * _vx;
+            var ay = wn * wn * (ty - _py) - 2 * wn * _vy;
+            _vx += ax * Step; _vy += ay * Step; _px += _vx * Step; _py += _vy * Step;
+
+            // The plate's middle drags on the desk and is pushed back as the corner accelerates: that torque swings it round.
+            var (rx, ry) = PlateArm();
+            var fx = -PlateDrag * (_vx - _omega * ry) - ax;
+            var fy = -PlateDrag * (_vy + _omega * rx) - ay;
+            var torque = rx * fy - ry * fx;
+            _omega = Math.Clamp(_omega + (torque / _inertia - PlateSpin * _omega) * Step, -25, 25);
+            _theta += _omega * Step;
+            _lift = CarryHeight * Ease(Math.Min(1, _modeTime / 0.3));
+        }
+        else
+        {
+            _freeTime += Step;
+            var slide = Math.Exp(-3.2 * Step);
+            _cvx *= slide; _cvy *= slide; _omega *= Math.Exp(-3.5 * Step);
+            _cx += _cvx * Step; _cy += _cvy * Step; _theta += _omega * Step;
+            var (rx, ry) = PlateArm();
+            _px = _cx - rx; _py = _cy - ry;
+            var drop = Math.Max(0, 1 - _freeTime / 0.2);
+            _lift = _liftAtRelease * drop * drop;
+        }
+    }
+
+    private double _cornerAtStartX, _cornerAtStartY;
+
+    private void BuildPlateShape()
+    {
+        var curl = InitialCurl * (1 + CurlSpring * _curlAge) * Math.Exp(-CurlSpring * _curlAge);
+        _surface.Curl(curl, _fromLeft);
+        var (lx, ly, lz) = _surface.Snapshot();
+        var corner = _cloth.Index(_fromLeft ? 0 : _cloth.Columns, _cloth.Rows);
+        if (_curlAge == 0) { _cornerAtStartX = lx[corner]; _cornerAtStartY = ly[corner]; }
+        var cos = Math.Cos(_theta); var sin = Math.Sin(_theta);
+        for (var i = 0; i < _cloth.Count; i++)
+        {
+            var dx = lx[i] - lx[corner]; var dy = ly[i] - ly[corner];
+            _cloth.X[i] = _px + cos * dx - sin * dy;
+            _cloth.Y[i] = _py + sin * dx + cos * dy;
+            // Raised near the hand, resting on the desk further away.
+            var near = Math.Max(0, 1 - Math.Sqrt(dx * dx + dy * dy) / (_width * 0.95));
+            _cloth.Z[i] = lz[i] + _lift * near;
+        }
+    }
+
+    private bool PlateCalm => _free && _freeTime > 0.25 && Math.Sqrt(_cvx * _cvx + _cvy * _cvy) < 6 && Math.Abs(_omega) < 0.05;
 
     private void BeginFlatten()
     {
@@ -288,24 +395,25 @@ internal sealed class PaperSheetPhysics
                     {
                         _cancelTime += Step;
                         _handScale = 1 - Ease(Math.Min(1, _cancelTime / 0.25));
-                        if (_cancelTime >= 0.25) { ApplyHand(Step); BeginRelease(); break; }
+                        if (_cancelTime >= 0.25) { if (!_plate) ApplyHand(Step); BeginRelease(); break; }
                     }
 
-                    ApplyHand(Step);
+                    if (!_plate) ApplyHand(Step);
                     break;
                 case Mode.Crumple:
                     SqueezeStep();
                     break;
             }
 
-            _cloth.Step(Step);
+            if (_plate) PlateStep(); else _cloth.Step(Step);
         }
 
         if (steps > MaxStepsPerFrame) _accumulator = 0;
+        if (_plate) BuildPlateShape();
 
         if (_mode == Mode.Released)
         {
-            var calm = _cloth.MeanSpeed(Step) < 8 && _cloth.Z.Max() < 1.0;
+            var calm = _plate ? PlateCalm : _cloth.MeanSpeed(Step) < 8 && _cloth.Z.Max() < 1.0;
             _calmTime = calm ? _calmTime + elapsed : 0;
             if (_calmTime >= 0.2 || _modeTime > 3) BeginFlatten();
         }
