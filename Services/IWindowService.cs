@@ -11,6 +11,12 @@ public interface IWindowService
 
     void ShowCalendar();
 
+    /// <summary>Opens the calendar with the given day selected.</summary>
+    void ShowCalendar(DateOnly date);
+
+    /// <summary>Shows or hides the mini calendar, and remembers the choice.</summary>
+    void SetMiniVisible(bool visible);
+
     void ShowSettings();
 
     /// <summary>Shows or hides the calendar for the "Show calendar" setting (fences-only mode).</summary>

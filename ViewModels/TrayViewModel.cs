@@ -32,6 +32,9 @@ public sealed partial class TrayViewModel : ObservableObject
     private void OpenCalendar() => _windows.ShowCalendar();
 
     [RelayCommand]
+    private void ShowMini() => _windows.SetMiniVisible(true);
+
+    [RelayCommand]
     private void OpenSettings() => _windows.ShowSettings();
 
     [RelayCommand]

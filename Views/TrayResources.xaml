@@ -14,6 +14,7 @@
                 <MenuItem Header="New sticky note" Command="{Binding NewStickyNoteCommand}" />
                 <MenuItem Header="Restore last removed note" Command="{Binding RestoreLastStickyNoteCommand}" />
                 <MenuItem Header="Open Calendar" Command="{Binding OpenCalendarCommand}" />
+                <MenuItem Header="Show mini calendar" Command="{Binding ShowMiniCommand}" />
                 <Separator />
                 <MenuItem Header="New plot">
                     <MenuItem Header="Blank" Command="{Binding NewFenceCommand}" />

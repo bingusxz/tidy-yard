@@ -461,6 +461,22 @@
                     </Grid>
                     <Border Height="1" Background="{DynamicResource Brush.Rule}" />
                     <Grid Style="{StaticResource Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="Medium" Text="Show mini calendar" />
+                            <TextBlock Style="{DynamicResource Text.Muted}" Text="Today, its agenda and the month, small, on the desktop." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{DynamicResource CheckBox.Switch}"
+                                  IsChecked="{Binding ShowMini}"
+                                  AutomationProperties.Name="Show mini calendar" />
+                    </Grid>
+                    <Border Height="1" Background="{DynamicResource Brush.Rule}" />
+                    <Grid Style="{StaticResource Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock FontWeight="Medium" Text="Lock position" />

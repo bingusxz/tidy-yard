@@ -57,6 +57,13 @@ public sealed class AppSettings
 
     public WindowBounds? CalendarBounds { get; set; }
 
+    /// <summary>The small always-visible calendar: today, its agenda and the month. Off until switched on.</summary>
+    public bool ShowMini { get; set; }
+
+    public bool MiniLocked { get; set; }
+
+    public WindowBounds? MiniBounds { get; set; }
+
     /// <summary>How the notepad and sticky notes look. The defaults match the original paper notepad.</summary>
     public NotepadSettings Notepad { get; set; } = new();
 }

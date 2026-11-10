@@ -130,6 +130,11 @@ public partial class App : Application
         var launchedAtSignIn = e.Args.Contains(StartupService.StartupArgument, StringComparer.OrdinalIgnoreCase);
         windows.ShowFences();
         windows.ShowStickyNotes();
+        if (_settings.Current.ShowMini)
+        {
+            windows.ShowMini();
+        }
+
         if (_settings.Current.ShowCalendar)
         {
             windows.ShowCalendar(activate: !launchedAtSignIn);

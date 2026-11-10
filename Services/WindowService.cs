@@ -21,6 +21,7 @@ public sealed class WindowService : IWindowService
     private readonly Dictionary<Guid, FenceWindow> _fenceWindows = [];
 
     private CalendarWindow? _calendar;
+    private MiniCalendarWindow? _mini;
     private SettingsWindow? _settingsWindow;
 
     private readonly UpdateService _updates;
@@ -123,6 +124,32 @@ public sealed class WindowService : IWindowService
         window.TransparencyModeChanged += (_, _) => { settle.Stop(); settle.Start(); };
         window.Closed += (_, _) => settle.Stop();
         return window;
+    }
+
+    public void ShowCalendar(DateOnly date)
+    {
+        ShowCalendar(activate: true);
+        _calendar!.ViewModel.SelectedDate = date;
+    }
+
+    public void SetMiniVisible(bool visible)
+    {
+        _settings.Update(s => s.ShowMini = visible);
+        if (visible)
+        {
+            ShowMini();
+        }
+        else
+        {
+            _mini?.Hide();
+        }
+    }
+
+    /// <summary>Shows the mini calendar in place, without taking focus.</summary>
+    public void ShowMini()
+    {
+        _mini ??= new MiniCalendarWindow(new MiniCalendarViewModel(_storage, _settings, _clock, this, _sync), _settings);
+        _mini.ShowInPlace();
     }
 
     public void SetCalendarVisible(bool visible)

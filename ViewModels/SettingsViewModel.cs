@@ -54,6 +54,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         _windows.SetCalendarVisible(value);
     }
 
+    /// <summary>The small calendar on the desktop: today, its agenda and the month.</summary>
+    [ObservableProperty]
+    private bool _showMini;
+
+    partial void OnShowMiniChanged(bool value)
+    {
+        if (value != _settings.Current.ShowMini)
+        {
+            _windows.SetMiniVisible(value);
+        }
+    }
+
     private readonly UpdateService _updates;
 
     [ObservableProperty]
@@ -300,6 +312,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _selectedIconSize = IconSizes.FirstOrDefault(o => o.Size == settings.Current.FenceIconSize) ?? IconSizes[1];
         _hideDesktopIcons = Interop.NativeMethods.AreDesktopIconsVisible() == false;
         _showCalendar = settings.Current.ShowCalendar;
+        _showMini = settings.Current.ShowMini;
         _selectedReminder = ReminderOption.For(settings.Current.DefaultReminderMinutes);
         _selectedTheme = ThemeService.Resolve(settings.Current.Theme);
         _opacityPercent = settings.Current.OpacityPercent;
@@ -308,7 +321,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         _startWithWindows = StartupService.IsEnabled;
 
         // The lock can also be toggled from the calendar header while this window is open.
-        settings.Changed += (_, _) => IsLocked = settings.Current.IsLocked;
+        settings.Changed += (_, _) =>
+        {
+            IsLocked = settings.Current.IsLocked;
+            ShowMini = settings.Current.ShowMini; // the mini calendar can also be hidden from its own corner
+        };
 
         var windowsStyle = TimeFormatService.WindowsUses24Hour ? "24-hour" : "12-hour";
         ClockOptions =
