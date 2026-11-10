@@ -175,8 +175,33 @@ public partial class FenceWindow : Window
 
     private void OnPlotThemeApplied(object? sender, EventArgs e) => ApplyPlotColors();
 
-    private void ApplyPlotColors() => Services.PlotAppearance.Apply(
-        Resources, _viewModel.GlassOpacity, _viewModel.Model.TintColor, _viewModel.Model.TextColor, _viewModel.Model.TitleTextColor, ScreenArea());
+    private void ApplyPlotColors()
+    {
+        Services.PlotAppearance.Apply(
+            Resources, _viewModel.GlassOpacity, _viewModel.Model.TintColor, _viewModel.Model.TextColor, _viewModel.Model.TitleTextColor, ScreenArea());
+        KeepPanelsNeutral();
+    }
+
+    private static readonly string[] PanelKeys =
+        ["Brush.Text", "Brush.TextMuted", "Brush.TextDim", "Brush.Window", "Brush.AccentText", "Brush.Danger", "Brush.Warning", "Brush.Raised"];
+
+    /// <summary>
+    /// The colour and text panels float over the desktop, not over the plot, so they take the theme's colours. Left
+    /// alone they would inherit the plot's own readability colours and turn the plot's tint.
+    /// </summary>
+    private void KeepPanelsNeutral()
+    {
+        foreach (var panel in new[] { ColorPanel, TextPanel })
+        {
+            foreach (var key in PanelKeys)
+            {
+                if (Application.Current.TryFindResource(key) is { } value)
+                {
+                    panel.Resources[key] = value;
+                }
+            }
+        }
+    }
 
     /// <summary>Where the plot is on screen in physical pixels: live once shown, the saved spot before that.</summary>
     private Rect? ScreenArea()

@@ -236,7 +236,7 @@
                        HorizontalOffset="-232"
                        StaysOpen="True"
                        AllowsTransparency="True">
-                    <Border Margin="0,8,0,0" Padding="16" CornerRadius="12"
+                    <Border x:Name="ColorPanel" Margin="0,8,0,0" Padding="16" CornerRadius="12"
                             Background="{DynamicResource Brush.Window}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
                             TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
                         <StackPanel Width="232">
@@ -255,6 +255,12 @@
                                         Command="{Binding ClosePanelsCommand}"
                                         ToolTip="Close" AutomationProperties.Name="Close" />
                             </Grid>
+                            <!-- Where colour, corners and flat style go: this plot, or every plot. -->
+                            <ListBox Margin="0,0,0,12"
+                                     Style="{DynamicResource ListBox.Segmented}"
+                                     ItemsSource="{Binding ScopeNames}"
+                                     SelectedIndex="{Binding ApplyScopeIndex}"
+                                     AutomationProperties.Name="Apply changes to" />
                             <views:ColorPicker SelectedColor="{Binding TintColor}" Presets="{Binding DataContext.TintPresets, RelativeSource={RelativeSource AncestorType=Window}}" />
 
                             <!-- Glass: three stops, the only sizes Windows can round it to. Flat: any size from 0 to 24. -->
@@ -313,7 +319,7 @@
                        HorizontalOffset="-232"
                        StaysOpen="True"
                        AllowsTransparency="True">
-                    <Border Margin="0,8,0,0" Padding="16" CornerRadius="12"
+                    <Border x:Name="TextPanel" Margin="0,8,0,0" Padding="16" CornerRadius="12"
                             Background="{DynamicResource Brush.Window}" BorderBrush="{DynamicResource Brush.RuleStrong}" BorderThickness="1"
                             TextElement.Foreground="{DynamicResource Brush.Text}" TextElement.FontFamily="{DynamicResource Font.UI}">
                         <StackPanel Width="232">

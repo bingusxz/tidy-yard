@@ -481,6 +481,39 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _store.Changed();
         OnPropertyChanged(nameof(HasCustomTint));
         OnPropertyChanged(nameof(TintBrush));
+        ForOtherPlots(p => p.TintColor = value);
+    }
+
+    // ---- Scope: change this plot only, or every plot ---------------------------------------------
+
+    private static bool s_applyingToOthers;
+
+    public IReadOnlyList<string> ScopeNames { get; } = ["This plot", "All plots"];
+
+    /// <summary>0 = changes in the colour panel affect this plot only; 1 = they also go to every other plot.</summary>
+    [ObservableProperty]
+    private int _applyScopeIndex;
+
+    /// <summary>Runs a change on every other plot when "All plots" is chosen. Re-entry is blocked so plots do not echo it back.</summary>
+    private void ForOtherPlots(Action<FenceViewModel> change)
+    {
+        if (ApplyScopeIndex != 1 || s_applyingToOthers)
+        {
+            return;
+        }
+
+        s_applyingToOthers = true;
+        try
+        {
+            foreach (var other in _windows.Plots.Where(p => !ReferenceEquals(p, this)).ToList())
+            {
+                change(other);
+            }
+        }
+        finally
+        {
+            s_applyingToOthers = false;
+        }
     }
 
     // ---- Text: colour, font and size of the title and item names ------------------------------
@@ -737,6 +770,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         _store.Changed();
         OnPropertyChanged(nameof(HasCustomTint));
         OnPropertyChanged(nameof(TintBrush));
+        ForOtherPlots(p => p.ResetColor());
     }
 
     public void SaveBounds(WindowBounds bounds)
@@ -888,6 +922,15 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
         Model.Flat = !Model.Flat;
         _store.Changed();
 
+        // Every other plot gets the same style first, so all of them reopen in it.
+        var flat = Model.Flat;
+        ForOtherPlots(p =>
+        {
+            p.Model.Flat = flat;
+            p._store.Changed();
+            _windows.ReopenFence(p);
+        });
+
         // A window cannot change how it is drawn once shown, so the plot reopens in the new style.
         _windows.ReopenFence(this);
     }
@@ -912,6 +955,7 @@ public sealed partial class FenceViewModel : ObservableObject, IDisposable
             OnPropertyChanged();
             OnPropertyChanged(nameof(CornerName));
             OnPropertyChanged(nameof(FlatCornerRadius));
+            ForOtherPlots(p => p.CornerSize = size);
         }
     }
 
