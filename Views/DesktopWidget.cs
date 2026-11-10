@@ -23,8 +23,11 @@ internal sealed class DesktopWidget
     private readonly Func<WindowBounds?> _load;
     private readonly Action<WindowBounds> _save;
     private readonly IntPtr _normalOwner;
+    private static readonly List<DesktopWidget> All = [];
+
     private bool _applyingBounds;
     private bool _pinned;
+    private bool _raising;
 
     public DesktopWidget(
         Window window, double defaultWidth, double defaultHeight, Func<WindowBounds?> load, Action<WindowBounds> save)
@@ -45,6 +48,11 @@ internal sealed class DesktopWidget
         window.Loaded += (_, _) => HwndSource.FromHwnd(Handle)?.AddHook(Hook);
         window.LocationChanged += (_, _) => Remember();
         window.SizeChanged += (_, _) => Remember();
+
+        // Whatever the pointer is over comes to the front of the widgets it overlaps.
+        All.Add(this);
+        window.MouseEnter += (_, _) => RaiseOverOverlapping();
+        window.Closed += (_, _) => All.Remove(this);
 
         // Moving to a monitor with different scaling resizes the window after it moved; save the final size.
         window.DpiChanged += (_, _) => window.Dispatcher.BeginInvoke(DispatcherPriority.Background, Remember);
@@ -68,6 +76,51 @@ internal sealed class DesktopWidget
     }
 
     public void ApplySavedBounds() => ApplyBounds(_load());
+
+    /// <summary>
+    /// Moves this widget directly above the highest widget that overlaps it and is currently in front of it. Only
+    /// widgets in the same layer count (pinned with pinned, loose with loose), so a pinned widget never rises
+    /// above app windows. Nothing happens when nothing covers it.
+    /// </summary>
+    public void RaiseOverOverlapping()
+    {
+        if (!_window.IsVisible || NativeMethods.GetWindowBounds(Handle) is not { } mine)
+        {
+            return;
+        }
+
+        var highest = IntPtr.Zero;
+        for (var h = NativeMethods.GetWindowAbove(Handle); h != IntPtr.Zero; h = NativeMethods.GetWindowAbove(h))
+        {
+            var other = All.FirstOrDefault(w => w.Handle == h);
+            if (other is null || other._pinned != _pinned || !other._window.IsVisible
+                || NativeMethods.GetWindowBounds(h) is not { } r)
+            {
+                continue;
+            }
+
+            if (r.X < mine.X + mine.Width && mine.X < r.X + r.Width && r.Y < mine.Y + mine.Height && mine.Y < r.Y + r.Height)
+            {
+                highest = h;
+            }
+        }
+
+        if (highest == IntPtr.Zero)
+        {
+            return;
+        }
+
+        // The pinned-window hook would otherwise send this straight back to the bottom.
+        _raising = true;
+        try
+        {
+            NativeMethods.PlaceAbove(Handle, highest);
+        }
+        finally
+        {
+            _raising = false;
+        }
+    }
 
     /// <summary>Puts a pinned window back at the bottom after it was shown.</summary>
     public void SettleAtBottom()
@@ -110,7 +163,7 @@ internal sealed class DesktopWidget
         }
         else if (msg == NativeMethods.WM_WINDOWPOSCHANGING)
         {
-            NativeMethods.AdjustWindowPos(lParam, keepPositionAndSize: IsLocked && !_applyingBounds, keepAtBottom: _pinned);
+            NativeMethods.AdjustWindowPos(lParam, keepPositionAndSize: IsLocked && !_applyingBounds, keepAtBottom: _pinned && !_raising);
         }
 
         return IntPtr.Zero;

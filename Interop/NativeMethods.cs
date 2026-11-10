@@ -364,6 +364,23 @@ internal static class NativeMethods
         }
     }
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    private const uint GW_HWNDPREV = 3;
+
+    /// <summary>The window just above this one in the z-order, or zero when it is the top one.</summary>
+    public static IntPtr GetWindowAbove(IntPtr hwnd) => hwnd == IntPtr.Zero ? IntPtr.Zero : GetWindow(hwnd, GW_HWNDPREV);
+
+    /// <summary>Puts a window directly above another one without activating it or changing its owner order.</summary>
+    public static void PlaceAbove(IntPtr hwnd, IntPtr other)
+    {
+        if (hwnd != IntPtr.Zero && other != IntPtr.Zero)
+        {
+            SetWindowPos(hwnd, other, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        }
+    }
+
     // ---- Shell icons and thumbnails ------------------------------------------------------
 
     [StructLayout(LayoutKind.Sequential)]
